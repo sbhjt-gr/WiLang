@@ -114,9 +114,8 @@ export default function LoginScreen({ navigation }: Props) {
           }
         });
         return unsubscribe;
-      } catch (error) {
+      } catch (_error) {
         setIsLoading(false);
-        console.error('Firebase initialization failed:', error);
       }
     };
     
@@ -177,15 +176,12 @@ export default function LoginScreen({ navigation }: Props) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      {/* Background Gradient */}
       <LinearGradient
         colors={['#667eea', '#764ba2']}
         style={styles.backgroundGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
-      
-      {/* Floating circles for visual appeal */}
       <View style={[styles.floatingCircle, styles.circle1]} />
       <View style={[styles.floatingCircle, styles.circle2]} />
       <View style={[styles.floatingCircle, styles.circle3]} />
@@ -202,7 +198,6 @@ export default function LoginScreen({ navigation }: Props) {
           scrollEnabled={true}
           automaticallyAdjustKeyboardInsets={false}
         >
-          {/* Logo Section */}
           <Animated.View 
             style={[
               styles.logoSection,
@@ -223,7 +218,6 @@ export default function LoginScreen({ navigation }: Props) {
             <Text style={styles.welcomeSubtitle}>Sign in to continue your journey</Text>
           </Animated.View>
 
-          {/* Login Form */}
           <Animated.View 
             style={[
               styles.formSection,
@@ -310,7 +304,6 @@ export default function LoginScreen({ navigation }: Props) {
             </View>
           </Animated.View>
 
-          {/* Footer */}
           <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
             <Text style={styles.footerText}>
               By signing in, you agree to our Terms of Service and Privacy Policy

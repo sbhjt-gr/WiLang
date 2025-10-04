@@ -32,7 +32,6 @@ export class VideoCallService {
   async initializeVideoCall(): Promise<boolean> {
     try {
       if (!this.webRTCContext) {
-        console.error('WebRTC context not set');
         return false;
       }
 
@@ -41,8 +40,7 @@ export class VideoCallService {
       
       await this.webRTCContext.initialize(username);
       return true;
-    } catch (error) {
-      console.error('Failed to initialize video call:', error);
+    } catch (_error) {
       return false;
     }
   }
@@ -83,8 +81,7 @@ export class VideoCallService {
           }
         ]
       );
-    } catch (error) {
-      console.error('Error starting video call:', error);
+    } catch (_error) {
       Alert.alert('Error', 'Failed to start video call. Please try again.');
     }
   }
@@ -93,12 +90,11 @@ export class VideoCallService {
     try {
       const mockUser = this.convertContactToUser(contact);
       mockUser.peerId = `mock_${contact.id}_${Date.now()}`;
-      
+
       if (this.webRTCContext.setRemoteUser) {
         this.navigateToCallScreen(contact);
       }
-    } catch (error) {
-      console.error('Error in mock call setup:', error);
+    } catch (_error) {
     }
   }
 
@@ -150,30 +146,20 @@ export class VideoCallService {
           });
         }
       }
-    } catch (error) {
-      console.error('Error accepting call:', error);
+    } catch (_error) {
     }
   }
 
-  private declineCall(caller: User) {
-    try {
-      console.log(`Declined call from ${caller.name || caller.username}`);
-    } catch (error) {
-      console.error('Error declining call:', error);
-    }
+  private declineCall(_caller: User) {
   }
 
   endCall() {
-    try {
-      if (this.webRTCContext) {
-        this.webRTCContext.closeCall();
-      }
-      
-      if (this.navigationRef?.current) {
-        this.navigationRef.current.goBack();
-      }
-    } catch (error) {
-      console.error('Error ending call:', error);
+    if (this.webRTCContext) {
+      this.webRTCContext.closeCall();
+    }
+
+    if (this.navigationRef?.current) {
+      this.navigationRef.current.goBack();
     }
   }
 

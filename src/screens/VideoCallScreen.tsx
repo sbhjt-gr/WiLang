@@ -35,16 +35,6 @@ interface Props {
   route: VideoCallScreenRouteProp;
 }
 
-/**
- * VideoCallScreen Layout Logic:
- * 
- * 1 participant (creator waiting): Featured view with waiting screen + floating local video box
- * 2 participants (1-on-1 call): Featured view - full screen remote video + floating local video box
- * 3+ participants: Grid view automatically, with toggle option
- * 
- * The floating local video box is always shown in bottom-right corner during featured view.
- * Both meeting creators and joiners see identical layouts for the same participant count.
- */
 export default function VideoCallScreen({ navigation, route }: Props) {
   const {
     localStream,
@@ -174,7 +164,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         title: 'Join My Video Call',
       });
     } catch (error) {
-      console.error('Error sharing join code:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Error', `Unable to share join code: ${message}`);
     }
   }, [currentMeetingId]);
 
@@ -254,29 +245,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       
       try {
         let socketConnection = null;
-        
-        console.log('🔍 Initialization Debug:');
-        console.log('  localStream exists:', !!localStream);
-        console.log('  route.params.type:', route.params.type);
-        console.log('  currentMeetingId:', currentMeetingId);
-        
         if (!localStream || (route.params.type === 'join' && !currentMeetingId)) {
-          console.log('Initializing WebRTC...');
           const initResult = await initialize(username);
           socketConnection = initResult.socket || initResult;
-          
-          console.log('WebRTC initialization result:');
-          console.log('  initResult:', !!initResult);
-          console.log('  socketConnection:', !!socketConnection);
-          console.log('  socketConnection.connected:', socketConnection?.connected);
-          
           if (!localStream && !initResult.localStream) {
             throw new Error('Failed to obtain local media stream after initialization');
           }
-        } else {
-          console.log('Using existing socket connection');
         }
-        
         if (route.params.type === 'join') {
           if (joinAttempted.current) {
             if (!currentMeetingId) {
@@ -306,17 +281,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           }
           
         } else if (route.params.type === 'instant') {
-          // Set instant call mode and show join code UI
           setIsInstantCall(true);
           setShowJoinCodeUI(true);
           
           const currentUser = auth.currentUser;
           const username = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
           
-          console.log('Setting username for instant call:', username);
           setUsername(username);
           
-          console.log('Initializing WebRTC for instant call...');
           const initResult = await initialize(username);
           const socket = initResult.socket || initResult;
           
@@ -324,23 +296,16 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             throw new Error('Socket not connected - cannot create meeting');
           }
           
-          console.log('Creating instant call meeting...');
           const newMeetingId = await createMeetingWithSocket(socket);
           
           if (!newMeetingId) {
             throw new Error('Meeting creation returned empty meeting ID');
           }
           
-          console.log('✅ Created instant call meeting:', newMeetingId);
-          
         } else if (!route.params.type || route.params.type === 'create') {
           try {
-            console.log('Creating regular meeting...');
-            
-            // Ensure we have a socket connection before creating meeting
             let socketToUse = socketConnection;
             if (!socketToUse) {
-              console.log('No socket connection available, initializing...');
               const initResult = await initialize(username);
               socketToUse = initResult.socket || initResult;
             }
@@ -348,18 +313,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             if (!socketToUse || !socketToUse.connected) {
               throw new Error('Socket not connected - cannot create meeting');
             }
-            
-            // Small delay to ensure socket is fully ready
             await new Promise(resolve => setTimeout(resolve, 100));
             
             const meetingId = await createMeeting();
-            console.log('✅ Created regular meeting:', meetingId);
             
             if (!meetingId) {
               throw new Error('Meeting creation returned empty meeting ID');
             }
-            
-            // For regular meeting creation, show the join code UI as well
             setShowJoinCodeUI(true);
             
             Alert.alert(
@@ -368,7 +328,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               [{ text: 'OK' }]
             );
           } catch (meetingError) {
-            console.error('❌ Failed to create regular meeting:', meetingError);
             Alert.alert(
               'Meeting Creation Failed',
               `Failed to create meeting: ${meetingError instanceof Error ? meetingError.message : 'Unknown error'}`,
@@ -398,7 +357,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, [route.params.type, route.params.joinCode, localStream, currentMeetingId]);
 
   useEffect(() => {
-    // Hide join code UI when participants join
     const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
     if (remoteParticipants.length > 0) {
       setShowJoinCodeUI(false);
@@ -406,7 +364,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, [participants, peerId]);
 
   const renderGridView = () => {
-    // Filter out local participants to prevent duplicates 
     const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
     
     return (
@@ -421,7 +378,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   };
 
   const renderFeaturedView = () => {
-    // Filter out local participants to prevent duplicates
     const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
     const remoteParticipant = remoteParticipants.find(p => !p.isLocal);
     const remoteStream = remoteParticipant ? remoteStreams?.get(remoteParticipant.peerId) : null;
@@ -542,30 +498,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     );
   }
 
-  // Layout logic: Featured view for 1-on-1 calls (2 total participants), grid view for 3+
-  // Ensure creator and joiner see identical layout for the same participant count
-  
-  // Count total participants (local + remote) - filter out any local participants to prevent duplicates
   const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
-  const totalParticipants = remoteParticipants.length + 1; // +1 for local user
-  
-  // Debug logging to track layout decisions
-  if (participants.some(p => p.isLocal)) {
-    console.log('⚠️ VideoCallScreen: Found local participant in participants array');
-    console.log('Original participants:', participants.length);
-    console.log('Remote participants after filtering:', remoteParticipants.length);
-    console.log('Total participants for layout:', totalParticipants);
-  }
-  
-  // Featured view for 2 participants (1-on-1), grid view for 3+ or when manually toggled
+  const totalParticipants = remoteParticipants.length + 1;
   const shouldUseFeaturedViewForCall = totalParticipants <= 2 && !isGridMode;
-  
-  // Debug layout decision
-  console.log('📱 VideoCallScreen Layout Decision:');
-  console.log('  Total participants:', totalParticipants);
-  console.log('  Remote participants:', remoteParticipants.length);
-  console.log('  isGridMode:', isGridMode);
-  console.log('  Using featured view:', shouldUseFeaturedViewForCall);
 
   return (
     <TouchableOpacity

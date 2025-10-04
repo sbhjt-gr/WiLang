@@ -4,37 +4,15 @@ let isInitialized = false;
 
 export const initializeFirebase = async (): Promise<void> => {
   try {
-    if (__DEV__) {
-      console.log('Starting Firebase initialization...');
-    }
-    
     let app;
     try {
       app = getApp();
       isInitialized = true;
-      if (__DEV__) {
-        console.log('Firebase app initialized from google-services.json/GoogleService-Info.plist');
-        console.log('App name:', app.name);
-        console.log('Project ID:', app.options.projectId);
-      }
     } catch (error: any) {
-      if (__DEV__) {
-        console.error('Firebase initialization failed:', error);
-        console.error('Make sure google-services.json (Android) and GoogleService-Info.plist (iOS) are properly configured');
-      }
       throw new Error('Firebase configuration files missing or invalid');
     }
-
-    if (__DEV__) {
-      console.log('Firebase initialization completed successfully');
-    }
-
   } catch (error) {
-    if (__DEV__) {
-      console.error('Firebase initialization failed:', error);
-    }
     isInitialized = false;
-    
     if (__DEV__) {
       throw error;
     } else {

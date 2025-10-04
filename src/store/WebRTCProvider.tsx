@@ -12,7 +12,6 @@ interface Props {
 }
 
 const WebRTCProvider: React.FC<Props> = ({children}) => {
-  // State
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -28,25 +27,20 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   const [users, setUsers] = useState<User[]>([]);
   const [isMuted, setIsMuted] = useState(false);
 
-  // Refs for immediate access to current values
   const localStreamRef = useRef<MediaStream | null>(null);
   const socketRef = useRef<any>(null);
   const peerIdRef = useRef<string>('');
   const currentMeetingIdRef = useRef<string | null>(null);
 
-  // Managers
   const socketManager = useRef<WebRTCSocketManager | null>(null);
   const peerManager = useRef<WebRTCPeerManager | null>(null);
   const meetingManager = useRef<WebRTCMeetingManager | null>(null);
 
-  // Initialize managers
   useEffect(() => {
     if (!socketManager.current) {
       socketManager.current = new WebRTCSocketManager();
       peerManager.current = new WebRTCPeerManager(socketManager.current);
       meetingManager.current = new WebRTCMeetingManager();
-
-      // Setup socket callbacks
       socketManager.current.setCallbacks({
         onUserJoined: (user: User) => {
           meetingManager.current?.handleUserJoined(user);
@@ -54,8 +48,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         onUserLeft: (user: User) => {
           meetingManager.current?.handleUserLeft(user);
           peerManager.current?.closePeerConnection(user.peerId);
-          
-          // Clear the remote stream for this user
           setRemoteStreams(prev => {
             const newMap = new Map(prev);
             newMap.delete(user.peerId);
@@ -85,56 +77,40 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           setUsers(users);
         }
       });
-
-      // Setup peer manager callbacks
       peerManager.current.setCallbacks({
         onRemoteStreamAdded: (peerId: string, stream: MediaStream) => {
-          console.log('🔄 FORCING REACT RE-RENDER due to remote stream update');
           setRemoteStreams(prev => {
             const newMap = new Map(prev);
             newMap.set(peerId, stream);
-            console.log('   Updated stream for peer ID:', peerId);
-            console.log('   Stream has video tracks:', stream.getVideoTracks().length);
-            console.log('   Stream has audio tracks:', stream.getAudioTracks().length);
             return newMap;
           });
-          
-          // For backward compatibility
           setRemoteStream(stream);
           const user = participants.find(p => p.peerId === peerId);
           if (user) {
             setRemoteUser(user);
           }
         },
-        onConnectionStateChanged: (peerId: string, state: string) => {
-          console.log('Connection state changed:', state, 'for peer:', peerId);
-        },
+        onConnectionStateChanged: () => {},
         onParticipantUpdated: (peerId: string, updates: Partial<User>) => {
           setParticipants(prev =>
             prev.map(p => p.peerId === peerId ? { ...p, ...updates } : p)
           );
         }
       });
-
-      // Setup meeting manager callbacks
       meetingManager.current.setCallbacks({
         onMeetingCreated: (meetingId: string) => {
           setCurrentMeetingId(meetingId);
           currentMeetingIdRef.current = meetingId;
+          socketManager.current?.setMeetingId(meetingId);
+          peerManager.current?.setMeetingId(meetingId);
         },
         onMeetingJoined: (meetingId: string, participants: User[]) => {
           setCurrentMeetingId(meetingId);
           currentMeetingIdRef.current = meetingId;
-          
-          // Filter out the current user from the participants to prevent duplicates
+          socketManager.current?.setMeetingId(meetingId);
+          peerManager.current?.setMeetingId(meetingId);
           const currentSocketId = socket?.id;
           const filteredParticipants = participants.filter(p => p.peerId !== currentSocketId);
-          
-          console.log('🔄 onMeetingJoined: Filtering participants');
-          console.log('  Original participants:', participants.length);
-          console.log('  Current socket ID:', currentSocketId);
-          console.log('  Filtered participants:', filteredParticipants.length);
-          
           setParticipants(filteredParticipants);
         },
         onParticipantsUpdated: (participants: User[]) => {
@@ -149,42 +125,30 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     }
   }, []);
 
-  // Cleanup stale remote streams when participants change
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setRemoteStreams(prev => {
         const newMap = new Map(prev);
         const currentPeerIds = new Set(participants.map(p => p.peerId));
-        
-        // Only keep streams for current participants
         for (const [peerId] of newMap) {
           if (!currentPeerIds.has(peerId)) {
-            console.log('Removing stale stream for peer:', peerId);
             newMap.delete(peerId);
           }
         }
-        
         if (newMap.size !== prev.size) {
-          console.log('Updated remote streams map, removed stale entries');
-          console.log('Previous size:', prev.size, 'New size:', newMap.size);
-          console.log('Current peer IDs:', Array.from(currentPeerIds));
-          console.log('Stream keys after cleanup:', Array.from(newMap.keys()));
           return newMap;
         }
-        
         return prev;
       });
-    }, 300); // 300ms debounce to allow participant state to stabilize
+    }, 300);
     
     return () => clearTimeout(timeoutId);
   }, [participants]);
 
-  // Keep refs in sync
   useEffect(() => {
     currentMeetingIdRef.current = currentMeetingId;
     socketManager.current?.setMeetingId(currentMeetingId || '');
     peerManager.current?.setMeetingId(currentMeetingId || '');
-    console.log('📋 Meeting ID updated:', currentMeetingId);
   }, [currentMeetingId]);
 
   useEffect(() => {
@@ -215,16 +179,11 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   }, [username]);
 
   const initialize = async (currentUsername?: string): Promise<any> => {
-    console.log('=== WEBRTC INITIALIZE START ===');
-    
-    // Prevent multiple simultaneous initializations
     if (socket && socket.connected && localStream) {
-      console.log('⚠️ Already initialized - returning existing connection');
-      return { socket, localStream };
+      return {socket, localStream};
     }
-    
+
     const finalUsername = currentUsername || username || 'User';
-    console.log('Using username:', finalUsername);
     setUsername(finalUsername);
     setCurrentUser(finalUsername);
     
@@ -241,40 +200,12 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     let newStream: MediaStream;
     
     try {
-      console.log('Requesting user media with constraints:', constraints);
       newStream = await mediaDevices.getUserMedia(constraints);
-      console.log('Got local stream:', newStream.id);
-      
-      // Log detailed track information
-      const videoTracks = newStream.getVideoTracks();
-      const audioTracks = newStream.getAudioTracks();
-      console.log(`📹 Created ${videoTracks.length} video tracks, ${audioTracks.length} audio tracks`);
-      
-      videoTracks.forEach((track, index) => {
-        console.log(`Video track ${index + 1}:`, {
-          id: track.id,
-          kind: track.kind,
-          enabled: track.enabled,
-          readyState: track.readyState,
-          settings: track.getSettings(),
-        });
-      });
-      
-      audioTracks.forEach((track, index) => {
-        console.log(`Audio track ${index + 1}:`, {
-          id: track.id,
-          kind: track.kind,
-          enabled: track.enabled,
-          readyState: track.readyState,
-          settings: track.getSettings(),
-        });
-      });
-      
       setLocalStream(newStream as MediaStream);
       localStreamRef.current = newStream as MediaStream;
-    } catch (error) {
-      console.error('Failed to get user media:', error);
-      throw new Error(`Failed to access camera/microphone: ${error}`);
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to access camera/microphone: ${message}`);
     }
 
     try {
@@ -288,17 +219,13 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       setPeerId(io.id || '');
       peerIdRef.current = io.id || '';
       socketRef.current = io;
-      
-      // Store for immediate access
-      io.localStream = newStream;
-      io.currentPeerId = io.id;
-      
+
+      (io as any).localStream = newStream;
+      (io as any).currentPeerId = io.id;
+
       setIsInitialized(true);
-      console.log('WebRTC initialization completed successfully');
-      
-      return { socket: io, localStream: newStream };
+      return {socket: io, localStream: newStream};
     } catch (error) {
-      console.error('Failed to initialize WebRTC:', error);
       throw error;
     }
   };
@@ -349,8 +276,12 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
 
   const switchCamera = () => {
     if (localStream) {
-      // @ts-ignore
-      localStream.getVideoTracks().forEach((track) => track._switchCamera());
+      localStream.getVideoTracks().forEach((track) => {
+        const trackWithSwitch = track as typeof track & {_switchCamera?: () => void};
+        if (typeof trackWithSwitch._switchCamera === 'function') {
+          trackWithSwitch._switchCamera();
+        }
+      });
     }
   };
 
@@ -364,7 +295,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   };
 
   const closeCall = () => {
-    console.log('=== CLOSE CALL ===');
     peerManager.current?.closeAllConnections();
     
     setActiveCall(null);
@@ -373,35 +303,21 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     setRemoteStreams(new Map());
     
     leaveMeeting();
-    console.log('Call cleanup completed');
   };
 
   const reset = async () => {
-    console.log('=== RESET WEBRTC ===');
-    
-    // Disconnect socket
     if (socketManager.current) {
       socketManager.current.disconnect();
     }
     setSocket(null);
     socketRef.current = null;
-    
-    // Close all connections
     peerManager.current?.closeAllConnections();
-    
-    // Leave meeting
     leaveMeeting();
-    
-    // Stop local stream tracks
     if (localStream) {
-      console.log('Stopping local stream tracks');
       localStream.getTracks().forEach(track => {
         track.stop();
-        console.log('Stopped track:', track.kind);
       });
     }
-    
-    // Clear all state
     setLocalStream(null);
     localStreamRef.current = null;
     setRemoteStream(null);
@@ -419,52 +335,29 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     currentMeetingIdRef.current = null;
     setIsMuted(false);
 
-    // Reset managers
     socketManager.current = null;
     peerManager.current = null;
     meetingManager.current = null;
-    
-    console.log('WebRTC reset completed');
   };
 
   const refreshParticipantVideo = async (participantPeerId: string): Promise<void> => {
-    console.log('=== REFRESH PARTICIPANT VIDEO ===');
-    console.log('Participant peer ID:', participantPeerId);
     
     const participant = participants.find(p => p.peerId === participantPeerId);
     if (!participant) {
-      console.error('Participant not found:', participantPeerId);
       return;
     }
-
-    console.log('Found participant:', participant.username);
-    console.log('Setting participant as refreshing...');
-    
     meetingManager.current?.updateParticipant(participantPeerId, { isRefreshing: true });
     
     try {
-      // Close existing connection
       peerManager.current?.closePeerConnection(participantPeerId);
-      
-      // Remove from remote streams
       setRemoteStreams(prev => {
         const newMap = new Map(prev);
         newMap.delete(participantPeerId);
         return newMap;
       });
-      
-      // Wait a bit for cleanup
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Create new connection
-      const newPc = peerManager.current?.createPeerConnection(participant, true);
-      if (newPc) {
-        console.log('✅ Successfully refreshed connection for:', participant.username);
-      } else {
-        console.error('❌ Failed to create new connection for:', participant.username);
-      }
-    } catch (error) {
-      console.error('❌ Error refreshing participant video:', error);
+      peerManager.current?.createPeerConnection(participant, true);
+    } catch (_error) {
     } finally {
       meetingManager.current?.updateParticipant(participantPeerId, { isRefreshing: false });
     }

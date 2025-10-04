@@ -39,10 +39,7 @@ export const storeAuthState = async (user: FirebaseAuthTypes.User | null, profil
 
     await AsyncStorage.setItem(USER_AUTH_KEY, JSON.stringify(userData));
     return true;
-  } catch (error) {
-    if (__DEV__) {
-      console.error('Authentication storage failed:', error);
-    }
+  } catch (_error) {
     return false;
   }
 };

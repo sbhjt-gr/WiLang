@@ -11,7 +11,6 @@ export const testServerConnection = async (url: string): Promise<ServerTestResul
   const startTime = Date.now();
   
   try {
-    // Simple fetch test to check if server is reachable
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
     
@@ -46,13 +45,11 @@ export const testServerConnection = async (url: string): Promise<ServerTestResul
 
 export const testAllServers = async (): Promise<ServerTestResult[]> => {
   const urls: string[] = [];
-  
-  // Add primary server
+
   if (SIGNALING_SERVER_URL) {
     urls.push(SIGNALING_SERVER_URL);
   }
   
-  // Add fallback servers
   if (FALLBACK_SERVER_URLS) {
     const fallbackUrls = FALLBACK_SERVER_URLS.split(',').map(url => url.trim());
     fallbackUrls.forEach(url => {
@@ -61,15 +58,7 @@ export const testAllServers = async (): Promise<ServerTestResult[]> => {
       }
     });
   }
-  
-  // Add default servers if none configured
-  if (urls.length === 0) {
-    // No default servers, configure in .env
-  }
-  
-  console.log('Testing server connections:', urls);
-  
-  // Test all servers in parallel
+
   const results = await Promise.all(
     urls.map(url => testServerConnection(url))
   );

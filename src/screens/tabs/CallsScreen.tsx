@@ -54,27 +54,16 @@ export default function CallsScreen({ navigation }: Props) {
   const meet = (): void => {
     if (id.trim()) {
       const rawInput = id.trim();
-      console.log('=== JOIN CALL INPUT DEBUG ===');
-      console.log('Raw input:', rawInput);
-      
-      // Check if it's purely numeric (old legacy support)
       const isOnlyNumeric = /^[0-9]+$/.test(rawInput);
       const numericId = parseInt(rawInput);
-      
-      console.log('Is only numeric:', isOnlyNumeric);
-      console.log('Parsed numeric value:', numericId);
-      
       if (isOnlyNumeric && !isNaN(numericId)) {
-        console.log('Treating as legacy numeric ID');
         navigation.navigate('VideoCallScreen', {
           id: numericId.toString(), 
           type: 'join',
           joinCode: numericId.toString()
         });
       } else {
-        // Treat as meeting code (alphanumeric)
         const cleanCode = rawInput.toUpperCase();
-        console.log('Treating as meeting code:', cleanCode);
         
         if (/^[A-Z0-9]{4,8}$/.test(cleanCode)) {
           navigation.navigate('VideoCallScreen', {
@@ -110,7 +99,6 @@ export default function CallsScreen({ navigation }: Props) {
         automaticallyAdjustKeyboardInsets={true}
         nestedScrollEnabled={false}
       >
-        {/* Hero Section with Live Translation Badge */}
         <Animated.View 
           style={[
             styles.heroSection,
@@ -133,7 +121,6 @@ export default function CallsScreen({ navigation }: Props) {
             <Text style={styles.heroTitle}>WhisperLang Video</Text>
             <Text style={styles.heroSubtitle}>Connect with anyone, anywhere in the world with real-time translation in over 30 languages</Text>
             
-            {/* Feature Toggle */}
             <View style={styles.featureToggle}>
               <TouchableOpacity 
                 style={[styles.toggleButton, activeFeature === 'instant' && styles.toggleButtonActive]}
@@ -157,7 +144,6 @@ export default function CallsScreen({ navigation }: Props) {
           </View>
         </Animated.View>
 
-        {/* Dynamic Action Cards based on selected feature */}
         <Animated.View 
           style={[
             styles.actionsSection,
@@ -188,7 +174,7 @@ export default function CallsScreen({ navigation }: Props) {
               <View style={styles.secondaryActions}>
                 <TouchableOpacity 
                   style={styles.secondaryActionCard}
-                  onPress={() => {/* Voice only call */}}
+                  onPress={() => {}}
                 >
                   <View style={styles.secondaryActionContent}>
                     <Ionicons name="mic" size={24} color="#10b981" />
@@ -198,7 +184,7 @@ export default function CallsScreen({ navigation }: Props) {
                 
                 <TouchableOpacity 
                   style={styles.secondaryActionCard}
-                  onPress={() => {/* Group call */}}
+                  onPress={() => {}}
                 >
                   <View style={styles.secondaryActionContent}>
                     <Ionicons name="people" size={24} color="#f59e0b" />
@@ -211,7 +197,7 @@ export default function CallsScreen({ navigation }: Props) {
             <View style={styles.scheduledActions}>
               <TouchableOpacity 
                 style={styles.scheduleCard}
-                onPress={() => {/* Schedule meeting */}}
+                onPress={() => {}}
               >
                 <LinearGradient
                   colors={['#10b981', '#059669']}
@@ -245,7 +231,6 @@ export default function CallsScreen({ navigation }: Props) {
           )}
         </Animated.View>
 
-        {/* Join Meeting Section */}
         <View style={styles.joinSection}>
           <View style={styles.joinCard}>
             <View style={styles.joinHeader}>
@@ -282,7 +267,6 @@ export default function CallsScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* Enhanced Recent Activity */}
         <Animated.View 
           style={[
             styles.recentSection,
@@ -335,7 +319,6 @@ export default function CallsScreen({ navigation }: Props) {
           </View>
         </Animated.View>
 
-        {/* Language Support Banner */}
         <Animated.View 
           style={[
             styles.languageBanner,

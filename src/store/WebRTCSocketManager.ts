@@ -1,14 +1,15 @@
 import {Alert} from 'react-native';
-import {RTCPeerConnection, RTCIceCandidate, RTCSessionDescription} from 'react-native-webrtc';
 import socketio from 'socket.io-client';
 import {User} from './WebRTCTypes';
 import {SERVER_URL, SERVER_URLS, WEBRTC_CONFIG} from './WebRTCConfig';
 
+type SocketInstance = ReturnType<typeof socketio>;
+
 export class WebRTCSocketManager {
-  private socket: any = null;
+  private socket: SocketInstance | null = null;
   private currentMeetingId: string | null = null;
-  private peerId: string = '';
-  private username: string = '';
+  private peerId = '';
+  private username = '';
   private onUserJoined?: (user: User) => void;
   private onUserLeft?: (user: User) => void;
   private onOfferReceived?: (data: any) => void;
@@ -35,14 +36,10 @@ export class WebRTCSocketManager {
     this.onUsersChange = callbacks.onUsersChange;
   }
 
-  private async connectWithFallback(urls: string[], username: string): Promise<any> {
-    console.log(`Starting WebRTC connection in ${WEBRTC_CONFIG.environment} mode`);
-    console.log('Available server URLs:', urls);
-    
-    for (let i = 0; i < urls.length; i++) {
+  private async connectWithFallback(urls: string[], username: string): Promise<SocketInstance> {
+    for (let i = 0; i < urls.length; i += 1) {
       const url = urls[i];
-      console.log(`Attempting to connect to: ${url} (attempt ${i + 1}/${urls.length})`);
-      
+
       try {
         const io = socketio(url, {
           reconnection: true,
@@ -55,111 +52,67 @@ export class WebRTCSocketManager {
           upgrade: true,
         });
 
-        return new Promise((resolve, reject) => {
+        await new Promise<void>((resolve, reject) => {
           const connectionTimeout = setTimeout(() => {
-            console.error(`Connection timeout for ${url} after ${WEBRTC_CONFIG.timeout}ms`);
             io.disconnect();
             reject(new Error(`Connection timeout: ${url}`));
           }, WEBRTC_CONFIG.timeout + 5000);
 
           io.on('connect', () => {
             clearTimeout(connectionTimeout);
-            console.log(`✅ Socket connected successfully to: ${url}`);
-            console.log('Socket ID:', io.id);
-            console.log('Transport:', io.io.engine.transport.name);
-            console.log('Registering user:', username);
-            
             this.peerId = io.id || '';
-            
             io.emit('register', username);
             io.emit('set-peer-id', io.id);
-            
-            resolve(io);
+            resolve();
           });
 
           io.on('connect_error', (error: any) => {
             clearTimeout(connectionTimeout);
-            console.error(`❌ Connection failed for ${url}:`, error.message);
-            console.error('Error type:', error.type);
-            console.error('Error description:', error.description);
             io.disconnect();
             reject(error);
           });
-
-          io.on('disconnect', (reason: any) => {
-            console.log(`📡 Disconnected from ${url}:`, reason);
-          });
-
-          io.on('reconnect', () => {
-            console.log(`🔄 Reconnected to ${url}`);
-          });
         });
+
+        return io;
       } catch (error) {
-        console.error(`Failed to connect to ${url}:`, error);
         if (i === urls.length - 1) {
           throw error;
         }
+
         await new Promise(resolve => setTimeout(resolve, 2000));
-        continue;
       }
     }
-    
+
     throw new Error('All server URLs failed');
   }
 
-  async initializeSocket(username: string): Promise<any> {
+  async initializeSocket(username: string): Promise<SocketInstance> {
     this.username = username;
-    
-    try {
-      const primaryUrl = SERVER_URL;
-      const fallbackUrls = SERVER_URLS.length > 0 ? SERVER_URLS : [];
-      const allUrls = [primaryUrl, ...fallbackUrls].filter(Boolean);
-      
-      console.log('🔍 Environment variables loaded:');
-      console.log('  PRIMARY URL:', primaryUrl);
-      console.log('  FALLBACK URLS:', fallbackUrls);
-      console.log('  ALL URLs TO TRY:', allUrls);
-      
-      if (allUrls.length === 0 || allUrls.every(url => !url || url === 'undefined')) {
-        console.error('❌ No valid server URLs found, using hardcoded fallback');
-        allUrls.push('https://whisperlang-render.onrender.com');
-      }
-      
-      const io = await this.connectWithFallback(allUrls, username);
-      
-      this.socket = io;
-      this.setupSocketListeners(io);
-      
-      console.log('Socket initialization completed successfully');
-      console.log('Socket connected:', io.connected);
-      
-      return io;
-    } catch (error) {
-      console.error('Failed to initialize socket:', error);
-      throw error;
+
+    const primaryUrl = SERVER_URL;
+    const fallbackUrls = SERVER_URLS.length > 0 ? SERVER_URLS : [];
+    const allUrls = [primaryUrl, ...fallbackUrls].filter(url => url && url !== 'undefined');
+
+    if (allUrls.length === 0) {
+      allUrls.push('https://whisperlang-render.onrender.com');
     }
+
+    const io = await this.connectWithFallback(allUrls, username);
+    this.socket = io;
+    this.setupSocketListeners(io);
+
+    return io;
   }
 
-  private setupSocketListeners(io: any) {
-    io.on('disconnect', (reason: string) => {
-      console.log('Socket disconnected:', reason);
-    });
+  private setupSocketListeners(io: SocketInstance) {
+    io.on('disconnect', () => {});
 
     io.on('users-change', (users: User[]) => {
       this.onUsersChange?.(users);
     });
 
     io.on('user-joined', (user: User) => {
-      console.log('=== USER JOINED EVENT ===');
-      console.log('User joined meeting:', user.username);
-      console.log('User details:', {
-        id: user.id,
-        peerId: user.peerId,
-        username: user.username
-      });
-      
       if (user.peerId === this.peerId) {
-        console.log('⏭️ Ignoring user-joined event for self:', user.peerId);
         return;
       }
 
@@ -167,7 +120,6 @@ export class WebRTCSocketManager {
     });
 
     io.on('user-left', (user: User) => {
-      console.log('user left:', user.username);
       this.onUserLeft?.(user);
     });
 
@@ -176,72 +128,47 @@ export class WebRTCSocketManager {
       this.onMeetingEnded?.();
     });
 
-    io.on('offer', async (data: any) => {
-      const { offer, fromPeerId, fromUsername, meetingId } = data;
-      console.log('🎯 CLIENT: === OFFER RECEIVED ===');
-      console.log('📨 Offer received from:', fromUsername, fromPeerId);
-      console.log('🏢 Offer meeting ID:', meetingId);
-      console.log('📋 Current meeting ID:', this.currentMeetingId);
-      console.log('📊 Full offer data:', data);
+    io.on('offer', (data: any) => {
+      const {offer, fromPeerId, fromUsername, meetingId} = data;
 
       if (meetingId !== this.currentMeetingId) {
-        console.warn('❌ Received offer for different meeting, ignoring');
-        console.warn('   Offer meeting:', meetingId);
-        console.warn('   Current meeting:', this.currentMeetingId);
         return;
       }
-      
-      console.log('✅ Offer meeting ID matches, processing...');
-      
-      // Transform server data format to match signaling handler expectations
+
       const transformedData = {
         from: fromPeerId,
-        to: this.peerId, // Our peer ID
-        offer: offer,
-        meetingId: meetingId,
-        fromUsername: fromUsername
+        to: this.peerId,
+        offer,
+        meetingId,
+        fromUsername,
       };
-      
-      console.log('📋 Transformed offer data:', {
-        from: transformedData.from,
-        to: transformedData.to,
-        meetingId: transformedData.meetingId,
-        hasOffer: !!transformedData.offer
-      });
-      
+
       this.onOfferReceived?.(transformedData);
     });
 
-    io.on('answer', async (data: any) => {
-      const { answer, fromPeerId } = data;
-      console.log('\n📝 === ANSWER RECEIVED ===');
-      console.log('   From peer:', fromPeerId);
-      console.log('   Answer SDP type:', answer.type);
-      
-      // Transform server data format to match signaling handler expectations
+    io.on('answer', (data: any) => {
+      const {answer, fromPeerId} = data;
+
       const transformedData = {
         from: fromPeerId,
         to: this.peerId,
-        answer: answer,
-        meetingId: this.currentMeetingId
+        answer,
+        meetingId: this.currentMeetingId,
       };
-      
+
       this.onAnswerReceived?.(transformedData);
     });
 
-    io.on('ice-candidate', async (data: any) => {
-      const { candidate, fromPeerId } = data;
-      console.log('\n🧊 === ICE CANDIDATE RECEIVED ===');
-      console.log('   From peer:', fromPeerId);
-      
-      // Transform server data format to match signaling handler expectations
+    io.on('ice-candidate', (data: any) => {
+      const {candidate, fromPeerId} = data;
+
       const transformedData = {
         from: fromPeerId,
         to: this.peerId,
-        candidate: candidate,
-        meetingId: this.currentMeetingId
+        candidate,
+        meetingId: this.currentMeetingId,
       };
-      
+
       this.onIceCandidateReceived?.(transformedData);
     });
   }
@@ -250,11 +177,11 @@ export class WebRTCSocketManager {
     if (!this.socket) {
       throw new Error('Socket not initialized');
     }
-    
+
     this.socket.emit('offer', {
-      offer: offer,
-      targetPeerId: targetPeerId,
-      meetingId: meetingId
+      offer,
+      targetPeerId,
+      meetingId,
     });
   }
 
@@ -262,22 +189,23 @@ export class WebRTCSocketManager {
     if (!this.socket) {
       throw new Error('Socket not initialized');
     }
-    
+
     this.socket.emit('answer', {
-      answer: answer,
-      targetPeerId: targetPeerId,
-      meetingId: meetingId
+      answer,
+      targetPeerId,
+      meetingId,
     });
   }
 
-  sendIceCandidate(candidate: any, targetPeerId: string) {
+  sendIceCandidate(candidate: any, targetPeerId: string, meetingId: string) {
     if (!this.socket) {
       throw new Error('Socket not initialized');
     }
-    
+
     this.socket.emit('ice-candidate', {
-      candidate: candidate,
-      targetPeerId: targetPeerId
+      candidate,
+      targetPeerId,
+      meetingId,
     });
   }
 
@@ -293,7 +221,7 @@ export class WebRTCSocketManager {
     return this.peerId;
   }
 
-  getSocket(): any {
+  getSocket(): SocketInstance | null {
     return this.socket;
   }
 

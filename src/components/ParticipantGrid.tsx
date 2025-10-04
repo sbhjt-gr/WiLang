@@ -140,16 +140,8 @@ const ParticipantGrid: React.FC<ParticipantGridProps> = ({
     isLocal: true,
   };
 
-  // Filter out any local participants from the participants array to prevent duplicates
   const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== currentUser);
-  
-  // Debug logging to track duplicate prevention
-  if (participants.some(p => p.isLocal)) {
-    console.log('⚠️ ParticipantGrid: Found local participant in participants array, filtering out');
-    console.log('Original participants:', participants.length);
-    console.log('After filtering:', remoteParticipants.length);
-  }
-  
+
   const allParticipants = [localParticipant, ...remoteParticipants];
   const totalParticipants = allParticipants.length;
   

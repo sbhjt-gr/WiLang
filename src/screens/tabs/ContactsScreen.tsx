@@ -59,10 +59,8 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
       if (status === 'granted') {
         loadContacts();
       }
-    } catch (error) {
-      if (__DEV__) {
-        console.error('Error checking contacts permission:', error);
-      }
+    } catch {
+      Alert.alert('Error', 'Unable to verify contacts permission. Please try again.');
     }
   };
 
@@ -84,10 +82,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
           ]
         );
       }
-    } catch (error) {
-      if (__DEV__) {
-        console.error('Error requesting contacts permission:', error);
-      }
+    } catch {
       Alert.alert('Error', 'Failed to request contacts permission. Please try again.');
     }
   };
@@ -116,14 +111,11 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
           lastName: contact.lastName,
           phoneNumbers: contact.phoneNumbers,
           emails: contact.emails,
-          imageUri: contact.imageUri,
+          imageUri: contact.image?.uri,
         }));
 
       setContacts(filteredContacts);
-    } catch (error) {
-      if (__DEV__) {
-        console.error('Error loading contacts:', error);
-      }
+    } catch {
       Alert.alert('Error', 'Failed to load contacts. Please try again.');
     } finally {
       setIsLoading(false);
@@ -187,8 +179,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
       }
       
       await videoCallService.startVideoCall(contact);
-    } catch (error) {
-      console.error('Error starting video call:', error);
+    } catch {
       Alert.alert('Error', 'Failed to start video call. Please try again.');
     }
   };
@@ -339,7 +330,6 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Search Bar */}
       <Animated.View 
         style={[
           styles.searchContainer,
@@ -371,7 +361,6 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
         </View>
       </Animated.View>
 
-      {/* Contacts Header */}
       <Animated.View 
         style={[
           styles.headerContainer,
@@ -395,7 +384,6 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
         )}
       </Animated.View>
 
-      {/* Contacts List */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#667eea" />

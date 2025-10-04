@@ -5,6 +5,8 @@ export interface User {
   username: string;
   peerId: string;
   name?: string;
+  phoneNumbers?: {number?: string}[];
+  emails?: {email?: string}[];
   isLocal?: boolean;
   hasActiveConnection?: boolean;
   isRefreshing?: boolean;

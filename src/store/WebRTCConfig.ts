@@ -10,14 +10,12 @@ import {
 
 export const getServerURL = () => {
   const url = SIGNALING_SERVER_URL || 'https://whisperlang-render.onrender.com';
-  console.log('🔍 Primary server URL:', url);
   return url;
 };
 
 export const getServerURLs = () => {
   const fallbackUrls = FALLBACK_SERVER_URLS || 'https://whisperlang-render.onrender.com';
   const urls = fallbackUrls.split(',').map(url => url.trim());
-  console.log('🔍 Fallback server URLs:', urls);
   return urls;
 };
 
@@ -39,7 +37,6 @@ export const ICE_SERVERS = {
     {
       urls: getStunServers(),
     },
-    // Add additional public STUN servers for better connectivity
     {
       urls: [
         'stun:stun.l.google.com:19302',

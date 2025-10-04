@@ -8,6 +8,20 @@ const AUTH_ATTEMPTS_TIMESTAMP_KEY = '@auth_attempts_timestamp';
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000;
 
+type FetchWithTimeoutOptions = RequestInit & {timeout?: number};
+
+const fetchWithTimeout = async (resource: RequestInfo, options: FetchWithTimeoutOptions = {}) => {
+  const {timeout = 5000, ...rest} = options;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    return await fetch(resource, {...rest, signal: controller.signal});
+  } finally {
+    clearTimeout(id);
+  }
+};
+
 export const validateEmail = (email: string): boolean => {
   const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
   return emailRegex.test(email.toLowerCase());
@@ -51,7 +65,12 @@ export const validatePassword = (password: string, allowWeakPasswords: boolean =
 };
 
 export const validateName = (name: string): boolean => {
-  return name && name.trim().length >= 2 && name.trim().length <= 50;
+  if (!name) {
+    return false;
+  }
+
+  const trimmed = name.trim();
+  return trimmed.length >= 2 && trimmed.length <= 50;
 };
 
 export const checkRateLimiting = async (): Promise<boolean> => {
@@ -71,10 +90,7 @@ export const checkRateLimiting = async (): Promise<boolean> => {
     }
     
     return attempts < MAX_ATTEMPTS;
-  } catch (error) {
-    if (__DEV__) {
-      console.error('Error checking rate limiting:', error);
-    }
+  } catch (_error) {
     return true;
   }
 };
@@ -86,10 +102,7 @@ export const incrementAuthAttempts = async (): Promise<void> => {
     
     await AsyncStorage.setItem(AUTH_ATTEMPTS_KEY, (attempts + 1).toString());
     await AsyncStorage.setItem(AUTH_ATTEMPTS_TIMESTAMP_KEY, Date.now().toString());
-  } catch (error) {
-    if (__DEV__) {
-      console.error('Error incrementing auth attempts:', error);
-    }
+  } catch (_error) {
   }
 };
 
@@ -97,10 +110,7 @@ export const resetAuthAttempts = async (): Promise<void> => {
   try {
     await AsyncStorage.removeItem(AUTH_ATTEMPTS_KEY);
     await AsyncStorage.removeItem(AUTH_ATTEMPTS_TIMESTAMP_KEY);
-  } catch (error) {
-    if (__DEV__) {
-      console.error('Error resetting auth attempts:', error);
-    }
+  } catch (_error) {
   }
 };
 
@@ -112,20 +122,17 @@ export const isEmailFromTrustedProvider = (email: string): boolean => {
 
 export const getIpAddress = async (): Promise<{ ip: string | null }> => {
   try {
-    const response = await fetch('https://api.ipify.org?format=json', { timeout: 5000 });
+    const response = await fetchWithTimeout('https://api.ipify.org?format=json', {timeout: 5000});
     const data = await response.json();
     return { ip: data.ip };
-  } catch (error) {
-    if (__DEV__) {
-      console.warn('Failed to get IP address:', error);
-    }
+  } catch (_error) {
     return { ip: null };
   }
 };
 
 export const getGeoLocationFromIp = async (ip: string): Promise<{ geo: any }> => {
   try {
-    const response = await fetch(`https://ipapi.co/${ip}/json/`, { timeout: 5000 });
+    const response = await fetchWithTimeout(`https://ipapi.co/${ip}/json/`, {timeout: 5000});
     const data = await response.json();
     
     return {
@@ -138,10 +145,7 @@ export const getGeoLocationFromIp = async (ip: string): Promise<{ geo: any }> =>
         timezone: data.timezone
       }
     };
-  } catch (error) {
-    if (__DEV__) {
-      console.warn('Failed to get geolocation:', error);
-    }
+  } catch (_error) {
     return { geo: null };
   }
 };
@@ -160,10 +164,7 @@ export const getDeviceInfo = async (): Promise<any> => {
       appVersion: Application.nativeApplicationVersion,
       buildVersion: Application.nativeBuildVersion,
     };
-  } catch (error) {
-    if (__DEV__) {
-      console.warn('Failed to get device info:', error);
-    }
+  } catch (_error) {
     return {};
   }
 };
@@ -179,9 +180,6 @@ export const storeUserSecurityInfo = async (userId: string, ipData: any, geoData
     };
     
     await AsyncStorage.setItem(`@security_info_${userId}`, JSON.stringify(securityInfo));
-  } catch (error) {
-    if (__DEV__) {
-      console.error('Error storing security info:', error);
-    }
+  } catch (_error) {
   }
 };

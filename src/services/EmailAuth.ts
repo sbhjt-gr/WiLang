@@ -51,10 +51,7 @@ export const registerWithEmail = async (
     try {
       await sendEmailVerification(user);
       await storeAuthState(user);
-    } catch (secondaryError) {
-      if (__DEV__) {
-        console.error('Error during secondary registration operations:', secondaryError);
-      }
+    } catch (_secondaryError) {
     }
     
     return { 
@@ -62,10 +59,6 @@ export const registerWithEmail = async (
       passwordWarning: passwordValidation.isWeak ? passwordValidation.message : undefined
     };
   } catch (error: any) {
-    if (__DEV__) {
-      console.error('Registration error:', error);
-    }
-    
     await incrementAuthAttempts();
     
     if (error.code === 'auth/email-already-in-use') {

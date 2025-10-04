@@ -8,22 +8,11 @@ import { storeAuthState } from './AuthStorage';
 
 
 const configureGoogleSignIn = async (): Promise<void> => {
-  if (__DEV__) {
-    console.log('Configuring Google Sign-In...');
-  }
-  
   try {
     await GoogleSignin.configure({
       webClientId: '766424113100-btd6u9903oufn124vhetm8gktngvg272.apps.googleusercontent.com',
     });
-    
-    if (__DEV__) {
-      console.log('Google Sign-In configured successfully');
-    }
   } catch (error) {
-    if (__DEV__) {
-      console.error('Google Sign-In configuration failed:', error);
-    }
     throw error;
   }
 };
@@ -33,13 +22,7 @@ const ensureGoogleSignInConfigured = async (): Promise<void> => {
   
   try {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: false });
-    if (__DEV__) {
-      console.log('Google Sign-In configuration verified');
-    }
   } catch (error) {
-    if (__DEV__) {
-      console.error('Google Sign-In verification failed:', error);
-    }
     throw error;
   }
 };
@@ -65,10 +48,6 @@ export const signInWithGoogle = async (): Promise<{ success: boolean; error?: st
     return { success: true };
 
   } catch (error: any) {
-    if (__DEV__) {
-      console.error('Google Sign-In Error:', error);
-    }
-    
     if (error.code === statusCodes.SIGN_IN_CANCELLED) {
       return { success: false, error: 'Sign-in was cancelled' };
     } else if (error.code === statusCodes.IN_PROGRESS) {
@@ -125,10 +104,6 @@ export const signInWithGoogleLogin = async (): Promise<{ success: boolean; error
     return { success: true };
 
   } catch (error: any) {
-    if (__DEV__) {
-      console.error('Google Sign-In Login Error:', error);
-    }
-    
     if (error.code === statusCodes.SIGN_IN_CANCELLED) {
       return { success: false, error: 'Sign-in was cancelled' };
     } else if (error.code === statusCodes.IN_PROGRESS) {

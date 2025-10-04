@@ -4,7 +4,6 @@ import {
   FirebaseAuthTypes 
 } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAuthInstance } from './FirebaseInstances';
 import { 
   UserData, 
@@ -41,10 +40,7 @@ export const getCurrentUser = (): FirebaseAuthTypes.User | null => {
       return null;
     }
     return getAuthInstance().currentUser;
-  } catch (error) {
-    if (__DEV__) {
-      console.error('Error getting current user:', error);
-    }
+  } catch (_error) {
     return null;
   }
 };
@@ -60,10 +56,7 @@ export const isAuthenticated = async (): Promise<boolean> => {
         resolve(!!user);
       });
     });
-  } catch (error) {
-    if (__DEV__) {
-      console.error('Error checking authentication status:', error);
-    }
+  } catch (_error) {
     return false;
   }
 };
@@ -102,10 +95,7 @@ export const initAuthState = async (): Promise<{ user: FirebaseAuthTypes.User | 
         }
       });
     });
-  } catch (error) {
-    if (__DEV__) {
-      console.error('Error initializing auth state:', error);
-    }
+  } catch (_error) {
     return { user: null, profile: null };
   }
 };
@@ -145,10 +135,7 @@ export const getCompleteUserData = async (): Promise<{
       profile: profileData,
       isAuthenticated: true
     };
-  } catch (error) {
-    if (__DEV__) {
-      console.error('Error getting complete user data:', error);
-    }
+  } catch (_error) {
     return {
       user: null,
       profile: null,

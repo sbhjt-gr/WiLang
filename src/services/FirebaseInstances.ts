@@ -9,10 +9,7 @@ let persistenceEnabled = false;
 const getAuthInstance = () => {
   try {
     return getAuth();
-  } catch (error) {
-    if (__DEV__) {
-      console.error('Firebase Auth not initialized. Make sure initializeFirebase() is called first.');
-    }
+  } catch (_error) {
     throw new Error('Authentication service unavailable');
   }
 };
@@ -32,27 +29,12 @@ const getFirestoreInstance = () => {
           synchronizeTabs: false
         });
         persistenceEnabled = true;
-        
-        if (__DEV__) {
-          console.log('Firestore persistence enabled successfully');
-        }
-      } catch (error: any) {
-        if (__DEV__) {
-          console.warn('Firestore persistence failed:', error.code);
-          if (error.code === 'failed-precondition') {
-            console.warn('Multiple tabs open, persistence can only be enabled in one tab');
-          } else if (error.code === 'unimplemented') {
-            console.warn('Current browser does not support persistence');
-          }
-        }
+      } catch (_error: any) {
       }
     }
     
     return firestoreInstance;
-  } catch (error) {
-    if (__DEV__) {
-      console.error('Firebase Firestore not initialized. Make sure initializeFirebase() is called first.');
-    }
+  } catch (_error) {
     throw new Error('Database service unavailable');
   }
 };
@@ -69,10 +51,7 @@ export const testFirebaseConnection = async (): Promise<{ connected: boolean; er
     }
     
     return { connected: true };
-  } catch (error: any) {
-    if (__DEV__) {
-      console.error('Firebase test error:', error);
-    }
+  } catch (_error: any) {
     return { connected: false, error: 'Connection test failed' };
   }
 };
