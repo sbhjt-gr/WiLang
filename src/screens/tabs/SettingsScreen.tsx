@@ -1,10 +1,9 @@
-import React, { useRef, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Animated, TouchableOpacity, Alert } from 'react-native';
+import React from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Text } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../config/firebase';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
@@ -12,296 +11,132 @@ type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Hom
 interface Props {
   navigation: SettingsScreenNavigationProp;
 }
-
 export default function SettingsScreen({ navigation }: Props) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
+  const email = auth.currentUser?.email ?? 'Unknown user';
+  const initials = email[0]?.toUpperCase() ?? 'U';
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
-  const LogOut = async (): Promise<void> => {
+  const handleSignOut = () => {
     Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out?",
+      'Sign out',
+      'Are you sure you want to sign out?',
       [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Sign Out", 
-          style: "destructive",
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign out',
+          style: 'destructive',
           onPress: async () => {
             try {
               await auth.signOut();
-              navigation.replace("LoginScreen");
-            } catch (error) {
-              Alert.alert("Error", "Failed to sign out. Please try again.");
+              navigation.replace('LoginScreen');
+            } catch {
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
 
-  const settingsOptions = [
-    {
-      id: 1,
-      title: 'Notifications',
-      subtitle: 'Manage call notifications',
-      icon: 'notifications-outline' as const,
-      color: '#667eea',
-      onPress: () => {}
-    },
-    {
-      id: 2,
-      title: 'Audio & Video',
-      subtitle: 'Camera and microphone settings',
-      icon: 'videocam-outline' as const,
-      color: '#10b981',
-      onPress: () => {}
-    },
-    {
-      id: 3,
-      title: 'Privacy',
-      subtitle: 'Privacy and security settings',
-      icon: 'shield-outline' as const,
-      color: '#f59e0b',
-      onPress: () => {}
-    },
-    {
-      id: 4,
-      title: 'About',
-      subtitle: 'App version and information',
-      icon: 'information-circle-outline' as const,
-      color: '#8b5cf6',
-      onPress: () => {}
-    },
-  ];
-
   return (
-    <View style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Profile Section */}
-        <Animated.View 
-          style={[
-            styles.profileSection,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
-            }
-          ]}
-        >
-          <View style={styles.profileCard}>
-            <LinearGradient
-              colors={['#667eea', '#764ba2']}
-              style={styles.profileGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.avatarContainer}>
-                <Text style={styles.avatarText}>U</Text>
-              </View>
-              <Text style={styles.userName}>User Name</Text>
-              <Text style={styles.userEmail}>{auth.currentUser?.email || 'user@example.com'}</Text>
-            </LinearGradient>
-          </View>
-        </Animated.View>
-
-        {/* Settings Options */}
-        <Animated.View 
-          style={[
-            styles.settingsSection,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
-            }
-          ]}
-        >
-          <Text style={styles.sectionTitle}>Settings</Text>
-          
-          {settingsOptions.map((option, index) => (
-            <Animated.View 
-              key={option.id}
-              style={[
-                styles.settingCard,
-                {
-                  opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }]
-                }
-              ]}
-            >
-              <TouchableOpacity 
-                style={styles.settingItem}
-                onPress={option.onPress}
-              >
-                <View style={styles.settingLeft}>
-                  <View style={[styles.settingIcon, { backgroundColor: `${option.color}20` }]}>
-                    <Ionicons name={option.icon} size={20} color={option.color} />
-                  </View>
-                  <View style={styles.settingText}>
-                    <Text style={styles.settingTitle}>{option.title}</Text>
-                    <Text style={styles.settingSubtitle}>{option.subtitle}</Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-              </TouchableOpacity>
-            </Animated.View>
-          ))}
-        </Animated.View>
-
-        {/* Logout Section */}
-        <Animated.View 
-          style={[
-            styles.logoutSection,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
-            }
-          ]}
-        >
-          <TouchableOpacity style={styles.logoutCard} onPress={LogOut}>
-            <LinearGradient
-              colors={['#ff6b6b', '#ee5a52']}
-              style={styles.logoutGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Ionicons name="log-out-outline" size={20} color="#ffffff" />
-              <Text style={styles.logoutText}>Sign Out</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
-      </ScrollView>
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Settings</Text>
+        <Text style={styles.subtitle}>Manage your account and device information.</Text>
+      </View>
+      <View style={styles.identityCard}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+        <View style={styles.identityDetails}>
+          <Text style={styles.identityLabel}>Signed in as</Text>
+          <Text style={styles.identityValue}>{email}</Text>
+        </View>
+      </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        <TouchableOpacity style={styles.actionRow} onPress={handleSignOut} activeOpacity={0.85}>
+          <Text style={styles.actionText}>Sign out</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#0c0c10',
+    paddingHorizontal: 24,
+    paddingTop: 24
   },
-  scrollView: {
-    flex: 1,
+  header: {
+    marginBottom: 24
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 24,
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#f4f5f9',
+    marginBottom: 8
   },
-  profileSection: {
-    marginBottom: 32,
+  subtitle: {
+    fontSize: 14,
+    color: '#9da3bd'
   },
-  profileCard: {
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  profileGradient: {
+  identityCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 32,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#1f2234',
+    padding: 16,
+    marginBottom: 32,
+    backgroundColor: '#131522'
   },
-  avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    backgroundColor: '#1f2340',
+    marginRight: 16
   },
   avatarText: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#ffffff',
+    color: '#f4f5f9'
   },
-  userName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginBottom: 4,
+  identityDetails: {
+    flex: 1
   },
-  userEmail: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+  identityLabel: {
+    fontSize: 12,
+    color: '#858aa5',
+    marginBottom: 6
   },
-  settingsSection: {
-    marginBottom: 32,
+  identityValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#f4f5f9'
+  },
+  section: {
+    flex: 1
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 16,
-  },
-  settingCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  settingIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  settingText: {
-    flex: 1,
-  },
-  settingTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 2,
+    color: '#f4f5f9',
+    marginBottom: 16
   },
-  settingSubtitle: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  logoutSection: {
-    marginTop: 20,
-  },
-  logoutCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  logoutGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  actionRow: {
+    borderRadius: 14,
+    backgroundColor: '#1a1d2c',
     paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: 18
   },
-  logoutText: {
-    fontSize: 16,
+  actionText: {
+    fontSize: 15,
     fontWeight: '600',
-    color: '#ffffff',
-    marginLeft: 8,
-  },
+    color: '#ff6b6b'
+  }
 });
