@@ -1,39 +1,33 @@
-import { FirebaseAuthTypes } from '@react-native-firebase/auth';
-
-export { 
-  initializeFirebase, 
-  isFirebaseReady, 
-  waitForAuthReady
-} from './FirebaseConfig';
-
-export { 
-  testFirebaseConnection, 
-  getFirebaseServices,
-  getAuthInstance,
-  getFirestoreInstance 
-} from './FirebaseInstances';
-
-export { 
-  registerWithEmail, 
-  loginWithEmail 
-} from './EmailAuth';
-
-export { 
+export {
+  initializeFirebase,
+  isFirebaseReady,
+  waitForAuthReady,
+  registerWithEmail,
+  loginWithEmail,
   signInWithGoogle,
-  signInWithGoogleLogin,
-  debugGoogleOAuthConfig
-} from './GoogleAuth';
-
-export { 
   logoutUser,
   getCurrentUser,
   isAuthenticated,
-  initAuthState,
-  getCompleteUserData
-} from './AuthState';
+  getUserProfile,
+  onAuthStateChange,
+  type UserData
+} from './FirebaseAuth';
 
 export {
+  getUserFromSecureStorage,
+  storeAuthState
+} from './AuthStorage';
+
+export {
+  validateEmail,
+  validatePassword,
+  validateName,
+  checkRateLimiting,
+  incrementAuthAttempts,
+  resetAuthAttempts,
+  getIpAddress,
+  getGeoLocationFromIp,
+  getDeviceInfo,
+  storeUserSecurityInfo,
   isEmailFromTrustedProvider
 } from './SecurityUtils';
-
-export type { UserData } from './AuthStorage';

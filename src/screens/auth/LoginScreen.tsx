@@ -2,8 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { View, StyleSheet, Image, Platform, ScrollView, Animated, TouchableOpacity, StatusBar, TextInput, Keyboard, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
 import { Text } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { loginWithEmail, initializeFirebase, signInWithGoogleLogin } from '../../services/FirebaseService';
-import { getAuthInstance } from '../../services/FirebaseInstances';
+import { loginWithEmail, initializeFirebase, signInWithGoogle, onAuthStateChange } from '../../services/FirebaseService';
 import { RootStackParamList } from '../../types/navigation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,7 +81,7 @@ export default function LoginScreen({ navigation }: Props) {
   const handleGoogleSignIn = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      const result = await signInWithGoogleLogin();
+      const result = await signInWithGoogle();
       if (!result.success) {
         alert(result.error || 'Google sign-in failed');
         setIsLoading(false);
@@ -104,9 +103,8 @@ export default function LoginScreen({ navigation }: Props) {
       try {
         setIsLoading(true);
         await initializeFirebase();
-        
-        const { default: auth } = await import('@react-native-firebase/auth');
-        const unsubscribe = auth().onAuthStateChanged((authUser: any) => {
+
+        const unsubscribe = onAuthStateChange((authUser) => {
           if (authUser) {
             navigation.replace('HomeScreen', {signedUp: 0});
           } else {
