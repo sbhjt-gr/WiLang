@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text } from '@rneui/themed';
+import React, { useRef, useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,6 +55,29 @@ const tabs: TabItem[] = [
 
 export default function TabNavigator({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('calls');
+  const animatedValues = useRef<Record<TabType, Animated.Value>>(
+    tabs.reduce((acc, tab) => {
+      acc[tab.key] = new Animated.Value(tab.key === 'calls' ? 1 : 0);
+      return acc;
+    }, {} as Record<TabType, Animated.Value>)
+  ).current;
+
+  const animateTab = (key: TabType) => {
+    tabs.forEach(tab => {
+      Animated.spring(animatedValues[tab.key], {
+        toValue: tab.key === key ? 1 : 0,
+        useNativeDriver: true,
+        damping: tab.key === key ? 12 : 18,
+        stiffness: tab.key === key ? 210 : 160,
+        mass: 1
+      }).start();
+    });
+  };
+
+  const handleTabPress = (key: TabType) => {
+    setActiveTab(key);
+    animateTab(key);
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -80,20 +102,39 @@ export default function TabNavigator({ navigation }: Props) {
         <BlurView intensity={72} tint="dark" style={styles.tabBar}>
           {tabs.map(tab => {
             const focused = activeTab === tab.key;
+            const animatedStyle = {
+              transform: [
+                {
+                  translateY: animatedValues[tab.key].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, -14]
+                  })
+                },
+                {
+                  scale: animatedValues[tab.key].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.08]
+                  })
+                }
+              ]
+            };
+
             return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.tabItem, focused && styles.tabItemActive]}
-                onPress={() => setActiveTab(tab.key)}
-                activeOpacity={0.85}
-              >
-                <Ionicons
-                  name={focused ? tab.iconFocused : tab.icon}
-                  size={20}
-                  color={focused ? '#ffffff' : '#8c8ea0'}
-                />
-                <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{tab.title}</Text>
-              </TouchableOpacity>
+              <Animated.View key={tab.key} style={[styles.tabItem, animatedStyle]}>
+                <TouchableOpacity
+                  style={[styles.tabButton, focused && styles.tabButtonActive]}
+                  onPress={() => handleTabPress(tab.key)}
+                  activeOpacity={0.9}
+                >
+                  <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
+                    <Ionicons
+                      name={focused ? tab.iconFocused : tab.icon}
+                      size={18}
+                      color={focused ? '#0b0d1a' : '#b7bad0'}
+                    />
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
             );
           })}
         </BlurView>
@@ -116,37 +157,41 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
-    borderRadius: 28,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 30,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     backgroundColor: 'rgba(12, 14, 24, 0.82)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
-    gap: 8,
+    gap: 12,
   },
   tabItem: {
     flex: 1,
-    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  tabButton: {
+    width: '100%',
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    gap: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    paddingVertical: 10,
   },
-  tabItemActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+  tabButtonActive: {
+    backgroundColor: '#ffffff',
   },
-  tabLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#8c8ea0',
-    marginLeft: 6,
+  iconWrapper: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
-  tabLabelActive: {
-    color: '#ffffff',
-    fontWeight: '700',
+  iconWrapperActive: {
+    backgroundColor: '#0b0d1a',
   },
 });

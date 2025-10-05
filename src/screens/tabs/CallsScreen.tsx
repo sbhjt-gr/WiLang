@@ -22,10 +22,6 @@ export default function CallsScreen({ navigation }: Props) {
     });
   };
 
-  const handleBrowsePeople = () => {
-    navigation.navigate('UsersScreen');
-  };
-
   const handleJoinMeeting = () => {
     if (!trimmedMeetingCode) {
       return;
@@ -43,15 +39,12 @@ export default function CallsScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Calls</Text>
-        <Text style={styles.subtitle}>Start a new call or open your directory.</Text>
+        <Text style={styles.subtitle}>Start a new call or join with an ID.</Text>
       </View>
       <View style={styles.actions}>
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.primaryButton} onPress={handleStartCall} activeOpacity={0.85}>
             <Text style={styles.primaryButtonText}>Start video call</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={handleBrowsePeople} activeOpacity={0.85}>
-            <Text style={styles.secondaryButtonText}>Browse people</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.joinCard}>
@@ -108,7 +101,6 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 20
   },
   primaryButton: {
@@ -116,23 +108,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#5560f6',
     paddingVertical: 14,
     borderRadius: 14,
-    alignItems: 'center',
-    marginRight: 12
-  },
-  primaryButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#f4f5f9'
-  },
-  secondaryButton: {
-    flex: 1,
-    borderColor: '#3c3f55',
-    borderWidth: 1,
-    paddingVertical: 14,
-    borderRadius: 14,
     alignItems: 'center'
   },
-  secondaryButtonText: {
+  primaryButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: '#f4f5f9'
