@@ -42,7 +42,7 @@ const GradientButton: React.FC<GradientButtonProps> = ({
   };
 
   const buttonColors = colors || getVariantColors();
-  const disabledColors = ['#cccccc', '#999999'];
+  const disabledColors: [string, string] = ['#cccccc', '#999999'];
 
   return (
     <TouchableOpacity
@@ -75,11 +75,6 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   gradient: {
     flexDirection: 'row',

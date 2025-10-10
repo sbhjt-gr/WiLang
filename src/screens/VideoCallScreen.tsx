@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Text,
   View,
-  Animated,
   TouchableOpacity,
   Alert,
   PanResponder,
@@ -62,45 +61,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [isInstantCall, setIsInstantCall] = useState(false);
   const [showJoinCodeUI, setShowJoinCodeUI] = useState(false);
   
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const controlsAnim = useRef(new Animated.Value(1)).current;
-  const localVideoPosition = useRef(new Animated.ValueXY({ x: width - 140, y: height - 280 })).current;
-  const backgroundAnim = useRef(new Animated.Value(0)).current;
-  
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
   const controlsTimer = useRef<NodeJS.Timeout | null>(null);
-
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => !isGridMode,
-    onMoveShouldSetPanResponder: () => !isGridMode,
-    onPanResponderMove: Animated.event([null, {
-      dx: localVideoPosition.x,
-      dy: localVideoPosition.y,
-    }], { useNativeDriver: false }),
-    onPanResponderRelease: (_, gestureState) => {
-      const { moveX, moveY } = gestureState;
-      const snapPositions = [
-        { x: 20, y: 100 },
-        { x: width - 140, y: 100 },
-        { x: 20, y: height - 280 },
-        { x: width - 140, y: height - 280 },
-      ];
-      
-      const closestPosition = snapPositions.reduce((closest, pos) => {
-        const currentDistance = Math.sqrt(Math.pow(moveX - pos.x, 2) + Math.pow(moveY - pos.y, 2));
-        const closestDistance = Math.sqrt(Math.pow(moveX - closest.x, 2) + Math.pow(moveY - closest.y, 2));
-        return currentDistance < closestDistance ? pos : closest;
-      });
-
-      Animated.spring(localVideoPosition, {
-        toValue: closestPosition,
-        useNativeDriver: false,
-        tension: 120,
-        friction: 8,
-      }).start();
-    },
-  });
 
   const toggleControls = useCallback(() => {
     if (controlsTimer.current) {
@@ -109,46 +72,18 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
     if (controlsVisible) {
       setControlsVisible(false);
-      Animated.timing(controlsAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
     } else {
       setControlsVisible(true);
-      Animated.timing(controlsAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
       
       controlsTimer.current = setTimeout(() => {
         setControlsVisible(false);
-        Animated.timing(controlsAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
       }, 4000);
     }
-  }, [controlsVisible, controlsAnim]);
+  }, [controlsVisible]);
 
   const toggleViewMode = useCallback(() => {
     setIsGridMode(prev => !prev);
-    
-    Animated.sequence([
-      Animated.timing(backgroundAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(backgroundAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [backgroundAnim]);
+  }, []);
 
   const shareJoinCode = useCallback(async () => {
     if (!currentMeetingId) {
@@ -180,22 +115,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, [currentMeetingId]);
 
   const handleCloseCall = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(controlsAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      closeCall();
-      navigation.navigate('HomeScreen', {});
-    });
-  }, [fadeAnim, controlsAnim, closeCall, navigation]);
+    closeCall();
+    navigation.navigate('HomeScreen', {});
+  }, [closeCall, navigation]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -204,19 +126,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, [navigation]);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-
     controlsTimer.current = setTimeout(() => {
       setControlsVisible(false);
-      Animated.timing(controlsAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
     }, 4000);
 
     return () => {
@@ -224,7 +135,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         clearTimeout(controlsTimer.current);
       }
     };
-  }, [fadeAnim, controlsAnim]);
+  }, []);
 
   useEffect(() => {
     if (route.params.type === 'join' && route.params.joinCode && !joinAttempted.current) {
@@ -385,20 +296,20 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     return (
       <View style={styles.featuredContainer}>
         {remoteStream && remoteParticipant ? (
-          <Animated.View 
+          <View 
             key={`featured-remote-${remoteParticipant.peerId}`}
-            style={[styles.remoteVideoContainer, { opacity: fadeAnim }]}
+            style={styles.remoteVideoContainer}
           >
             <RTCView
               style={styles.remoteVideo}
               streamURL={remoteStream.toURL()}
               objectFit="cover"
             />
-          </Animated.View>
+          </View>
         ) : (
-          <Animated.View 
+          <View 
             key="featured-waiting-view"
-            style={[styles.waitingContainer, { opacity: fadeAnim }]}
+            style={styles.waitingContainer}
           >
             <LinearGradient
               colors={['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.2)']}
@@ -443,21 +354,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
                 )}
               </View>
             </LinearGradient>
-          </Animated.View>
+          </View>
         )}
         
         {/* Always show local video floating box in featured view when local stream is available */}
         {localStream && (
-          <Animated.View
+          <View
             key={`featured-local-stream`}
-            {...panResponder.panHandlers}
-            style={[
-              styles.localVideoContainer,
-              {
-                transform: localVideoPosition.getTranslateTransform(),
-                opacity: fadeAnim,
-              },
-            ]}
+            style={styles.localVideoContainer}
           >
             <LinearGradient
               colors={['#8b5cf6', '#ec4899']}
@@ -473,7 +377,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
                 zOrder={1}
               />
             </LinearGradient>
-          </Animated.View>
+          </View>
         )}
       </View>
     );
@@ -511,37 +415,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       <StatusBar backgroundColor="black" style="light" />
       <RNStatusBar hidden />
       
-      <Animated.View
-        style={[
-          styles.backgroundOverlay,
-          {
-            opacity: backgroundAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 0.3],
-            }),
-          },
-        ]}
-      />
-      
       {shouldUseFeaturedViewForCall ? renderFeaturedView() : renderGridView()}
       
-      <Animated.View
-        style={[
-          styles.topControls,
-          {
-            opacity: controlsAnim,
-            transform: [
-              {
-                translateY: controlsAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-100, 0],
-                }),
-              },
-            ],
-          },
-        ]}
-        pointerEvents={controlsVisible ? 'auto' : 'none'}
-      >
+      {controlsVisible && (
+        <View
+          style={styles.topControls}
+          pointerEvents={controlsVisible ? 'auto' : 'none'}
+        >
         {totalParticipants >= 2 && (
           <TouchableOpacity style={styles.topControlButton} onPress={toggleViewMode}>
             <LinearGradient
@@ -577,25 +457,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             </Text>
           </LinearGradient>
         </View>
-      </Animated.View>
+      </View>
+      )}
       
-      <Animated.View
-        style={[
-          styles.bottomControls,
-          {
-            opacity: controlsAnim,
-            transform: [
-              {
-                translateY: controlsAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [100, 0],
-                }),
-              },
-            ],
-          },
-        ]}
-        pointerEvents={controlsVisible ? 'auto' : 'none'}
-      >
+      {controlsVisible && (
+        <View
+          style={styles.bottomControls}
+          pointerEvents={controlsVisible ? 'auto' : 'none'}
+        >
         <LinearGradient
           colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.1)']}
           style={styles.controlsBackground}
@@ -650,7 +519,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           </View>
         </LinearGradient>
-      </Animated.View>
+      </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -779,11 +649,6 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
   },
   localVideoGradient: {
     flex: 1,
@@ -806,11 +671,6 @@ const styles = StyleSheet.create({
   topControlButton: {
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
   },
   topControlGradient: {
     paddingHorizontal: 12,
@@ -827,11 +687,6 @@ const styles = StyleSheet.create({
   meetingInfo: {
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
   },
   meetingInfoGradient: {
     paddingHorizontal: 16,
@@ -870,11 +725,6 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
   },
   controlButtonGradient: {
     flex: 1,

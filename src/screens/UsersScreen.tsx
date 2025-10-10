@@ -1,5 +1,5 @@
-import React, {useContext, useEffect, useRef} from 'react';
-import {Alert, StyleSheet, Text, View, FlatList, Animated} from 'react-native';
+import React, {useContext, useEffect} from 'react';
+import {Alert, StyleSheet, Text, View, FlatList} from 'react-native';
 import {TouchableOpacity} from 'react-native-gesture-handler';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {StackNavigationProp} from '@react-navigation/stack';
@@ -20,8 +20,6 @@ interface Props {
 
 const UsersScreen = ({navigation}: Props) => {
   const {users, call, initialize, setUsername} = useContext(WebRTCContext);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -29,19 +27,6 @@ const UsersScreen = ({navigation}: Props) => {
       setUsername(currentUser.displayName);
       initialize();
     }
-
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-    ]).start();
   }, []);
 
   const onCall = (user: User) => {
@@ -50,14 +35,7 @@ const UsersScreen = ({navigation}: Props) => {
   };
 
   const renderUser = ({item, index}: {item: User; index: number}) => (
-    <Animated.View
-      style={[
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }]
-        }
-      ]}
-    >
+    <View>
       <TouchableOpacity onPress={() => onCall(item)} style={styles.userItem}>
         <LinearGradient
           colors={['#8b5cf6', '#ec4899']}
@@ -89,7 +67,7 @@ const UsersScreen = ({navigation}: Props) => {
           </View>
         </LinearGradient>
       </TouchableOpacity>
-    </Animated.View>
+    </View>
   );
 
   return (
@@ -102,21 +80,13 @@ const UsersScreen = ({navigation}: Props) => {
       
       <View style={styles.content}>
         {!users || users.length === 0 ? (
-          <Animated.View
-            style={[
-              styles.emptyState,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }]
-              }
-            ]}
-          >
+          <View style={styles.emptyState}>
             <GradientCard colors={['#ff9a9e', '#fecfef']} style={styles.emptyCard}>
               <Ionicons name="people-outline" size={48} color="#ffffff" />
               <Text style={styles.emptyText}>No other users online</Text>
               <Text style={styles.emptySubtext}>Ask someone to join the app</Text>
             </GradientCard>
-          </Animated.View>
+          </View>
         ) : (
           <FlatList
             data={users}
@@ -154,11 +124,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   userGradient: {
     padding: 16,

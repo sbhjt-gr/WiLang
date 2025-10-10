@@ -1,5 +1,5 @@
-import React, { useState, useLayoutEffect, useRef, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Animated, TouchableOpacity, StatusBar, TextInput, Alert } from 'react-native';
+import React, { useState, useLayoutEffect, useEffect } from 'react';
+import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, StatusBar, TextInput, Alert } from 'react-native';
 import { Text, Image } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -20,31 +20,7 @@ interface Props {
 export default function HomeScreen({ navigation, route }: Props) {
   const [id, setID] = useState<string>('');
   const [focusedField, setFocusedField] = useState<string>('');
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const logoScale = useRef(new Animated.Value(0.5)).current;
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.spring(logoScale, {
-        toValue: 1,
-        tension: 50,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-  
   const meet = (): void => {
     if (id.trim()) {
       navigation.navigate('VideoCallScreen', {id: id, type: 'join', joinCode: id});
@@ -108,14 +84,8 @@ export default function HomeScreen({ navigation, route }: Props) {
           style={styles.keyboardView}
         >
           {/* Header Section */}
-          <Animated.View 
-            style={[
-              styles.headerSection,
-              {
-                opacity: fadeAnim,
-                transform: [{ scale: logoScale }]
-              }
-            ]}
+          <View 
+            style={styles.headerSection}
           >
             <View style={styles.logoContainer}>
               <Image 
@@ -126,17 +96,11 @@ export default function HomeScreen({ navigation, route }: Props) {
             </View>
             <Text style={styles.welcomeTitle}>Welcome to WhisperLang</Text>
             <Text style={styles.welcomeSubtitle}>Connect through secure video calls</Text>
-          </Animated.View>
+          </View>
 
           {/* Quick Start Section */}
-          <Animated.View 
-            style={[
-              styles.quickStartSection,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }]
-              }
-            ]}
+          <View 
+            style={styles.quickStartSection}
           >
             <View style={styles.quickStartCard}>
               <LinearGradient
@@ -158,17 +122,11 @@ export default function HomeScreen({ navigation, route }: Props) {
                 </TouchableOpacity>
               </LinearGradient>
             </View>
-          </Animated.View>
+          </View>
 
           {/* Join Meeting Section */}
-          <Animated.View 
-            style={[
-              styles.joinSection,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }]
-              }
-            ]}
+          <View 
+            style={styles.joinSection}
           >
             <View style={styles.joinCard}>
               <Text style={styles.sectionTitle}>Join Meeting</Text>
@@ -205,17 +163,11 @@ export default function HomeScreen({ navigation, route }: Props) {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </Animated.View>
+          </View>
 
           {/* Quick Actions Section */}
-          <Animated.View 
-            style={[
-              styles.quickActionsSection,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }]
-              }
-            ]}
+          <View 
+            style={styles.quickActionsSection}
           >
             <Text style={styles.sectionTitle}>Quick Actions</Text>
             
@@ -264,7 +216,7 @@ export default function HomeScreen({ navigation, route }: Props) {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </Animated.View>
+          </View>
         </KeyboardAvoidingView>
       </ScrollView>
     </SafeAreaView>
@@ -329,14 +281,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
   },
   logo: {
     width: 60,
@@ -361,14 +305,6 @@ const styles = StyleSheet.create({
   quickStartCard: {
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 16,
   },
   startCallGradient: {
     alignItems: 'center',
@@ -415,14 +351,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 20,
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 16,
   },
   sectionTitle: {
     fontSize: 20,
@@ -450,14 +378,6 @@ const styles = StyleSheet.create({
   inputWrapperFocused: {
     borderColor: '#667eea',
     backgroundColor: '#ffffff',
-    shadowColor: '#667eea',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
   inputIcon: {
     marginRight: 12,
@@ -471,14 +391,6 @@ const styles = StyleSheet.create({
   joinButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#667eea',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
   joinButtonDisabled: {
     opacity: 0.6,
@@ -512,14 +424,6 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 6,
   },
   actionGradient: {
     alignItems: 'center',
