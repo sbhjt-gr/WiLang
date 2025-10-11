@@ -7,6 +7,7 @@ import * as Contacts from 'expo-contacts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { videoCallService } from '../../services/VideoCallService';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../theme';
 
 interface Contact {
   id: string;
@@ -24,7 +25,8 @@ interface ContactsScreenProps {
 
 export default function ContactsScreen({ navigation }: ContactsScreenProps) {
   const navigationHook = useNavigation();
-  
+  const { colors } = useTheme();
+
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [permissionStatus, setPermissionStatus] = useState<'undetermined' | 'granted' | 'denied'>('undetermined');
   const [isLoading, setIsLoading] = useState(false);
@@ -178,37 +180,37 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
   };
 
   const renderPermissionRequest = () => (
-    <View 
+    <View
       style={styles.permissionContainer}
     >
-      <View style={styles.permissionCard}>
-        <Ionicons name="people-outline" size={64} color="#667eea" style={styles.permissionIcon} />
-        <Text style={styles.permissionTitle}>Access Your Contacts</Text>
-        <Text style={styles.permissionDescription}>
+      <View style={[styles.permissionCard, { backgroundColor: colors.surface }]}>
+        <Ionicons name="people-outline" size={64} color={colors.primary} style={styles.permissionIcon} />
+        <Text style={[styles.permissionTitle, { color: colors.text }]}>Access Your Contacts</Text>
+        <Text style={[styles.permissionDescription, { color: colors.textSecondary }]}>
           WhisperLang needs permission to access your contacts to help you connect with friends and family.
         </Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.permissionButton}
           onPress={requestContactsPermission}
         >
           <LinearGradient
-            colors={['#667eea', '#764ba2']}
+            colors={colors.gradient1}
             style={styles.permissionGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Ionicons name="checkmark-outline" size={20} color="#ffffff" style={{ marginRight: 8 }} />
-            <Text style={styles.permissionButtonText}>Allow Access</Text>
+            <Ionicons name="checkmark-outline" size={20} color={colors.textInverse} style={{ marginRight: 8 }} />
+            <Text style={[styles.permissionButtonText, { color: colors.textInverse }]}>Allow Access</Text>
           </LinearGradient>
         </TouchableOpacity>
-        
+
         {hasRequestedPermission && permissionStatus === 'denied' && (
-          <TouchableOpacity 
-            style={styles.settingsButton}
+          <TouchableOpacity
+            style={[styles.settingsButton, { backgroundColor: colors.primaryLight }]}
             onPress={() => Linking.openSettings()}
           >
-            <Ionicons name="settings-outline" size={16} color="#667eea" style={{ marginRight: 6 }} />
-            <Text style={styles.settingsButtonText}>Open Settings</Text>
+            <Ionicons name="settings-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+            <Text style={[styles.settingsButtonText, { color: colors.primary }]}>Open Settings</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -216,8 +218,8 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
   );
 
   const renderContact = ({ item: contact, index }: { item: Contact; index: number }) => (
-    <TouchableOpacity 
-      style={styles.contactCard}
+    <TouchableOpacity
+      style={[styles.contactCard, { backgroundColor: colors.surface }]}
       onPress={() => handleContactPress(contact)}
       activeOpacity={0.7}
     >
@@ -226,37 +228,37 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
           <Image source={{ uri: contact.imageUri }} style={styles.contactImage} />
         ) : (
           <View style={[styles.avatar, { backgroundColor: getAvatarColor(index) }]}>
-            <Text style={styles.avatarText}>{getInitials(contact.name)}</Text>
+            <Text style={[styles.avatarText, { color: colors.textInverse }]}>{getInitials(contact.name)}</Text>
           </View>
         )}
         <View style={styles.contactDetails}>
-          <Text style={styles.contactName} numberOfLines={1}>{contact.name}</Text>
+          <Text style={[styles.contactName, { color: colors.text }]} numberOfLines={1}>{contact.name}</Text>
           {contact.phoneNumbers?.[0]?.number && (
-            <Text style={styles.phoneNumber} numberOfLines={1}>
+            <Text style={[styles.phoneNumber, { color: colors.textSecondary }]} numberOfLines={1}>
               {contact.phoneNumbers[0].number}
             </Text>
           )}
         </View>
       </View>
-      <TouchableOpacity 
-        style={styles.callButton}
+      <TouchableOpacity
+        style={[styles.callButton, { backgroundColor: colors.primaryLight }]}
         onPress={(e) => {
           e.stopPropagation();
           handleVideoCall(contact);
         }}
       >
-        <Ionicons name="videocam-outline" size={20} color="#667eea" />
+        <Ionicons name="videocam-outline" size={20} color={colors.primary} />
       </TouchableOpacity>
     </TouchableOpacity>
   );
 
   const renderEmptyState = () => (
-    <View 
+    <View
       style={styles.emptyContainer}
     >
-      <Ionicons name="people-outline" size={64} color="#9ca3af" />
-      <Text style={styles.emptyTitle}>No Contacts Found</Text>
-      <Text style={styles.emptyDescription}>
+      <Ionicons name="people-outline" size={64} color={colors.textTertiary} />
+      <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No Contacts Found</Text>
+      <Text style={[styles.emptyDescription, { color: colors.textTertiary }]}>
         {searchQuery ? 'No contacts match your search.' : 'Your contacts will appear here.'}
       </Text>
     </View>
@@ -264,7 +266,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
 
   if (permissionStatus === 'undetermined' || (permissionStatus === 'denied' && !hasRequestedPermission)) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         {renderPermissionRequest()}
       </SafeAreaView>
     );
@@ -272,22 +274,22 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
 
   if (permissionStatus === 'denied') {
     return (
-      <SafeAreaView style={styles.container}>
-        <View 
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View
           style={styles.deniedContainer}
         >
-          <View style={styles.deniedCard}>
-            <Ionicons name="ban-outline" size={64} color="#ef4444" />
-            <Text style={styles.deniedTitle}>Contacts Permission Denied</Text>
-            <Text style={styles.deniedDescription}>
+          <View style={[styles.deniedCard, { backgroundColor: colors.surface }]}>
+            <Ionicons name="ban-outline" size={64} color={colors.error} />
+            <Text style={[styles.deniedTitle, { color: colors.error }]}>Contacts Permission Denied</Text>
+            <Text style={[styles.deniedDescription, { color: colors.textSecondary }]}>
               To use contacts, please enable permission in your device settings.
             </Text>
-            <TouchableOpacity 
-              style={styles.settingsButton}
+            <TouchableOpacity
+              style={[styles.settingsButton, { backgroundColor: colors.primaryLight }]}
               onPress={() => Linking.openSettings()}
             >
-              <Ionicons name="settings-outline" size={16} color="#667eea" style={{ marginRight: 6 }} />
-              <Text style={styles.settingsButtonText}>Open Settings</Text>
+              <Ionicons name="settings-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+              <Text style={[styles.settingsButtonText, { color: colors.primary }]}>Open Settings</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -296,44 +298,44 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View 
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View
         style={styles.searchContainer}
       >
-        <View style={styles.searchInputContainer}>
-          <Ionicons name="search-outline" size={20} color="#9ca3af" style={styles.searchIcon} />
+        <View style={[styles.searchInputContainer, { backgroundColor: colors.surface }]}>
+          <Ionicons name="search-outline" size={20} color={colors.textTertiary} style={styles.searchIcon} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search contacts..."
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
             autoCorrect={false}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setSearchQuery('')}
               style={styles.clearButton}
             >
-              <Ionicons name="close-circle-outline" size={20} color="#9ca3af" />
+              <Ionicons name="close-circle-outline" size={20} color={colors.textTertiary} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      <View 
+      <View
         style={styles.headerContainer}
       >
-        <Text style={styles.sectionTitle}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
           {contacts.length > 0 ? `${contacts.length} Contact${contacts.length !== 1 ? 's' : ''}` : 'Contacts'}
         </Text>
         {contacts.length > 0 && (
           <TouchableOpacity onPress={onRefresh} disabled={refreshing}>
-            <Ionicons 
-              name="refresh-outline" 
-              size={20} 
-              color={refreshing ? "#9ca3af" : "#667eea"} 
+            <Ionicons
+              name="refresh-outline"
+              size={20}
+              color={refreshing ? colors.textTertiary : colors.primary}
             />
           </TouchableOpacity>
         )}
@@ -341,8 +343,8 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#667eea" />
-          <Text style={styles.loadingText}>Loading contacts...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading contacts...</Text>
         </View>
       ) : (
         <FlatList
@@ -356,8 +358,8 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={['#667eea']}
-              tintColor="#667eea"
+              colors={[colors.primary]}
+              tintColor={colors.primary}
             />
           }
           ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -375,16 +377,14 @@ const getAvatarColor = (index: number) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
-  
+
   permissionContainer: {
     flex: 1,
     justifyContent: 'center',
     padding: 24,
   },
   permissionCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
@@ -395,13 +395,11 @@ const styles = StyleSheet.create({
   permissionTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1f2937',
     textAlign: 'center',
     marginBottom: 12,
   },
   permissionDescription: {
     fontSize: 16,
-    color: '#6b7280',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 32,
@@ -421,7 +419,6 @@ const styles = StyleSheet.create({
   permissionButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
   },
   settingsButton: {
     flexDirection: 'row',
@@ -429,13 +426,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 20,
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
     borderRadius: 12,
   },
   settingsButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#667eea',
   },
   
   deniedContainer: {
@@ -444,7 +439,6 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   deniedCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
@@ -452,19 +446,17 @@ const styles = StyleSheet.create({
   deniedTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#ef4444',
     textAlign: 'center',
     marginTop: 16,
     marginBottom: 12,
   },
   deniedDescription: {
     fontSize: 16,
-    color: '#6b7280',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,
   },
-  
+
   searchContainer: {
     paddingHorizontal: 24,
     paddingTop: 16,
@@ -473,7 +465,6 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -484,12 +475,11 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1f2937',
   },
   clearButton: {
     padding: 4,
   },
-  
+
   headerContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -500,7 +490,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1f2937',
   },
   
   listContainer: {
@@ -508,7 +497,6 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   contactCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
@@ -537,7 +525,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
   },
   contactDetails: {
     flex: 1,
@@ -545,22 +532,19 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 4,
   },
   phoneNumber: {
     fontSize: 14,
-    color: '#6b7280',
   },
   callButton: {
     padding: 12,
     borderRadius: 12,
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
   },
   separator: {
     height: 12,
   },
-  
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -569,7 +553,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#6b7280',
     marginTop: 16,
   },
   emptyContainer: {
@@ -581,13 +564,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#4b5563',
     marginTop: 16,
     marginBottom: 8,
   },
   emptyDescription: {
     fontSize: 16,
-    color: '#9ca3af',
     textAlign: 'center',
     lineHeight: 24,
   },

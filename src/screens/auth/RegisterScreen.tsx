@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { registerWithEmail, signInWithGoogle } from '../../services/FirebaseService';
+import { useTheme } from '../../theme';
 
 type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'RegisterScreen'>;
 
@@ -44,6 +45,7 @@ export default function RegisterScreen({ navigation }: Props) {
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [focusedField, setFocusedField] = useState<string>('');
   const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false);
+  const { colors } = useTheme();
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
@@ -155,12 +157,17 @@ export default function RegisterScreen({ navigation }: Props) {
     return (
       <View style={styles.inputContainer}>
         <TouchableWithoutFeedback>
-          <View style={[styles.inputWrapper, focused && styles.inputWrapperFocused, error && styles.inputWrapperError]}>
-            <Ionicons name={icon} size={20} color={focused ? '#667eea' : '#9ca3af'} style={styles.inputIcon} />
+          <View style={[
+            styles.inputWrapper,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            focused && { borderColor: colors.borderFocus },
+            error && { borderColor: colors.error }
+          ]}>
+            <Ionicons name={icon} size={20} color={focused ? colors.primary : colors.textTertiary} style={styles.inputIcon} />
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, { color: colors.text }]}
             placeholder={placeholder}
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textTertiary}
             value={formData[field]}
             onChangeText={(text) => updateFormData(field, text)}
             secureTextEntry={isPassword && !showPasswordIcon}
@@ -181,31 +188,30 @@ export default function RegisterScreen({ navigation }: Props) {
             importantForAutofill="no"
           />
           {isPassword && (
-            <TouchableOpacity 
-              onPress={() => field === 'password' ? setShowPassword(!showPassword) : setShowConfirmPassword(!showConfirmPassword)} 
+            <TouchableOpacity
+              onPress={() => field === 'password' ? setShowPassword(!showPassword) : setShowConfirmPassword(!showConfirmPassword)}
               style={styles.eyeIcon}
             >
-              <Ionicons 
-                name={showPasswordIcon ? 'eye-off-outline' : 'eye-outline'} 
-                size={20} 
-                color="#9ca3af" 
+              <Ionicons
+                name={showPasswordIcon ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color={colors.textTertiary}
               />
             </TouchableOpacity>
           )}
           </View>
         </TouchableWithoutFeedback>
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>}
       </View>
     );
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-      {/* Background Gradient */}
+
       <LinearGradient
-        colors={['#667eea', '#764ba2']}
+        colors={colors.gradient1}
         style={styles.backgroundGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -241,8 +247,8 @@ export default function RegisterScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.formSection}>
-            <View style={styles.registerCard}>
-              <Text style={styles.registerTitle}>Create Account</Text>
+            <View style={[styles.registerCard, { backgroundColor: colors.surfaceSecondary }]}>
+              <Text style={[styles.registerTitle, { color: colors.text }]}>Create Account</Text>
               
               {renderInput("Full Name", "name", "person-outline")}
               {renderInput("Email Address", "email", "mail-outline", false, "email-address")}
@@ -250,38 +256,38 @@ export default function RegisterScreen({ navigation }: Props) {
               {renderInput("Password", "password", "lock-closed-outline", true)}
               {renderInput("Confirm Password", "confirmPassword", "lock-closed-outline", true)}
               
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
                 onPress={handleRegister}
                 disabled={isLoading}
               >
                 <LinearGradient
-                  colors={['#667eea', '#764ba2']}
+                  colors={colors.gradient1}
                   style={styles.registerGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
                   {isLoading ? (
                     <>
-                      <ActivityIndicator color="#ffffff" style={styles.buttonIcon} />
-                      <Text style={styles.registerButtonText}>Creating account...</Text>
+                      <ActivityIndicator color={colors.textInverse} style={styles.buttonIcon} />
+                      <Text style={[styles.registerButtonText, { color: colors.textInverse }]}>Creating account...</Text>
                     </>
                   ) : (
                     <>
-                      <Ionicons name="person-add-outline" size={20} color="#ffffff" style={styles.buttonIcon} />
-                      <Text style={styles.registerButtonText}>Create Account</Text>
+                      <Ionicons name="person-add-outline" size={20} color={colors.textInverse} style={styles.buttonIcon} />
+                      <Text style={[styles.registerButtonText, { color: colors.textInverse }]}>Create Account</Text>
                     </>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
-              
+
               <View style={styles.dividerContainer}>
-                <View style={styles.divider} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <Text style={[styles.dividerText, { color: colors.textTertiary }]}>or</Text>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
               </View>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.googleButton, isLoading && styles.registerButtonDisabled]}
                 onPress={handleGoogleSignUp}
                 disabled={isLoading}
@@ -289,13 +295,13 @@ export default function RegisterScreen({ navigation }: Props) {
                 <Ionicons name="logo-google" size={20} color="#ffffff" style={styles.buttonIcon} />
                 <Text style={styles.googleButtonText}>Sign up with Google</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.loginButton}
+
+              <TouchableOpacity
+                style={[styles.loginButton, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
                 onPress={() => navigation.navigate('LoginScreen')}
               >
-                <Ionicons name="log-in-outline" size={20} color="#667eea" style={styles.buttonIcon} />
-                <Text style={styles.loginButtonText}>Back to Sign In</Text>
+                <Ionicons name="log-in-outline" size={20} color={colors.primary} style={styles.buttonIcon} />
+                <Text style={[styles.loginButtonText, { color: colors.primary }]}>Back to Sign In</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -315,7 +321,6 @@ export default function RegisterScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
   },
   safeArea: {
     flex: 1,
@@ -404,14 +409,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   registerCard: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 24,
     padding: 32,
   },
   registerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1f2937',
     textAlign: 'center',
     marginBottom: 32,
   },
@@ -421,19 +424,14 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
   },
   inputWrapperFocused: {
-    borderColor: '#667eea',
-    backgroundColor: '#ffffff',
   },
   inputWrapperError: {
-    borderColor: '#ef4444',
   },
   inputIcon: {
     marginRight: 12,
@@ -441,7 +439,6 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1f2937',
     fontWeight: '500',
   },
   eyeIcon: {
@@ -449,7 +446,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
-    color: '#ef4444',
     marginTop: 4,
     marginLeft: 8,
   },
@@ -475,7 +471,6 @@ const styles = StyleSheet.create({
   registerButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
     letterSpacing: 0.5,
   },
   dividerContainer: {
@@ -486,29 +481,24 @@ const styles = StyleSheet.create({
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e5e7eb',
   },
   dividerText: {
     marginHorizontal: 16,
     fontSize: 14,
-    color: '#9ca3af',
     fontWeight: '500',
   },
   loginButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderWidth: 2,
-    borderColor: '#667eea',
   },
   loginButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#667eea',
     letterSpacing: 0.5,
   },
   googleButton: {

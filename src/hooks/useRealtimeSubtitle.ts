@@ -151,7 +151,9 @@ export const useRealtimeSubtitle = (
         const exists = await RNFS.exists(modelSettings.manualVadPath);
         if (exists) {
           resolvedVadPath = modelSettings.manualVadPath;
+          console.log('vad_found', resolvedVadPath);
         } else {
+          console.log('vad_missing', modelSettings.manualVadPath);
           await clearManualVad();
           resolvedVadPath = null;
         }
@@ -163,6 +165,12 @@ export const useRealtimeSubtitle = (
       if (!resolvedVadPath) {
         await stopTranscription(true);
         throw new Error('Import a detector model to enable subtitles.');
+      }
+      const vadLowerCasePath = resolvedVadPath.toLowerCase();
+      if (!vadLowerCasePath.endsWith('.bin')) {
+        console.log('vad_invalid_extension', resolvedVadPath);
+        await stopTranscription(true);
+        throw new Error('Detector must be a Silero ggml .bin file.');
       }
 
       if (!whisperContextRef.current || activeModelPathRef.current !== resolvedModelPath) {
@@ -185,12 +193,27 @@ export const useRealtimeSubtitle = (
           } catch {
           }
         }
-        const vadCtx = await initWhisperVad({
-          filePath: toFileUri(resolvedVadPath),
-          useGpu: true,
-        });
-        vadContextRef.current = vadCtx;
-        activeVadPathRef.current = resolvedVadPath;
+        const vadUri = toFileUri(resolvedVadPath);
+        console.log('vad_uri', vadUri);
+        const vadStat = await RNFS.stat(resolvedVadPath).catch(() => null);
+        if (vadStat) {
+          console.log('vad_size', String(vadStat.size));
+        } else {
+          console.log('vad_stat_fail');
+        }
+        console.log('vad_init_start');
+        try {
+          const vadCtx = await initWhisperVad({
+            filePath: vadUri,
+            useGpu: true,
+          });
+          vadContextRef.current = vadCtx;
+          activeVadPathRef.current = resolvedVadPath;
+          console.log('vad_init_ok');
+        } catch (err) {
+          console.log('vad_init_error', err instanceof Error ? err.message : String(err));
+          throw err;
+        }
       }
       if (transcriberRef.current) {
         try {

@@ -12,6 +12,7 @@ import CallsScreen from './tabs/CallsScreen';
 import ContactsScreen from './tabs/ContactsScreen';
 import HistoryScreen from './tabs/HistoryScreen';
 import SettingsScreen from './tabs/SettingsScreen';
+import { useTheme } from '../theme';
 
 type TabNavigatorNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 type TabNavigatorRouteProp = RouteProp<RootStackParamList, 'HomeScreen'>;
@@ -59,6 +60,7 @@ const tabs: TabItem[] = [
 
 export default function TabNavigator({ navigation, route }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('calls');
+  const { colors } = useTheme();
 
   const getHeaderTitle = () => {
     switch (activeTab) {
@@ -86,13 +88,12 @@ export default function TabNavigator({ navigation, route }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style="light" backgroundColor="transparent" translucent />
-      
-      {/* Header */}
+
       <View style={styles.headerContainer}>
         <LinearGradient
-          colors={['#667eea', '#764ba2']}
+          colors={colors.gradient1}
           style={styles.headerGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -101,18 +102,18 @@ export default function TabNavigator({ navigation, route }: Props) {
             <View style={styles.headerContent}>
               <View style={styles.headerLeft}>
                 <View style={styles.logoContainer}>
-                  <Ionicons name="videocam" size={20} color="#ffffff" />
+                  <Ionicons name="videocam" size={20} color={colors.textInverse} />
                 </View>
-                <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
+                <Text style={[styles.headerTitle, { color: colors.textInverse }]}>{getHeaderTitle()}</Text>
               </View>
               <View style={styles.headerRight}>
                 <TouchableOpacity style={styles.headerButton}>
-                  <Ionicons name="search-outline" size={20} color="#ffffff" />
+                  <Ionicons name="search-outline" size={20} color={colors.textInverse} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.headerButton}>
-                  <Ionicons name="notifications-outline" size={20} color="#ffffff" />
+                  <Ionicons name="notifications-outline" size={20} color={colors.textInverse} />
                   <View style={styles.notificationBadge}>
-                    <View style={styles.notificationDot} />
+                    <View style={[styles.notificationDot, { backgroundColor: colors.error }]} />
                   </View>
                 </TouchableOpacity>
               </View>
@@ -121,14 +122,12 @@ export default function TabNavigator({ navigation, route }: Props) {
         </LinearGradient>
       </View>
 
-      {/* Tab Content */}
-      <View style={styles.content}>
+      <View style={[styles.content, { backgroundColor: colors.background }]}>
         {renderTabContent()}
       </View>
 
-      {/* Custom Tab Bar */}
       <SafeAreaView edges={['bottom']}>
-        <View style={styles.tabBar}>
+        <View style={[styles.tabBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           {tabs.map((tab) => (
             <TouchableOpacity
               key={tab.key}
@@ -139,12 +138,13 @@ export default function TabNavigator({ navigation, route }: Props) {
                 <Ionicons
                   name={activeTab === tab.key ? tab.iconFocused : tab.icon}
                   size={22}
-                  color={activeTab === tab.key ? '#667eea' : '#9ca3af'}
+                  color={activeTab === tab.key ? colors.primary : colors.textTertiary}
                 />
               </View>
               <Text style={[
                 styles.tabLabel,
-                activeTab === tab.key && styles.tabLabelActive
+                { color: colors.textTertiary },
+                activeTab === tab.key && { color: colors.primary, fontWeight: '600' }
               ]}>
                 {tab.title}
               </Text>
@@ -159,7 +159,6 @@ export default function TabNavigator({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   headerContainer: {
     shadowColor: '#000',
@@ -200,7 +199,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#ffffff',
   },
   headerRight: {
     flexDirection: 'row',
@@ -225,18 +223,14 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#ef4444',
   },
   content: {
     flex: 1,
-    backgroundColor: '#f8fafc',
     marginTop: -12,
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
     paddingTop: 8,
     paddingHorizontal: 16,
     shadowColor: '#000',
@@ -261,10 +255,7 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#9ca3af',
   },
   tabLabelActive: {
-    color: '#667eea',
-    fontWeight: '600',
   },
 });

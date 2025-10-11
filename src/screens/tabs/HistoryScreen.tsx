@@ -3,8 +3,10 @@ import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from '@rneui/themed';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../theme';
 
 export default function HistoryScreen() {
+  const { colors } = useTheme();
   const callHistory = [
     { 
       id: 1, 
@@ -51,16 +53,16 @@ export default function HistoryScreen() {
 
   const getCallColor = (type: string) => {
     switch (type) {
-      case 'outgoing': return '#10b981';
-      case 'incoming': return '#667eea';
-      case 'missed': return '#ef4444';
-      default: return '#6b7280';
+      case 'outgoing': return colors.success;
+      case 'incoming': return colors.primary;
+      case 'missed': return colors.error;
+      default: return colors.textSecondary;
     }
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView 
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -69,26 +71,26 @@ export default function HistoryScreen() {
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
               <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={colors.gradient1}
                 style={styles.statGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Ionicons name="time-outline" size={20} color="#ffffff" />
-                <Text style={styles.statNumber}>47h</Text>
+                <Ionicons name="time-outline" size={20} color={colors.textInverse} />
+                <Text style={[styles.statNumber, { color: colors.textInverse }]}>47h</Text>
                 <Text style={styles.statLabel}>Total Time</Text>
               </LinearGradient>
             </View>
-            
+
             <View style={styles.statCard}>
               <LinearGradient
-                colors={['#10b981', '#059669']}
+                colors={colors.gradient6}
                 style={styles.statGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Ionicons name="call-outline" size={20} color="#ffffff" />
-                <Text style={styles.statNumber}>124</Text>
+                <Ionicons name="call-outline" size={20} color={colors.textInverse} />
+                <Text style={[styles.statNumber, { color: colors.textInverse }]}>124</Text>
                 <Text style={styles.statLabel}>Total Calls</Text>
               </LinearGradient>
             </View>
@@ -96,31 +98,31 @@ export default function HistoryScreen() {
         </View>
 
         <View style={styles.historySection}>
-          <Text style={styles.sectionTitle}>Recent Calls</Text>
-          
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Calls</Text>
+
           {callHistory.map((call, index) => (
-            <View 
+            <View
               key={call.id}
-              style={styles.callCard}
+              style={[styles.callCard, { backgroundColor: colors.surface }]}
             >
               <View style={styles.callInfo}>
-                <View style={[styles.callIcon, { backgroundColor: `${getCallColor(call.type)}20` }]}>
-                  <Ionicons 
-                    name={getCallIcon(call.type)} 
-                    size={20} 
+                <View style={[styles.callIcon, { backgroundColor: call.type === 'outgoing' ? colors.successLight : call.type === 'incoming' ? colors.primaryLight : colors.errorLight }]}>
+                  <Ionicons
+                    name={getCallIcon(call.type)}
+                    size={20}
                     color={getCallColor(call.type)}
                     style={call.type === 'incoming' ? { transform: [{ rotate: '180deg' }] } : {}}
                   />
                 </View>
                 <View style={styles.callDetails}>
-                  <Text style={styles.contactName}>{call.contact}</Text>
-                  <Text style={styles.callTime}>{call.time}</Text>
+                  <Text style={[styles.contactName, { color: colors.text }]}>{call.contact}</Text>
+                  <Text style={[styles.callTime, { color: colors.textSecondary }]}>{call.time}</Text>
                 </View>
               </View>
               <View style={styles.callMeta}>
-                <Text style={styles.duration}>{call.duration}</Text>
-                <TouchableOpacity style={styles.redialButton}>
-                  <Ionicons name="videocam-outline" size={16} color="#667eea" />
+                <Text style={[styles.duration, { color: colors.textSecondary }]}>{call.duration}</Text>
+                <TouchableOpacity style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="videocam-outline" size={16} color={colors.primary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -134,7 +136,6 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   scrollView: {
     flex: 1,
@@ -165,7 +166,6 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#ffffff',
     marginTop: 8,
     marginBottom: 4,
   },
@@ -180,11 +180,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1f2937',
     marginBottom: 16,
   },
   callCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -211,24 +209,20 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 2,
   },
   callTime: {
     fontSize: 12,
-    color: '#6b7280',
   },
   callMeta: {
     alignItems: 'flex-end',
   },
   duration: {
     fontSize: 12,
-    color: '#6b7280',
     marginBottom: 4,
   },
   redialButton: {
     padding: 6,
     borderRadius: 6,
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
   },
 });

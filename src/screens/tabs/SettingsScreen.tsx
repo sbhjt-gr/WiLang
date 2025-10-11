@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../config/firebase';
 import { getCachedModelSettings, subscribeModelSettings, type ModelSettings } from '../../services/ModelSettings';
+import { useTheme } from '../../theme';
+import { ThemeToggle } from '../../components/ThemeToggle';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -16,6 +18,7 @@ interface Props {
 
 export default function SettingsScreen({ navigation }: Props) {
   const [modelSettings, setModelSettings] = useState<ModelSettings>(getCachedModelSettings());
+  const { colors } = useTheme();
 
   useEffect(() => {
     const unsubscribe = subscribeModelSettings((settings) => {
@@ -107,8 +110,8 @@ export default function SettingsScreen({ navigation }: Props) {
   ]), [modelSubtitle, navigation]);
 
   return (
-    <View style={styles.container}>
-      <ScrollView 
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -116,29 +119,33 @@ export default function SettingsScreen({ navigation }: Props) {
         <View style={styles.profileSection}>
           <View style={styles.profileCard}>
             <LinearGradient
-              colors={['#667eea', '#764ba2']}
+              colors={colors.gradient1}
               style={styles.profileGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
               <View style={styles.avatarContainer}>
-                <Text style={styles.avatarText}>U</Text>
+                <Text style={[styles.avatarText, { color: colors.textInverse }]}>U</Text>
               </View>
-              <Text style={styles.userName}>User Name</Text>
+              <Text style={[styles.userName, { color: colors.textInverse }]}>User Name</Text>
               <Text style={styles.userEmail}>{auth.currentUser?.email || 'user@example.com'}</Text>
             </LinearGradient>
           </View>
         </View>
 
+        <View style={styles.themeSection}>
+          <ThemeToggle />
+        </View>
+
         <View style={styles.settingsSection}>
-          <Text style={styles.sectionTitle}>Settings</Text>
-          
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Settings</Text>
+
           {settingsOptions.map((option, index) => (
-            <View 
+            <View
               key={option.id}
-              style={styles.settingCard}
+              style={[styles.settingCard, { backgroundColor: colors.surface }]}
             >
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.settingItem}
                 onPress={option.onPress}
               >
@@ -147,11 +154,11 @@ export default function SettingsScreen({ navigation }: Props) {
                     <Ionicons name={option.icon} size={20} color={option.color} />
                   </View>
                   <View style={styles.settingText}>
-                    <Text style={styles.settingTitle}>{option.title}</Text>
-                    <Text style={styles.settingSubtitle}>{option.subtitle}</Text>
+                    <Text style={[styles.settingTitle, { color: colors.text }]}>{option.title}</Text>
+                    <Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>{option.subtitle}</Text>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
               </TouchableOpacity>
             </View>
           ))}
@@ -160,13 +167,13 @@ export default function SettingsScreen({ navigation }: Props) {
         <View style={styles.logoutSection}>
           <TouchableOpacity style={styles.logoutCard} onPress={LogOut}>
             <LinearGradient
-              colors={['#ff6b6b', '#ee5a52']}
+              colors={colors.gradient5}
               style={styles.logoutGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Ionicons name="log-out-outline" size={20} color="#ffffff" />
-              <Text style={styles.logoutText}>Sign Out</Text>
+              <Ionicons name="log-out-outline" size={20} color={colors.textInverse} />
+              <Text style={[styles.logoutText, { color: colors.textInverse }]}>Sign Out</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -178,7 +185,6 @@ export default function SettingsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   scrollView: {
     flex: 1,
@@ -188,7 +194,10 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   profileSection: {
-    marginBottom: 32,
+    marginBottom: 24,
+  },
+  themeSection: {
+    marginBottom: 24,
   },
   profileCard: {
     borderRadius: 20,
@@ -210,12 +219,10 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#ffffff',
   },
   userName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#ffffff',
     marginBottom: 4,
   },
   userEmail: {
@@ -228,11 +235,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1f2937',
     marginBottom: 16,
   },
   settingCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     marginBottom: 12,
   },
@@ -261,12 +266,10 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 2,
   },
   settingSubtitle: {
     fontSize: 12,
-    color: '#6b7280',
   },
   logoutSection: {
     marginTop: 20,
@@ -285,7 +288,6 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
     marginLeft: 8,
   },
 });

@@ -7,6 +7,7 @@ import { RootStackParamList } from '../../types/navigation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../../theme';
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'LoginScreen'>;
 
@@ -22,6 +23,7 @@ export default function LoginScreen({ navigation }: Props) {
   const [emailFocused, setEmailFocused] = useState<boolean>(false);
   const [passwordFocused, setPasswordFocused] = useState<boolean>(false);
   const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false);
+  const { colors } = useTheme();
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
@@ -108,12 +110,16 @@ export default function LoginScreen({ navigation }: Props) {
   ) => (
     <View style={styles.inputContainer}>
       <TouchableWithoutFeedback>
-        <View style={[styles.inputWrapper, focused && styles.inputWrapperFocused]}>
-          <Ionicons name={icon} size={20} color={focused ? '#667eea' : '#9ca3af'} style={styles.inputIcon} />
+        <View style={[
+          styles.inputWrapper,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+          focused && { borderColor: colors.borderFocus, backgroundColor: colors.surface }
+        ]}>
+          <Ionicons name={icon} size={20} color={focused ? colors.primary : colors.textTertiary} style={styles.inputIcon} />
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, { color: colors.text }]}
           placeholder={placeholder}
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={colors.textTertiary}
           value={value}
           onChangeText={onChangeText}
           secureTextEntry={isPassword && !showPassword}
@@ -135,10 +141,10 @@ export default function LoginScreen({ navigation }: Props) {
         />
         {isPassword && (
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-            <Ionicons 
-              name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
-              size={20} 
-              color="#9ca3af" 
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={colors.textTertiary}
             />
           </TouchableOpacity>
                   )}
@@ -148,11 +154,11 @@ export default function LoginScreen({ navigation }: Props) {
   );
     
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
+
       <LinearGradient
-        colors={['#667eea', '#764ba2']}
+        colors={colors.gradient1}
         style={styles.backgroundGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -187,11 +193,11 @@ export default function LoginScreen({ navigation }: Props) {
             <Text style={styles.welcomeSubtitle}>Sign in to continue your journey</Text>
           </View>
 
-          <View 
+          <View
             style={styles.formSection}
           >
-            <View style={styles.loginCard}>
-              <Text style={styles.loginTitle}>Sign In</Text>
+            <View style={[styles.loginCard, { backgroundColor: colors.surfaceSecondary }]}>
+              <Text style={[styles.loginTitle, { color: colors.text }]}>Sign In</Text>
               
               {renderInput(
                 "Email Address",
@@ -214,41 +220,41 @@ export default function LoginScreen({ navigation }: Props) {
               )}
               
               <TouchableOpacity style={styles.forgotPassword}>
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Forgot Password?</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.signInButton, isLoading && styles.signInButtonDisabled]}
                 onPress={signIn}
                 disabled={isLoading}
               >
                 <LinearGradient
-                  colors={['#667eea', '#764ba2']}
+                  colors={colors.gradient1}
                   style={styles.signInGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
                   {isLoading ? (
                     <>
-                      <ActivityIndicator color="#ffffff" style={styles.buttonIcon} />
-                      <Text style={styles.signInButtonText}>Signing in...</Text>
+                      <ActivityIndicator color={colors.textInverse} style={styles.buttonIcon} />
+                      <Text style={[styles.signInButtonText, { color: colors.textInverse }]}>Signing in...</Text>
                     </>
                   ) : (
                     <>
-                      <Ionicons name="log-in-outline" size={20} color="#ffffff" style={styles.buttonIcon} />
-                      <Text style={styles.signInButtonText}>Sign In</Text>
+                      <Ionicons name="log-in-outline" size={20} color={colors.textInverse} style={styles.buttonIcon} />
+                      <Text style={[styles.signInButtonText, { color: colors.textInverse }]}>Sign In</Text>
                     </>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
               
               <View style={styles.dividerContainer}>
-                <View style={styles.divider} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <Text style={[styles.dividerText, { color: colors.textTertiary }]}>or</Text>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
               </View>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.googleButton, isLoading && styles.signInButtonDisabled]}
                 onPress={handleGoogleSignIn}
                 disabled={isLoading}
@@ -256,13 +262,13 @@ export default function LoginScreen({ navigation }: Props) {
                 <Ionicons name="logo-google" size={20} color="#ffffff" style={styles.buttonIcon} />
                 <Text style={styles.googleButtonText}>Continue with Google</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.createAccountButton}
+
+              <TouchableOpacity
+                style={[styles.createAccountButton, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
                 onPress={() => navigation.navigate('RegisterScreen')}
               >
-                <Ionicons name="person-add-outline" size={20} color="#667eea" style={styles.buttonIcon} />
-                <Text style={styles.createAccountButtonText}>Create New Account</Text>
+                <Ionicons name="person-add-outline" size={20} color={colors.primary} style={styles.buttonIcon} />
+                <Text style={[styles.createAccountButtonText, { color: colors.primary }]}>Create New Account</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -282,7 +288,6 @@ export default function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
   },
   safeArea: {
     flex: 1,
@@ -363,14 +368,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loginCard: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 24,
     padding: 32,
   },
   loginTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1f2937',
     textAlign: 'center',
     marginBottom: 32,
   },
@@ -380,16 +383,12 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
   },
   inputWrapperFocused: {
-    borderColor: '#667eea',
-    backgroundColor: '#ffffff',
   },
   inputIcon: {
     marginRight: 12,
@@ -397,7 +396,6 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1f2937',
     fontWeight: '500',
   },
   eyeIcon: {
@@ -409,7 +407,6 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: 14,
-    color: '#667eea',
     fontWeight: '600',
   },
   signInButton: {
@@ -433,7 +430,6 @@ const styles = StyleSheet.create({
   signInButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
     letterSpacing: 0.5,
   },
   dividerContainer: {
@@ -444,29 +440,24 @@ const styles = StyleSheet.create({
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e5e7eb',
   },
   dividerText: {
     marginHorizontal: 16,
     fontSize: 14,
-    color: '#9ca3af',
     fontWeight: '500',
   },
   createAccountButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderWidth: 2,
-    borderColor: '#667eea',
   },
   createAccountButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#667eea',
     letterSpacing: 0.5,
   },
   googleButton: {

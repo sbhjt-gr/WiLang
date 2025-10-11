@@ -5,6 +5,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../theme';
 
 type CallsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -16,6 +17,7 @@ export default function CallsScreen({ navigation }: Props) {
   const [id, setID] = useState<string>('');
   const [activeFeature, setActiveFeature] = useState<string>('instant');
   const textInputRef = useRef<TextInput>(null);
+  const { colors } = useTheme();
 
   const meet = (): void => {
     if (id.trim()) {
@@ -55,7 +57,7 @@ export default function CallsScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -68,35 +70,35 @@ export default function CallsScreen({ navigation }: Props) {
         <View 
           style={styles.heroSection}
         >
-          <View style={styles.heroContent}>
+          <View style={[styles.heroContent, { backgroundColor: colors.surface }]}>
             <View style={styles.heroHeader}>
-              <View style={styles.heroIcon}>
-                <Ionicons name="videocam" size={28} color="#667eea" />
+              <View style={[styles.heroIcon, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="videocam" size={28} color={colors.primary} />
               </View>
-              <View style={styles.liveBadge}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>LIVE TRANSLATION</Text>
+              <View style={[styles.liveBadge, { backgroundColor: colors.error }]}>
+                <View style={[styles.liveDot, { backgroundColor: colors.textInverse }]} />
+                <Text style={[styles.liveText, { color: colors.textInverse }]}>LIVE TRANSLATION</Text>
               </View>
             </View>
-            <Text style={styles.heroTitle}>WhisperLang Video</Text>
-            <Text style={styles.heroSubtitle}>Connect with anyone, anywhere in the world with real-time translation in over 30 languages</Text>
+            <Text style={[styles.heroTitle, { color: colors.text }]}>WhisperLang Video</Text>
+            <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>Connect with anyone, anywhere in the world with real-time translation in over 30 languages</Text>
             
-            <View style={styles.featureToggle}>
-              <TouchableOpacity 
-                style={[styles.toggleButton, activeFeature === 'instant' && styles.toggleButtonActive]}
+            <View style={[styles.featureToggle, { backgroundColor: colors.backgroundTertiary }]}>
+              <TouchableOpacity
+                style={[styles.toggleButton, activeFeature === 'instant' && { backgroundColor: colors.primary }]}
                 onPress={() => setActiveFeature('instant')}
               >
-                <Ionicons name="flash" size={16} color={activeFeature === 'instant' ? '#ffffff' : '#667eea'} />
-                <Text style={[styles.toggleText, activeFeature === 'instant' && styles.toggleTextActive]}>
+                <Ionicons name="flash" size={16} color={activeFeature === 'instant' ? colors.textInverse : colors.primary} />
+                <Text style={[styles.toggleText, { color: colors.primary }, activeFeature === 'instant' && { color: colors.textInverse }]}>
                   Instant Call
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.toggleButton, activeFeature === 'scheduled' && styles.toggleButtonActive]}
+              <TouchableOpacity
+                style={[styles.toggleButton, activeFeature === 'scheduled' && { backgroundColor: colors.primary }]}
                 onPress={() => setActiveFeature('scheduled')}
               >
-                <Ionicons name="calendar" size={16} color={activeFeature === 'scheduled' ? '#ffffff' : '#667eea'} />
-                <Text style={[styles.toggleText, activeFeature === 'scheduled' && styles.toggleTextActive]}>
+                <Ionicons name="calendar" size={16} color={activeFeature === 'scheduled' ? colors.textInverse : colors.primary} />
+                <Text style={[styles.toggleText, { color: colors.primary }, activeFeature === 'scheduled' && { color: colors.textInverse }]}>
                   Schedule
                 </Text>
               </TouchableOpacity>
@@ -109,75 +111,75 @@ export default function CallsScreen({ navigation }: Props) {
         >
           {activeFeature === 'instant' ? (
             <View style={styles.instantActions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.primaryActionCard}
                 onPress={createMeeting}
               >
                 <LinearGradient
-                  colors={['#667eea', '#764ba2']}
+                  colors={colors.gradient1}
                   style={styles.primaryActionGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <Ionicons name="videocam" size={32} color="#ffffff" />
-                  <Text style={styles.primaryActionTitle}>Start a meeting</Text>
+                  <Ionicons name="videocam" size={32} color={colors.textInverse} />
+                  <Text style={[styles.primaryActionTitle, { color: colors.textInverse }]}>Start a meeting</Text>
                   <Text style={styles.primaryActionSubtitle}>Begin translating immediately</Text>
                 </LinearGradient>
               </TouchableOpacity>
               
               <View style={styles.secondaryActions}>
-                <TouchableOpacity 
-                  style={styles.secondaryActionCard}
+                <TouchableOpacity
+                  style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   onPress={() => {}}
                 >
                   <View style={styles.secondaryActionContent}>
-                    <Ionicons name="mic" size={24} color="#10b981" />
-                    <Text style={styles.secondaryActionTitle}>Voice Only</Text>
+                    <Ionicons name="mic" size={24} color={colors.success} />
+                    <Text style={[styles.secondaryActionTitle, { color: colors.text }]}>Voice Only</Text>
                   </View>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.secondaryActionCard}
+
+                <TouchableOpacity
+                  style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   onPress={() => {}}
                 >
                   <View style={styles.secondaryActionContent}>
-                    <Ionicons name="people" size={24} color="#f59e0b" />
-                    <Text style={styles.secondaryActionTitle}>Group Call</Text>
+                    <Ionicons name="people" size={24} color={colors.warning} />
+                    <Text style={[styles.secondaryActionTitle, { color: colors.text }]}>Group Call</Text>
                   </View>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
             <View style={styles.scheduledActions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.scheduleCard}
                 onPress={() => {}}
               >
                 <LinearGradient
-                  colors={['#10b981', '#059669']}
+                  colors={colors.gradient6}
                   style={styles.scheduleGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <Ionicons name="calendar-outline" size={28} color="#ffffff" />
-                  <Text style={styles.scheduleTitle}>Schedule Meeting</Text>
+                  <Ionicons name="calendar-outline" size={28} color={colors.textInverse} />
+                  <Text style={[styles.scheduleTitle, { color: colors.textInverse }]}>Schedule Meeting</Text>
                   <Text style={styles.scheduleSubtitle}>Plan ahead with calendar integration</Text>
                 </LinearGradient>
               </TouchableOpacity>
               
-              <View style={styles.upcomingMeetings}>
-                <Text style={styles.upcomingTitle}>Upcoming Meetings</Text>
-                <View style={styles.meetingCard}>
+              <View style={[styles.upcomingMeetings, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.upcomingTitle, { color: colors.text }]}>Upcoming Meetings</Text>
+                <View style={[styles.meetingCard, { backgroundColor: colors.backgroundTertiary }]}>
                   <View style={styles.meetingTime}>
-                    <Text style={styles.meetingTimeText}>2:30 PM</Text>
-                    <Text style={styles.meetingDate}>Today</Text>
+                    <Text style={[styles.meetingTimeText, { color: colors.primary }]}>2:30 PM</Text>
+                    <Text style={[styles.meetingDate, { color: colors.textSecondary }]}>Today</Text>
                   </View>
                   <View style={styles.meetingInfo}>
-                    <Text style={styles.meetingTitle}>Team Sync</Text>
-                    <Text style={styles.meetingParticipants}>3 participants</Text>
+                    <Text style={[styles.meetingTitle, { color: colors.text }]}>Team Sync</Text>
+                    <Text style={[styles.meetingParticipants, { color: colors.textSecondary }]}>3 participants</Text>
                   </View>
-                  <TouchableOpacity style={styles.joinEarlyButton}>
-                    <Text style={styles.joinEarlyText}>Join</Text>
+                  <TouchableOpacity style={[styles.joinEarlyButton, { backgroundColor: colors.primary }]}>
+                    <Text style={[styles.joinEarlyText, { color: colors.textInverse }]}>Join</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -186,18 +188,18 @@ export default function CallsScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.joinSection}>
-          <View style={styles.joinCard}>
+          <View style={[styles.joinCard, { backgroundColor: colors.surface }]}>
             <View style={styles.joinHeader}>
-              <Ionicons name="enter-outline" size={20} color="#667eea" />
-              <Text style={styles.sectionTitle}>Join a Meeting</Text>
+              <Ionicons name="enter-outline" size={20} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Join a Meeting</Text>
             </View>
-            
+
             <View style={styles.inputContainer}>
               <TextInput
                 ref={textInputRef}
-                style={styles.meetingInput}
+                style={[styles.meetingInput, { backgroundColor: colors.backgroundTertiary, color: colors.text, borderColor: colors.border }]}
                 placeholder="Enter meeting code (e.g. ABC123)"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.textTertiary}
                 value={id}
                 onChangeText={setID}
                 autoCapitalize="characters"
@@ -208,81 +210,81 @@ export default function CallsScreen({ navigation }: Props) {
                 onSubmitEditing={meet}
               />
             </View>
-            
-            <TouchableOpacity 
-              style={[styles.joinMeetingButton, !id.trim() && styles.joinMeetingButtonDisabled]}
+
+            <TouchableOpacity
+              style={[styles.joinMeetingButton, { backgroundColor: colors.primary }, !id.trim() && { backgroundColor: colors.border }]}
               onPress={meet}
               disabled={!id.trim()}
             >
-              <Text style={[styles.joinMeetingButtonText, !id.trim() && styles.joinMeetingButtonTextDisabled]}>
+              <Text style={[styles.joinMeetingButtonText, { color: colors.textInverse }, !id.trim() && { color: colors.textTertiary }]}>
                 Join Meeting
               </Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <View 
+        <View
           style={styles.recentSection}
         >
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.recentCard}>
-            <View style={styles.recentItem}>
-              <View style={styles.recentIcon}>
-                <Ionicons name="videocam" size={20} color="#667eea" />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
+          <View style={[styles.recentCard, { backgroundColor: colors.surface }]}>
+            <View style={[styles.recentItem, { borderBottomColor: colors.borderLight }]}>
+              <View style={[styles.recentIcon, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="videocam" size={20} color={colors.primary} />
               </View>
               <View style={styles.recentContent}>
-                <Text style={styles.recentTitle}>Video Call with Sarah</Text>
-                <Text style={styles.recentTime}>2 hours ago • 25 minutes • 🇪🇸 Spanish</Text>
+                <Text style={[styles.recentTitle, { color: colors.text }]}>Video Call with Sarah</Text>
+                <Text style={[styles.recentTime, { color: colors.textSecondary }]}>2 hours ago • 25 minutes • 🇪🇸 Spanish</Text>
               </View>
-              <TouchableOpacity style={styles.recentAction}>
-                <Ionicons name="call-outline" size={16} color="#667eea" />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.recentItem}>
-              <View style={styles.recentIcon}>
-                <Ionicons name="people" size={20} color="#10b981" />
-              </View>
-              <View style={styles.recentContent}>
-                <Text style={styles.recentTitle}>Team Meeting</Text>
-                <Text style={styles.recentTime}>Yesterday • 45 minutes • 🇫🇷 French, 🇩🇪 German</Text>
-              </View>
-              <TouchableOpacity style={styles.recentAction}>
-                <Ionicons name="repeat-outline" size={16} color="#667eea" />
+              <TouchableOpacity style={[styles.recentAction, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="call-outline" size={16} color={colors.primary} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.recentItem}>
-              <View style={styles.recentIcon}>
-                <Ionicons name="mic" size={20} color="#f59e0b" />
+            <View style={[styles.recentItem, { borderBottomColor: colors.borderLight }]}>
+              <View style={[styles.recentIcon, { backgroundColor: colors.successLight }]}>
+                <Ionicons name="people" size={20} color={colors.success} />
               </View>
               <View style={styles.recentContent}>
-                <Text style={styles.recentTitle}>Voice Call with Alex</Text>
-                <Text style={styles.recentTime}>3 days ago • 15 minutes • 🇯🇵 Japanese</Text>
+                <Text style={[styles.recentTitle, { color: colors.text }]}>Team Meeting</Text>
+                <Text style={[styles.recentTime, { color: colors.textSecondary }]}>Yesterday • 45 minutes • 🇫🇷 French, 🇩🇪 German</Text>
               </View>
-              <TouchableOpacity style={styles.recentAction}>
-                <Ionicons name="call-outline" size={16} color="#667eea" />
+              <TouchableOpacity style={[styles.recentAction, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="repeat-outline" size={16} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.recentItem, { borderBottomColor: colors.borderLight }]}>
+              <View style={[styles.recentIcon, { backgroundColor: colors.warningLight }]}>
+                <Ionicons name="mic" size={20} color={colors.warning} />
+              </View>
+              <View style={styles.recentContent}>
+                <Text style={[styles.recentTitle, { color: colors.text }]}>Voice Call with Alex</Text>
+                <Text style={[styles.recentTime, { color: colors.textSecondary }]}>3 days ago • 15 minutes • 🇯🇵 Japanese</Text>
+              </View>
+              <TouchableOpacity style={[styles.recentAction, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="call-outline" size={16} color={colors.primary} />
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        <View 
+        <View
           style={styles.languageBanner}
         >
           <LinearGradient
-            colors={['#8b5cf6', '#ec4899']}
+            colors={colors.gradient3}
             style={styles.languageGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Ionicons name="globe-outline" size={24} color="#ffffff" />
+            <Ionicons name="globe-outline" size={24} color={colors.textInverse} />
             <View style={styles.languageContent}>
-              <Text style={styles.languageTitle}>30+ Languages Supported</Text>
+              <Text style={[styles.languageTitle, { color: colors.textInverse }]}>30+ Languages Supported</Text>
               <Text style={styles.languageSubtitle}>Real-time translation powered by AI</Text>
             </View>
             <TouchableOpacity style={styles.languageButton}>
-              <Ionicons name="arrow-forward" size={16} color="#ffffff" />
+              <Ionicons name="arrow-forward" size={16} color={colors.textInverse} />
             </TouchableOpacity>
           </LinearGradient>
         </View>
@@ -294,7 +296,6 @@ export default function CallsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   scrollView: {
     flex: 1,
@@ -307,7 +308,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   heroContent: {
-    backgroundColor: '#ffffff',
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
@@ -323,14 +323,12 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#f0f4ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ef4444',
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -339,32 +337,27 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#ffffff',
     marginRight: 6,
   },
   liveText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#ffffff',
     letterSpacing: 0.5,
   },
   heroTitle: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#1f2937',
     marginBottom: 12,
     textAlign: 'center',
   },
   heroSubtitle: {
     fontSize: 16,
-    color: '#6b7280',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,
   },
   featureToggle: {
     flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
     borderRadius: 12,
     padding: 4,
   },
@@ -378,16 +371,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   toggleButtonActive: {
-    backgroundColor: '#667eea',
   },
   toggleText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#667eea',
     marginLeft: 6,
   },
   toggleTextActive: {
-    color: '#ffffff',
   },
   actionsSection: {
     marginBottom: 24,
@@ -406,7 +396,6 @@ const styles = StyleSheet.create({
   primaryActionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#ffffff',
     marginTop: 12,
     marginBottom: 4,
   },
@@ -421,12 +410,10 @@ const styles = StyleSheet.create({
   },
   secondaryActionCard: {
     flex: 1,
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
   secondaryActionContent: {
     alignItems: 'center',
@@ -434,7 +421,6 @@ const styles = StyleSheet.create({
   secondaryActionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
     marginTop: 8,
   },
   scheduledActions: {
@@ -451,7 +437,6 @@ const styles = StyleSheet.create({
   scheduleTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#ffffff',
     marginTop: 12,
     marginBottom: 4,
   },
@@ -461,20 +446,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   upcomingMeetings: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 20,
   },
   upcomingTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 16,
   },
   meetingCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 16,
   },
@@ -485,11 +467,9 @@ const styles = StyleSheet.create({
   meetingTimeText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#667eea',
   },
   meetingDate: {
     fontSize: 12,
-    color: '#6b7280',
     marginTop: 2,
   },
   meetingInfo: {
@@ -498,15 +478,12 @@ const styles = StyleSheet.create({
   meetingTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 2,
   },
   meetingParticipants: {
     fontSize: 14,
-    color: '#6b7280',
   },
   joinEarlyButton: {
-    backgroundColor: '#667eea',
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -514,13 +491,11 @@ const styles = StyleSheet.create({
   joinEarlyText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
   },
   joinSection: {
     marginBottom: 24,
   },
   joinCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 24,
   },
@@ -532,24 +507,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
     marginLeft: 8,
   },
   inputContainer: {
     marginBottom: 20,
   },
   meetingInput: {
-    backgroundColor: '#f9fafb',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontSize: 16,
-    color: '#1f2937',
     borderWidth: 2,
-    borderColor: '#e5e7eb',
   },
   joinMeetingButton: {
-    backgroundColor: '#667eea',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -557,31 +527,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   joinMeetingButtonDisabled: {
-    backgroundColor: '#e5e7eb',
   },
   joinMeetingButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
   },
   joinMeetingButtonTextDisabled: {
-    color: '#9ca3af',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 4,
     marginBottom: 20,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
   },
   inputWrapperFocused: {
-    borderColor: '#667eea',
-    backgroundColor: '#ffffff',
-    shadowColor: '#667eea',
     shadowOffset: {
       width: 0,
       height: 0,
@@ -593,31 +555,24 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1f2937',
     paddingVertical: 12,
   },
   joinButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8fafc',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderWidth: 2,
-    borderColor: '#667eea',
   },
   joinButtonDisabled: {
-    backgroundColor: '#f3f4f6',
-    borderColor: '#d1d5db',
   },
   joinButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#667eea',
   },
   joinButtonTextDisabled: {
-    color: '#9ca3af',
   },
   joinButtonIcon: {
     marginLeft: 8,
@@ -626,7 +581,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   recentCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
   },
@@ -635,13 +589,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   recentIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f0f4ff',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -652,16 +604,13 @@ const styles = StyleSheet.create({
   recentTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 2,
   },
   recentTime: {
     fontSize: 14,
-    color: '#6b7280',
   },
   recentAction: {
     padding: 8,
-    backgroundColor: '#f0f4ff',
     borderRadius: 8,
   },
   languageBanner: {
@@ -680,7 +629,6 @@ const styles = StyleSheet.create({
   languageTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
     marginBottom: 2,
   },
   languageSubtitle: {

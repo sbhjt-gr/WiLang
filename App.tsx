@@ -15,6 +15,7 @@ import ModelSettingsScreen from './src/screens/settings/ModelSettingsScreen';
 import { RootStackParamList } from './src/types/navigation';
 import WebRTCProvider from './src/store/WebRTCProvider';
 import WebRTCInitializer from './src/components/WebRTCInitializer';
+import { ThemeProvider } from './src/theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -41,51 +42,53 @@ export default function App() {
   }, []);
 
   return (
-    <WebRTCProvider>
-      <WebRTCInitializer>
-        <SafeAreaProvider>
-          <NavigationContainer theme={customTheme}>
-            <StatusBar style="dark" />
-            <Stack.Navigator 
-              screenOptions={{ 
-                headerShown: false,
-                animation: 'slide_from_right'
-              }} 
-              initialRouteName="LoginScreen"
-            >
-              <Stack.Screen 
-                name="LoginScreen" 
-                component={LoginScreen} 
-              />
-              <Stack.Screen 
-                name="RegisterScreen" 
-                component={RegisterScreen} 
-              />
-              <Stack.Screen
-                name="HomeScreen"
-                component={TabNavigator}
-              />
-              <Stack.Screen
-                name="UsersScreen"
-                component={UsersScreen}
-              />
-              <Stack.Screen
-                name="VideoCallScreen" 
-                component={VideoCallScreen}
-              />
-              <Stack.Screen
-                name="EnvironmentConfig"
-                component={EnvironmentConfig}
-              />
-              <Stack.Screen
-                name="ModelSettings"
-                component={ModelSettingsScreen}
-              />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </SafeAreaProvider>
-      </WebRTCInitializer>
-    </WebRTCProvider>
+    <ThemeProvider>
+      <WebRTCProvider>
+        <WebRTCInitializer>
+          <SafeAreaProvider>
+            <NavigationContainer theme={customTheme}>
+              <StatusBar style="light" />
+              <Stack.Navigator
+                screenOptions={{
+                  headerShown: false,
+                  animation: 'slide_from_right'
+                }}
+                initialRouteName="LoginScreen"
+              >
+                <Stack.Screen
+                  name="LoginScreen"
+                  component={LoginScreen}
+                />
+                <Stack.Screen
+                  name="RegisterScreen"
+                  component={RegisterScreen}
+                />
+                <Stack.Screen
+                  name="HomeScreen"
+                  component={TabNavigator}
+                />
+                <Stack.Screen
+                  name="UsersScreen"
+                  component={UsersScreen}
+                />
+                <Stack.Screen
+                  name="VideoCallScreen"
+                  component={VideoCallScreen}
+                />
+                <Stack.Screen
+                  name="EnvironmentConfig"
+                  component={EnvironmentConfig}
+                />
+                <Stack.Screen
+                  name="ModelSettings"
+                  component={ModelSettingsScreen}
+                />
+              </Stack.Navigator>
+            </NavigationContainer>
+          </SafeAreaProvider>
+        </WebRTCInitializer>
+      </WebRTCProvider>
+    </ThemeProvider>
   );
 }
 
