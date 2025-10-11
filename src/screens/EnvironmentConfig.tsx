@@ -61,14 +61,6 @@ const EnvironmentConfig: React.FC = () => {
     );
   };
 
-  const showEnvInstructions = (newUrl: string) => {
-    Alert.alert(
-      'Environment Switch Instructions',
-      `Update your .env file with:\n\nSIGNALING_SERVER_URL=${newUrl}\n\nThen restart the app (close and reopen or restart Metro bundler).`,
-      [{ text: 'Got it' }]
-    );
-  };
-
   const renderConfigSection = (title: string, config: Record<string, string>) => {
     const isExpanded = expandedSection === title;
     

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Text } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -6,6 +6,7 @@ import { RootStackParamList } from '../../types/navigation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../config/firebase';
+import { getCachedModelSettings, subscribeModelSettings, type ModelSettings } from '../../services/ModelSettings';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -14,6 +15,32 @@ interface Props {
 }
 
 export default function SettingsScreen({ navigation }: Props) {
+  const [modelSettings, setModelSettings] = useState<ModelSettings>(getCachedModelSettings());
+
+  useEffect(() => {
+    const unsubscribe = subscribeModelSettings((settings) => {
+      setModelSettings(settings);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  const modelSubtitle = useMemo(() => {
+    const modelName = modelSettings.manualModelName;
+    const vadName = modelSettings.manualVadName;
+    if (modelName && vadName) {
+      return `Model: ${modelName} • Detector: ${vadName}`;
+    }
+    if (!modelName && !vadName) {
+      return 'No model or detector imported';
+    }
+    if (!modelName) {
+      return vadName ? `Model missing • Detector: ${vadName}` : 'Model missing';
+    }
+    return vadName ? `Model: ${modelName} • Detector missing` : `Model: ${modelName} • Detector missing`;
+  }, [modelSettings.manualModelName, modelSettings.manualVadName]);
+
   const LogOut = async (): Promise<void> => {
     Alert.alert(
       "Sign Out",
@@ -36,40 +63,48 @@ export default function SettingsScreen({ navigation }: Props) {
     );
   };
 
-  const settingsOptions = [
+  const settingsOptions = useMemo(() => ([
     {
-      id: 1,
+      id: 'model',
+      title: 'Speech model',
+      subtitle: modelSubtitle,
+      icon: 'cloud-upload-outline' as const,
+      color: '#22d3ee',
+      onPress: () => navigation.navigate('ModelSettings'),
+    },
+    {
+      id: 'notifications',
       title: 'Notifications',
       subtitle: 'Manage call notifications',
       icon: 'notifications-outline' as const,
       color: '#667eea',
-      onPress: () => {}
+      onPress: () => {},
     },
     {
-      id: 2,
+      id: 'av',
       title: 'Audio & Video',
       subtitle: 'Camera and microphone settings',
       icon: 'videocam-outline' as const,
       color: '#10b981',
-      onPress: () => {}
+      onPress: () => {},
     },
     {
-      id: 3,
+      id: 'privacy',
       title: 'Privacy',
       subtitle: 'Privacy and security settings',
       icon: 'shield-outline' as const,
       color: '#f59e0b',
-      onPress: () => {}
+      onPress: () => {},
     },
     {
-      id: 4,
+      id: 'about',
       title: 'About',
       subtitle: 'App version and information',
       icon: 'information-circle-outline' as const,
       color: '#8b5cf6',
-      onPress: () => {}
+      onPress: () => {},
     },
-  ];
+  ]), [modelSubtitle, navigation]);
 
   return (
     <View style={styles.container}>
