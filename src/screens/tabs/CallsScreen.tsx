@@ -15,7 +15,6 @@ interface Props {
 
 export default function CallsScreen({ navigation }: Props) {
   const [id, setID] = useState<string>('');
-  const [activeFeature, setActiveFeature] = useState<string>('instant');
   const textInputRef = useRef<TextInput>(null);
   const { colors } = useTheme();
 
@@ -58,7 +57,7 @@ export default function CallsScreen({ navigation }: Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -67,124 +66,46 @@ export default function CallsScreen({ navigation }: Props) {
         automaticallyAdjustKeyboardInsets={true}
         nestedScrollEnabled={false}
       >
-        <View 
-          style={styles.heroSection}
-        >
-          <View style={[styles.heroContent, { backgroundColor: colors.surface }]}>
-            <View style={styles.heroHeader}>
-              <View style={[styles.heroIcon, { backgroundColor: colors.primaryLight }]}>
-                <Ionicons name="videocam" size={28} color={colors.primary} />
-              </View>
-              <View style={[styles.liveBadge, { backgroundColor: colors.error }]}>
-                <View style={[styles.liveDot, { backgroundColor: colors.textInverse }]} />
-                <Text style={[styles.liveText, { color: colors.textInverse }]}>LIVE TRANSLATION</Text>
-              </View>
-            </View>
-            <Text style={[styles.heroTitle, { color: colors.text }]}>WhisperLang Video</Text>
-            <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>Connect with anyone, anywhere in the world with real-time translation in over 30 languages</Text>
-            
-            <View style={[styles.featureToggle, { backgroundColor: colors.backgroundTertiary }]}>
-              <TouchableOpacity
-                style={[styles.toggleButton, activeFeature === 'instant' && { backgroundColor: colors.primary }]}
-                onPress={() => setActiveFeature('instant')}
+        <View style={styles.actionsSection}>
+          <View style={styles.instantActions}>
+            <TouchableOpacity
+              style={styles.primaryActionCard}
+              onPress={createMeeting}
+            >
+              <LinearGradient
+                colors={colors.gradient1}
+                style={styles.primaryActionGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
               >
-                <Ionicons name="flash" size={16} color={activeFeature === 'instant' ? colors.textInverse : colors.primary} />
-                <Text style={[styles.toggleText, { color: colors.primary }, activeFeature === 'instant' && { color: colors.textInverse }]}>
-                  Instant Call
-                </Text>
+                <Ionicons name="videocam" size={32} color={colors.textInverse} />
+                <Text style={[styles.primaryActionTitle, { color: colors.textInverse }]}>Start a meeting</Text>
+                <Text style={styles.primaryActionSubtitle}>Begin translating immediately</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={styles.secondaryActions}>
+              <TouchableOpacity
+                style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => {}}
+              >
+                <View style={styles.secondaryActionContent}>
+                  <Ionicons name="mic" size={24} color={colors.success} />
+                  <Text style={[styles.secondaryActionTitle, { color: colors.text }]}>Voice Only</Text>
+                </View>
               </TouchableOpacity>
+
               <TouchableOpacity
-                style={[styles.toggleButton, activeFeature === 'scheduled' && { backgroundColor: colors.primary }]}
-                onPress={() => setActiveFeature('scheduled')}
+                style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => {}}
               >
-                <Ionicons name="calendar" size={16} color={activeFeature === 'scheduled' ? colors.textInverse : colors.primary} />
-                <Text style={[styles.toggleText, { color: colors.primary }, activeFeature === 'scheduled' && { color: colors.textInverse }]}>
-                  Schedule
-                </Text>
+                <View style={styles.secondaryActionContent}>
+                  <Ionicons name="people" size={24} color={colors.warning} />
+                  <Text style={[styles.secondaryActionTitle, { color: colors.text }]}>Group Call</Text>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-
-        <View 
-          style={styles.actionsSection}
-        >
-          {activeFeature === 'instant' ? (
-            <View style={styles.instantActions}>
-              <TouchableOpacity
-                style={styles.primaryActionCard}
-                onPress={createMeeting}
-              >
-                <LinearGradient
-                  colors={colors.gradient1}
-                  style={styles.primaryActionGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Ionicons name="videocam" size={32} color={colors.textInverse} />
-                  <Text style={[styles.primaryActionTitle, { color: colors.textInverse }]}>Start a meeting</Text>
-                  <Text style={styles.primaryActionSubtitle}>Begin translating immediately</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-              
-              <View style={styles.secondaryActions}>
-                <TouchableOpacity
-                  style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  onPress={() => {}}
-                >
-                  <View style={styles.secondaryActionContent}>
-                    <Ionicons name="mic" size={24} color={colors.success} />
-                    <Text style={[styles.secondaryActionTitle, { color: colors.text }]}>Voice Only</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  onPress={() => {}}
-                >
-                  <View style={styles.secondaryActionContent}>
-                    <Ionicons name="people" size={24} color={colors.warning} />
-                    <Text style={[styles.secondaryActionTitle, { color: colors.text }]}>Group Call</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.scheduledActions}>
-              <TouchableOpacity
-                style={styles.scheduleCard}
-                onPress={() => {}}
-              >
-                <LinearGradient
-                  colors={colors.gradient6}
-                  style={styles.scheduleGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Ionicons name="calendar-outline" size={28} color={colors.textInverse} />
-                  <Text style={[styles.scheduleTitle, { color: colors.textInverse }]}>Schedule Meeting</Text>
-                  <Text style={styles.scheduleSubtitle}>Plan ahead with calendar integration</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-              
-              <View style={[styles.upcomingMeetings, { backgroundColor: colors.surface }]}>
-                <Text style={[styles.upcomingTitle, { color: colors.text }]}>Upcoming Meetings</Text>
-                <View style={[styles.meetingCard, { backgroundColor: colors.backgroundTertiary }]}>
-                  <View style={styles.meetingTime}>
-                    <Text style={[styles.meetingTimeText, { color: colors.primary }]}>2:30 PM</Text>
-                    <Text style={[styles.meetingDate, { color: colors.textSecondary }]}>Today</Text>
-                  </View>
-                  <View style={styles.meetingInfo}>
-                    <Text style={[styles.meetingTitle, { color: colors.text }]}>Team Sync</Text>
-                    <Text style={[styles.meetingParticipants, { color: colors.textSecondary }]}>3 participants</Text>
-                  </View>
-                  <TouchableOpacity style={[styles.joinEarlyButton, { backgroundColor: colors.primary }]}>
-                    <Text style={[styles.joinEarlyText, { color: colors.textInverse }]}>Join</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          )}
         </View>
 
         <View style={styles.joinSection}>
@@ -304,81 +225,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
   },
-  heroSection: {
-    marginBottom: 24,
-  },
-  heroContent: {
-    borderRadius: 24,
-    padding: 32,
-    alignItems: 'center',
-  },
-  heroHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 20,
-  },
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  liveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  liveText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  heroTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  heroSubtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  featureToggle: {
-    flexDirection: 'row',
-    borderRadius: 12,
-    padding: 4,
-  },
-  toggleButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  toggleButtonActive: {
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  toggleTextActive: {
-  },
   actionsSection: {
     marginBottom: 24,
   },
@@ -422,75 +268,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginTop: 8,
-  },
-  scheduledActions: {
-    gap: 20,
-  },
-  scheduleCard: {
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  scheduleGradient: {
-    padding: 28,
-    alignItems: 'center',
-  },
-  scheduleTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  scheduleSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-  },
-  upcomingMeetings: {
-    borderRadius: 16,
-    padding: 20,
-  },
-  upcomingTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  meetingCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    padding: 16,
-  },
-  meetingTime: {
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  meetingTimeText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  meetingDate: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  meetingInfo: {
-    flex: 1,
-  },
-  meetingTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  meetingParticipants: {
-    fontSize: 14,
-  },
-  joinEarlyButton: {
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  joinEarlyText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   joinSection: {
     marginBottom: 24,
