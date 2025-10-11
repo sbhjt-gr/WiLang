@@ -99,7 +99,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     }
     
     try {
-      const message = `Join my WhisperLang video call!\n\nJoin Code: ${currentMeetingId}\n\nDownload WhisperLang and enter this code to join the call with real-time translation.`;
+      const message = `Join my WiLang video call!\n\nJoin Code: ${currentMeetingId}\n\nDownload WiLang and enter this code to join the call with real-time translation.`;
       
       await Share.share({
         message,

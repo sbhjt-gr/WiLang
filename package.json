@@ -1,5 +1,5 @@
 {
-  "name": "whisperlang",
+  "name": "wilang",
   "version": "1.2.2",
   "private": true,
   "main": "expo/AppEntry.ts",
@@ -10,6 +10,7 @@
     "web": "expo start --web",
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios",
+    "generate:icons": "node scripts/generate-icons.js",
     "lint": "eslint .",
     "test": "jest"
   },
@@ -61,7 +62,6 @@
     "react-native-sound": "^0.11.2",
     "react-native-svg": "15.11.2",
     "react-native-vector-icons": "^10.1.0",
-    "react-native-web": "^0.20.0",
     "react-native-webrtc": "^118.0.7",
     "socket.io-client": "^4.7.4",
     "whisper.rn": "^0.5.0"
@@ -82,6 +82,7 @@
     "jest-expo": "~52.0.6",
     "prettier": "^3.2.5",
     "react-test-renderer": "18.2.0",
+    "sharp": "^0.34.4",
     "typescript": "~5.3.3"
   },
   "engines": {

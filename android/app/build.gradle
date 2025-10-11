@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.gorai.whisperlang'
+    namespace 'com.gorai.WiLang'
     defaultConfig {
-        applicationId 'com.gorai.whisperlang'
+        applicationId 'com.gorai.WiLang'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

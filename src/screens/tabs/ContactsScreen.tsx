@@ -187,7 +187,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
         <Ionicons name="people-outline" size={64} color={colors.primary} style={styles.permissionIcon} />
         <Text style={[styles.permissionTitle, { color: colors.text }]}>Access Your Contacts</Text>
         <Text style={[styles.permissionDescription, { color: colors.textSecondary }]}>
-          WhisperLang needs permission to access your contacts to help you connect with friends and family.
+          WiLang needs permission to access your contacts to help you connect with friends and family.
         </Text>
         <TouchableOpacity
           style={styles.permissionButton}

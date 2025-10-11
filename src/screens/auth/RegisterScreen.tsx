@@ -242,7 +242,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.welcomeTitle}>Join WhisperLang</Text>
+            <Text style={styles.welcomeTitle}>Join WiLang</Text>
             <Text style={styles.welcomeSubtitle}>Create your account to get started</Text>
           </View>
 

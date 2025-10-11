@@ -64,11 +64,11 @@ export default function TabNavigator({ navigation, route }: Props) {
 
   const getHeaderTitle = () => {
     switch (activeTab) {
-      case 'calls': return 'WhisperLang';
+      case 'calls': return 'WiLang';
       case 'contacts': return 'Contacts';
       case 'history': return 'Call History';
       case 'settings': return 'Settings';
-      default: return 'WhisperLang';
+      default: return 'WiLang';
     }
   };
 

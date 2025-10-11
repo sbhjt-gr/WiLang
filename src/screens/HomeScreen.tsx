@@ -95,7 +95,7 @@ export default function HomeScreen({ navigation, route }: Props) {
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.welcomeTitle}>Welcome to WhisperLang</Text>
+            <Text style={styles.welcomeTitle}>Welcome to WiLang</Text>
             <Text style={styles.welcomeSubtitle}>Connect through secure video calls</Text>
           </View>
 

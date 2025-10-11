@@ -2,8 +2,8 @@ require('dotenv').config();
 
 export default {
   expo: {
-    name: "WhisperLang",
-    slug: "whisperlang",
+    name: "WiLang",
+    slug: "wilang",
     version: "1.0.1",
     orientation: "portrait",
     icon: "./assets/icon.png",
@@ -21,12 +21,12 @@ export default {
     ],
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.gorai.whisperlang",
-      googleServicesFile: "./ios/WhisperLang/GoogleService-Info.plist",
+      bundleIdentifier: "com.gorai.WiLang",
+      googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
       infoPlist: {
-        NSContactsUsageDescription: "WhisperLang needs access to your contacts to help you connect with friends and family for video calls.",
-        NSCameraUsageDescription: "WhisperLang needs access to your camera for video calls.",
-        NSMicrophoneUsageDescription: "WhisperLang needs access to your microphone for voice and video calls.",
+        NSContactsUsageDescription: "WiLang needs access to your contacts to help you connect with friends and family for video calls.",
+        NSCameraUsageDescription: "WiLang needs access to your camera for video calls.",
+        NSMicrophoneUsageDescription: "WiLang needs access to your microphone for voice and video calls.",
         CFBundleURLTypes: [
           {
             CFBundleURLName: "google",
@@ -34,14 +34,14 @@ export default {
           }
         ]
       },
-      scheme: "com.gorai.whisperlang"
+      scheme: "com.gorai.WiLang"
     },
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#3754AB"
       },
-      package: "com.gorai.whisperlang",
+      package: "com.gorai.WiLang",
       googleServicesFile: "./android/app/google-services.json",
       permissions: [
         "android.permission.READ_CONTACTS",
@@ -81,7 +81,7 @@ export default {
       [
         "expo-contacts",
         {
-          contactsPermission: "WhisperLang needs access to your contacts to help you connect with friends and family for video calls."
+          contactsPermission: "WiLang needs access to your contacts to help you connect with friends and family for video calls."
         }
       ]
     ]
