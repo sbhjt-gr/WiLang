@@ -7,6 +7,8 @@ import type { RealtimeTranscribeEvent, AudioStreamData } from 'whisper.rn/realti
 type RealtimeTranscriberCtor = typeof import('whisper.rn/realtime-transcription').RealtimeTranscriber;
 type AudioPcmStreamAdapterCtor = typeof import('whisper.rn/realtime-transcription/adapters/AudioPcmStreamAdapter').AudioPcmStreamAdapter;
 import { clearManualModel, clearManualVad, getCachedModelSettings, subscribeModelSettings, type ModelSettings } from '../services/ModelSettings';
+import { getCachedSpeechSettings, subscribeSpeechSettings, type SpeechRecognitionSettings } from '../services/SpeechRecognitionSettings';
+import { useNativeSpeechRecognition } from './useNativeSpeechRecognition';
 
 const { RealtimeTranscriber } = require('whisper.rn/lib/commonjs/realtime-transcription') as {
   RealtimeTranscriber: RealtimeTranscriberCtor;
@@ -53,6 +55,7 @@ export const useRealtimeSubtitle = (
   active: boolean,
   options?: UseRealtimeSubtitleOptions,
 ) => {
+  const [speechSettings, setSpeechSettings] = useState<SpeechRecognitionSettings>(getCachedSpeechSettings());
   const [segments, setSegments] = useState<SubtitleSegment[]>([]);
   const [status, setStatus] = useState<HookStatus>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -66,12 +69,26 @@ export const useRealtimeSubtitle = (
   const activeModelPathRef = useRef<string | null>(null);
   const activeVadPathRef = useRef<string | null>(null);
 
+  const nativeSpeech = useNativeSpeechRecognition(active && speechSettings.engine === 'native', options);
+
   useEffect(() => {
     const unsubscribe = subscribeModelSettings((settings) => {
       if (unmountedRef.current) {
         return;
       }
       setModelSettings(settings);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeSpeechSettings((settings) => {
+      if (unmountedRef.current) {
+        return;
+      }
+      setSpeechSettings(settings);
     });
     return () => {
       unsubscribe();
@@ -301,12 +318,12 @@ export const useRealtimeSubtitle = (
   }, [modelSettings, options?.language, stopTranscription]);
 
   useEffect(() => {
-    if (active) {
+    if (speechSettings.engine === 'whisper' && active) {
       startTranscription();
-    } else {
+    } else if (speechSettings.engine === 'whisper') {
       stopTranscription();
     }
-  }, [active, startTranscription, stopTranscription]);
+  }, [active, speechSettings.engine, startTranscription, stopTranscription]);
 
   useEffect(() => {
     return () => {
@@ -321,6 +338,14 @@ export const useRealtimeSubtitle = (
     }
   }, [active]);
 
+  useEffect(() => {
+    if (speechSettings.engine === 'native' && nativeSpeech.segments) {
+      setSegments(nativeSpeech.segments);
+      setStatus(nativeSpeech.status);
+      setError(nativeSpeech.error);
+    }
+  }, [speechSettings.engine, nativeSpeech.segments, nativeSpeech.status, nativeSpeech.error]);
+
   const latestSubtitle = useMemo(() => {
     if (segments.length === 0) {
       return '';
@@ -333,7 +358,7 @@ export const useRealtimeSubtitle = (
     segments,
     status,
     error,
-    start: startTranscription,
-    stop: stopTranscription,
+    start: speechSettings.engine === 'native' ? nativeSpeech.start : startTranscription,
+    stop: speechSettings.engine === 'native' ? nativeSpeech.stop : stopTranscription,
   };
 };

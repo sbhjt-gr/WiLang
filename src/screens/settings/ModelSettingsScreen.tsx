@@ -9,6 +9,7 @@ import * as FileSystem from 'expo-file-system';
 import RNFS from 'react-native-fs';
 import { RootStackParamList } from '../../types/navigation';
 import { clearManualModel, clearManualVad, getCachedModelSettings, setManualModel, setManualVad, subscribeModelSettings, type ModelSettings } from '../../services/ModelSettings';
+import { getCachedSpeechSettings, setSpeechEngine, subscribeSpeechSettings, type SpeechEngine, type SpeechRecognitionSettings } from '../../services/SpeechRecognitionSettings';
 import { initWhisper, initWhisperVad } from 'whisper.rn';
 import type { WhisperContext, WhisperVadContext, RealtimeTranscribeEvent } from 'whisper.rn';
 type RealtimeTranscriberCtor = typeof import('whisper.rn/realtime-transcription').RealtimeTranscriber;
@@ -44,6 +45,7 @@ const formatBytes = (bytes?: number | null) => {
 
 export default function ModelSettingsScreen({ navigation }: Props) {
   const [settings, setSettings] = useState<ModelSettings>(getCachedModelSettings());
+  const [speechSettings, setSpeechSettings] = useState<SpeechRecognitionSettings>(getCachedSpeechSettings());
   const [modelFileSize, setModelFileSize] = useState<string>('');
   const [vadFileSize, setVadFileSize] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -60,6 +62,15 @@ export default function ModelSettingsScreen({ navigation }: Props) {
   useEffect(() => {
     const unsubscribe = subscribeModelSettings((next) => {
       setSettings(next);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeSpeechSettings((next) => {
+      setSpeechSettings(next);
     });
     return () => {
       unsubscribe();
@@ -357,6 +368,10 @@ export default function ModelSettingsScreen({ navigation }: Props) {
     setIsTesting(false);
   }, []);
 
+  const handleToggleSpeechEngine = useCallback(async (engine: SpeechEngine) => {
+    await setSpeechEngine(engine);
+  }, []);
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -376,6 +391,39 @@ export default function ModelSettingsScreen({ navigation }: Props) {
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.engineCard}>
+          <Text style={styles.engineTitle}>Speech engine</Text>
+          <Text style={styles.engineSubtitle}>Choose which engine to use for real-time subtitles.</Text>
+          <View style={styles.engineButtons}>
+            <TouchableOpacity
+              style={[styles.engineButton, speechSettings.engine === 'whisper' ? styles.engineButtonActive : undefined]}
+              onPress={() => handleToggleSpeechEngine('whisper')}
+            >
+              <Ionicons
+                name="hardware-chip-outline"
+                size={20}
+                color={speechSettings.engine === 'whisper' ? '#6366f1' : '#6b7280'}
+              />
+              <Text style={[styles.engineButtonText, speechSettings.engine === 'whisper' ? styles.engineButtonTextActive : undefined]}>
+                whisper_local
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.engineButton, speechSettings.engine === 'native' ? styles.engineButtonActive : undefined]}
+              onPress={() => handleToggleSpeechEngine('native')}
+            >
+              <Ionicons
+                name="cloud-outline"
+                size={20}
+                color={speechSettings.engine === 'native' ? '#6366f1' : '#6b7280'}
+              />
+              <Text style={[styles.engineButtonText, speechSettings.engine === 'native' ? styles.engineButtonTextActive : undefined]}>
+                native_cloud
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Current model</Text>
           <Text style={styles.cardSubtitle}>{modelStatusLabel}</Text>
@@ -662,5 +710,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1f2937',
     lineHeight: 20,
+  },
+  engineCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#6366f1',
+  },
+  engineTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  engineSubtitle: {
+    fontSize: 14,
+    color: '#4b5563',
+    marginBottom: 16,
+  },
+  engineButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  engineButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+  },
+  engineButtonActive: {
+    backgroundColor: '#eef2ff',
+    borderColor: '#6366f1',
+  },
+  engineButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  engineButtonTextActive: {
+    color: '#6366f1',
   },
 });

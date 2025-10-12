@@ -27,6 +27,7 @@ export default {
         NSContactsUsageDescription: "WiLang needs access to your contacts to help you connect with friends and family for video calls.",
         NSCameraUsageDescription: "WiLang needs access to your camera for video calls.",
         NSMicrophoneUsageDescription: "WiLang needs access to your microphone for voice and video calls.",
+        NSSpeechRecognitionUsageDescription: "WiLang needs access to speech recognition for real-time subtitle transcription.",
         CFBundleURLTypes: [
           {
             CFBundleURLName: "google",
@@ -82,6 +83,13 @@ export default {
         "expo-contacts",
         {
           contactsPermission: "WiLang needs access to your contacts to help you connect with friends and family for video calls."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          microphonePermission: "WiLang needs microphone access for real-time speech transcription.",
+          speechRecognitionPermission: "WiLang needs speech recognition access for real-time subtitle transcription."
         }
       ]
     ]

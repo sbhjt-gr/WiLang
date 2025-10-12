@@ -5254,6 +5254,11 @@ expo-router@~4.0.21:
     semver "~7.6.3"
     server-only "^0.0.1"
 
+expo-speech-recognition@^2.1.5:
+  version "2.1.5"
+  resolved "https://registry.yarnpkg.com/expo-speech-recognition/-/expo-speech-recognition-2.1.5.tgz#8dec329b23042a57843071c64fff50c06c69f9a5"
+  integrity sha512-j4eS+bfUNv0r9bhbHmuspJiQYhIUEsTkHJ9ZfVYSQJRC9q8/uqPWojN9q8OpPO5+PQFHCgr54HJuMRhHHQgWkA==
+
 expo-splash-screen@^0.29.22:
   version "0.29.24"
   resolved "https://registry.yarnpkg.com/expo-splash-screen/-/expo-splash-screen-0.29.24.tgz#4e5f6d576d3fbb37c5e3e4ee6d3f3b3ece350f75"

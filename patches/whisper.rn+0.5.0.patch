@@ -1,19 +1,19 @@
 diff --git a/node_modules/whisper.rn/cpp/jsi/RNWhisperJSI.cpp b/node_modules/whisper.rn/cpp/jsi/RNWhisperJSI.cpp
-index 1234567..abcdefg 100644
+index de557dc..9b32bbc 100644
 --- a/node_modules/whisper.rn/cpp/jsi/RNWhisperJSI.cpp
 +++ b/node_modules/whisper.rn/cpp/jsi/RNWhisperJSI.cpp
 @@ -99,6 +99,9 @@ public:
  static ContextManager<whisper_context> contextManager("Whisper");
  static ContextManager<whisper_vad_context> vadContextManager("VAD");
-
+ 
 +static std::unordered_map<int, std::shared_ptr<std::mutex>> vadMutexMap;
 +static std::mutex vadMutexMapLock;
 +
  // Context management functions
  void addContext(int contextId, long contextPtr) {
      contextManager.add(contextId, contextPtr);
-@@ -110,10 +113,20 @@ void removeContext(int contextId) {
-
+@@ -110,10 +113,18 @@ void removeContext(int contextId) {
+ 
  void addVadContext(int contextId, long vadContextPtr) {
      vadContextManager.add(contextId, vadContextPtr);
 +    {
@@ -21,7 +21,7 @@ index 1234567..abcdefg 100644
 +        vadMutexMap[contextId] = std::make_shared<std::mutex>();
 +    }
  }
-
+ 
  void removeVadContext(int contextId) {
      vadContextManager.remove(contextId);
 +    {
@@ -29,12 +29,21 @@ index 1234567..abcdefg 100644
 +        vadMutexMap.erase(contextId);
 +    }
  }
-
+ 
  long getContextPtr(int contextId) {
-@@ -615,6 +628,24 @@ void installJSIBindings(
+@@ -612,7 +623,6 @@ void installJSIBindings(
+                            std::shared_ptr<facebook::react::CallInvoker> callInvoker,
+                            std::shared_ptr<Runtime> safeRuntime) {
+ 
+-                            // Get VAD context
+                             auto vadContext = vadContextManager.getTyped(contextId);
+                             if (!vadContext) {
+                                 callInvoker->invokeAsync([rejectPtr, safeRuntime, contextId]() {
+@@ -623,7 +633,26 @@ void installJSIBindings(
                                  return;
                              }
-
+ 
+-                            // Validate audio data
 +                            std::shared_ptr<std::mutex> vadMutex;
 +                            {
 +                                std::lock_guard<std::mutex> lock(vadMutexMapLock);
@@ -55,14 +64,13 @@ index 1234567..abcdefg 100644
 +
 +                            std::lock_guard<std::mutex> vadLock(*vadMutex);
 +
--                            // Validate audio data
                              if (audioResult.data.empty() || audioResult.count <= 0) {
                                  logError("Invalid audio data: size=%zu, count=%d", audioResult.data.size(), audioResult.count);
                                  callInvoker->invokeAsync([rejectPtr, safeRuntime]() {
-@@ -627,7 +658,6 @@ void installJSIBindings(
+@@ -637,7 +666,6 @@ void installJSIBindings(
                              logInfo("Starting whisper_vad_detect_speech: vadContext=%p, audioDataCount=%d",
                                     vadContext, audioResult.count);
-
+ 
 -                            // Perform VAD detection with error handling
                              bool isSpeech = false;
                              try {
