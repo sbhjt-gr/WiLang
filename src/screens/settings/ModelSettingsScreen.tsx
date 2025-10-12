@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,18 @@ import * as FileSystem from 'expo-file-system';
 import RNFS from 'react-native-fs';
 import { RootStackParamList } from '../../types/navigation';
 import { clearManualModel, clearManualVad, getCachedModelSettings, setManualModel, setManualVad, subscribeModelSettings, type ModelSettings } from '../../services/ModelSettings';
+import { initWhisper, initWhisperVad } from 'whisper.rn';
+import type { WhisperContext, WhisperVadContext, RealtimeTranscribeEvent } from 'whisper.rn';
+type RealtimeTranscriberCtor = typeof import('whisper.rn/realtime-transcription').RealtimeTranscriber;
+type AudioPcmStreamAdapterCtor = typeof import('whisper.rn/realtime-transcription/adapters/AudioPcmStreamAdapter').AudioPcmStreamAdapter;
+
+const { RealtimeTranscriber } = require('whisper.rn/lib/commonjs/realtime-transcription') as {
+  RealtimeTranscriber: RealtimeTranscriberCtor;
+};
+
+const { AudioPcmStreamAdapter } = require('whisper.rn/lib/commonjs/realtime-transcription/adapters/AudioPcmStreamAdapter') as {
+  AudioPcmStreamAdapter: AudioPcmStreamAdapterCtor;
+};
 
 const STORAGE_DIR_URI = `${FileSystem.documentDirectory ?? ''}whisperlang/models`;
 
@@ -35,6 +47,11 @@ export default function ModelSettingsScreen({ navigation }: Props) {
   const [modelFileSize, setModelFileSize] = useState<string>('');
   const [vadFileSize, setVadFileSize] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string>('');
+  const testContextRef = useRef<WhisperContext | null>(null);
+  const testVadContextRef = useRef<WhisperVadContext | null>(null);
+  const testTranscriberRef = useRef<InstanceType<RealtimeTranscriberCtor> | null>(null);
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -235,6 +252,111 @@ export default function ModelSettingsScreen({ navigation }: Props) {
     return 'No detector imported';
   }, [settings.manualVadName]);
 
+  const handleTestSpeech = useCallback(async () => {
+    if (isTesting || !settings.manualModelPath || !settings.manualVadPath) {
+      return;
+    }
+    try {
+      setIsTesting(true);
+      setTestResult('');
+
+      if (testContextRef.current) {
+        try {
+          await testContextRef.current.release();
+        } catch {}
+        testContextRef.current = null;
+      }
+      if (testVadContextRef.current) {
+        try {
+          await testVadContextRef.current.release();
+        } catch {}
+        testVadContextRef.current = null;
+      }
+      if (testTranscriberRef.current) {
+        try {
+          await testTranscriberRef.current.stop();
+          await testTranscriberRef.current.release();
+        } catch {}
+        testTranscriberRef.current = null;
+      }
+
+      const modelUri = `file://${settings.manualModelPath}`;
+      const vadUri = `file://${settings.manualVadPath}`;
+
+      const ctx = await initWhisper({ filePath: modelUri });
+      testContextRef.current = ctx;
+
+      const vadCtx = await initWhisperVad({ filePath: vadUri, useGpu: true });
+      testVadContextRef.current = vadCtx;
+
+      const audioStream = new AudioPcmStreamAdapter();
+
+      const transcriber = new RealtimeTranscriber(
+        {
+          whisperContext: ctx,
+          vadContext: vadCtx,
+          audioStream,
+          fs: RNFS,
+        },
+        {
+          audioSliceSec: 3,
+          audioMinSec: 0.5,
+          vadPreset: 'default',
+          autoSliceOnSpeechEnd: true,
+          autoSliceThreshold: 0.3,
+          transcribeOptions: {
+            language: 'en',
+            translate: false,
+          },
+        },
+        {
+          onTranscribe: (event: RealtimeTranscribeEvent) => {
+            if (event.type !== 'transcribe') {
+              return;
+            }
+            const result = event.data?.result?.trim();
+            if (result) {
+              setTestResult((prev) => (prev ? `${prev}\n${result}` : result));
+            }
+          },
+          onError: (message: string | Error) => {
+            const msg = typeof message === 'string' ? message : message.message;
+            Alert.alert('transcription_error', msg);
+          },
+        },
+      );
+
+      testTranscriberRef.current = transcriber;
+      await transcriber.start();
+
+      Alert.alert('test_started', 'Speak into the microphone. Transcription will appear below.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      Alert.alert('test_failed', message);
+      setTestResult('');
+      setIsTesting(false);
+    }
+  }, [isTesting, settings.manualModelPath, settings.manualVadPath]);
+
+  const handleStopTest = useCallback(async () => {
+    try {
+      if (testTranscriberRef.current) {
+        await testTranscriberRef.current.stop();
+        await testTranscriberRef.current.release();
+        testTranscriberRef.current = null;
+      }
+      if (testContextRef.current) {
+        await testContextRef.current.release();
+        testContextRef.current = null;
+      }
+      if (testVadContextRef.current) {
+        await testVadContextRef.current.release();
+        testVadContextRef.current = null;
+      }
+    } catch {}
+    setIsTesting(false);
+  }, []);
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -288,6 +410,38 @@ export default function ModelSettingsScreen({ navigation }: Props) {
         >
           <Text style={styles.secondaryButtonText}>Remove model</Text>
         </TouchableOpacity>
+
+        <View style={styles.testCard}>
+          <View style={styles.testHeader}>
+            <Ionicons name="mic-outline" size={24} color="#6366f1" />
+            <Text style={styles.testTitle}>Test speech output</Text>
+          </View>
+          <Text style={styles.testSubtitle}>
+            Transcribe a test audio file to verify the model works correctly.
+          </Text>
+          <View style={styles.testButtonRow}>
+            <TouchableOpacity
+              style={[styles.testButton, (!settings.manualModelPath || !settings.manualVadPath || isTesting) ? styles.testButtonDisabled : undefined]}
+              onPress={handleTestSpeech}
+              disabled={!settings.manualModelPath || !settings.manualVadPath || isTesting}
+            >
+              <Ionicons name="play-circle-outline" size={20} color="#6366f1" />
+              <Text style={styles.testButtonText}>start_test</Text>
+            </TouchableOpacity>
+            {isTesting ? (
+              <TouchableOpacity style={styles.stopButton} onPress={handleStopTest}>
+                <Ionicons name="stop-circle-outline" size={20} color="#ef4444" />
+                <Text style={styles.stopButtonText}>stop</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          {testResult ? (
+            <View style={styles.testResultCard}>
+              <Text style={styles.testResultLabel}>output</Text>
+              <Text style={styles.testResultText}>{testResult}</Text>
+            </View>
+          ) : null}
+        </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Current detector</Text>
@@ -422,5 +576,91 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#1f2937',
+  },
+  testCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#e0e7ff',
+  },
+  testHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  testTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1f2937',
+  },
+  testSubtitle: {
+    fontSize: 14,
+    color: '#4b5563',
+    marginBottom: 16,
+  },
+  testButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  testButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#eef2ff',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+  },
+  testButtonDisabled: {
+    opacity: 0.5,
+  },
+  testButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6366f1',
+  },
+  stopButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  stopButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#ef4444',
+  },
+  testResultCard: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  testResultLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  testResultText: {
+    fontSize: 14,
+    color: '#1f2937',
+    lineHeight: 20,
   },
 });

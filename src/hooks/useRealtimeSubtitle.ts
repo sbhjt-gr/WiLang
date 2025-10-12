@@ -237,11 +237,11 @@ export const useRealtimeSubtitle = (
           fs: RNFS,
         },
         {
-          audioSliceSec: 12,
-          audioMinSec: 1,
+          audioSliceSec: 3,
+          audioMinSec: 0.5,
           vadPreset: 'default',
           autoSliceOnSpeechEnd: true,
-          autoSliceThreshold: 0.5,
+          autoSliceThreshold: 0.3,
           transcribeOptions: {
             language,
             translate: false,
