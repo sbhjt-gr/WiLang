@@ -68,9 +68,10 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const controlsTimer = useRef<NodeJS.Timeout | null>(null);
   const {
     subtitle,
+    segments,
     status: subtitleStatus,
     error: subtitleError,
-  } = useRealtimeSubtitle(Boolean(localStream), { language: 'en' });
+  } = useRealtimeSubtitle(Boolean(localStream)); // Auto-detect language
 
   const toggleControls = useCallback(() => {
     if (controlsTimer.current) {
@@ -428,6 +429,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         text={subtitle}
         status={subtitleStatus}
         error={subtitleError}
+        isPartial={segments.length > 0 && segments[segments.length - 1].id.startsWith('partial-')}
       />
 
       {controlsVisible && (

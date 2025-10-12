@@ -8,6 +8,7 @@ type RealtimeTranscriberCtor = typeof import('whisper.rn/realtime-transcription'
 type AudioPcmStreamAdapterCtor = typeof import('whisper.rn/realtime-transcription/adapters/AudioPcmStreamAdapter').AudioPcmStreamAdapter;
 import { clearManualModel, clearManualVad, getCachedModelSettings, subscribeModelSettings, type ModelSettings } from '../services/ModelSettings';
 import { getCachedSpeechSettings, subscribeSpeechSettings, type SpeechRecognitionSettings } from '../services/SpeechRecognitionSettings';
+import { getCachedLanguageSettings, subscribeLanguageSettings, type LanguageSettings } from '../services/LanguageSettings';
 import { useNativeSpeechRecognition } from './useNativeSpeechRecognition';
 
 const { RealtimeTranscriber } = require('whisper.rn/lib/commonjs/realtime-transcription') as {
@@ -56,6 +57,7 @@ export const useRealtimeSubtitle = (
   options?: UseRealtimeSubtitleOptions,
 ) => {
   const [speechSettings, setSpeechSettings] = useState<SpeechRecognitionSettings>(getCachedSpeechSettings());
+  const [languageSettings, setLanguageSettings] = useState<LanguageSettings>(getCachedLanguageSettings());
   const [segments, setSegments] = useState<SubtitleSegment[]>([]);
   const [status, setStatus] = useState<HookStatus>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +91,18 @@ export const useRealtimeSubtitle = (
         return;
       }
       setSpeechSettings(settings);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeLanguageSettings((settings) => {
+      if (unmountedRef.current) {
+        return;
+      }
+      setLanguageSettings(settings);
     });
     return () => {
       unsubscribe();
@@ -244,7 +258,7 @@ export const useRealtimeSubtitle = (
       }
 
       const audioStream = new AudioPcmStreamAdapter();
-      const language = options?.language ?? 'en';
+      const language = options?.language ?? (languageSettings.code === 'auto' ? undefined : languageSettings.code);
 
       const transcriber = new RealtimeTranscriber(
         {
@@ -259,28 +273,45 @@ export const useRealtimeSubtitle = (
           vadPreset: 'default',
           autoSliceOnSpeechEnd: true,
           autoSliceThreshold: 0.3,
+          realtimeTranscriptionOptions: {
+            partialResults: true,
+          },
           transcribeOptions: {
             language,
             translate: false,
+            maxLen: 1,
+            tokenTimestamps: true,
           },
         },
         {
           onTranscribe: (event: RealtimeTranscribeEvent) => {
-            if (event.type !== 'transcribe') {
-              return;
-            }
-            const result = event.data?.result?.trim();
-            if (!result) {
-              return;
-            }
-            setSegments((prev) => {
-              const base = pruneSegments(prev);
-              const last = base[base.length - 1];
-              if (last && last.text === result) {
-                return base;
+            if (event.type === 'transcribe') {
+              const result = event.data?.result?.trim();
+              if (result) {
+                setSegments((prev) => {
+                  const base = pruneSegments(prev);
+                  const last = base[base.length - 1];
+                  if (last && last.text === result) {
+                    return base;
+                  }
+                  return [...base, { id: `${event.sliceIndex}-${Date.now()}`, text: result, timestamp: Date.now() }];
+                });
               }
-              return [...base, { id: `${event.sliceIndex}-${Date.now()}`, text: result, timestamp: Date.now() }];
-            });
+            } else if (event.type === 'partial') {
+              const partial = event.data?.result?.trim();
+              if (partial) {
+                setSegments((prev) => {
+                  const base = pruneSegments(prev);
+                  const lastIndex = base.length - 1;
+                  if (lastIndex >= 0 && base[lastIndex].id.startsWith('partial-')) {
+                    const updated = [...base];
+                    updated[lastIndex] = { ...updated[lastIndex], text: partial, timestamp: Date.now() };
+                    return updated;
+                  }
+                  return [...base, { id: `partial-${Date.now()}`, text: partial, timestamp: Date.now() }];
+                });
+              }
+            }
           },
           onError: (message: string | Error) => {
             if (unmountedRef.current) {
@@ -315,7 +346,7 @@ export const useRealtimeSubtitle = (
         startPromiseRef.current = null;
       });
     await startPromiseRef.current;
-  }, [modelSettings, options?.language, stopTranscription]);
+  }, [modelSettings, languageSettings.code, options?.language, stopTranscription]);
 
   useEffect(() => {
     if (speechSettings.engine === 'whisper' && active) {

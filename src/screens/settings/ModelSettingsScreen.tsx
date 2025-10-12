@@ -10,6 +10,7 @@ import RNFS from 'react-native-fs';
 import { RootStackParamList } from '../../types/navigation';
 import { clearManualModel, clearManualVad, getCachedModelSettings, setManualModel, setManualVad, subscribeModelSettings, type ModelSettings } from '../../services/ModelSettings';
 import { getCachedSpeechSettings, setSpeechEngine, subscribeSpeechSettings, type SpeechEngine, type SpeechRecognitionSettings } from '../../services/SpeechRecognitionSettings';
+import { getCachedLanguageSettings, setLanguageCode, subscribeLanguageSettings, SUPPORTED_LANGUAGES, type LanguageCode, type LanguageSettings } from '../../services/LanguageSettings';
 import { initWhisper, initWhisperVad } from 'whisper.rn';
 import type { WhisperContext, WhisperVadContext, RealtimeTranscribeEvent } from 'whisper.rn';
 type RealtimeTranscriberCtor = typeof import('whisper.rn/realtime-transcription').RealtimeTranscriber;
@@ -46,6 +47,7 @@ const formatBytes = (bytes?: number | null) => {
 export default function ModelSettingsScreen({ navigation }: Props) {
   const [settings, setSettings] = useState<ModelSettings>(getCachedModelSettings());
   const [speechSettings, setSpeechSettings] = useState<SpeechRecognitionSettings>(getCachedSpeechSettings());
+  const [languageSettings, setLanguageSettings] = useState<LanguageSettings>(getCachedLanguageSettings());
   const [modelFileSize, setModelFileSize] = useState<string>('');
   const [vadFileSize, setVadFileSize] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -71,6 +73,15 @@ export default function ModelSettingsScreen({ navigation }: Props) {
   useEffect(() => {
     const unsubscribe = subscribeSpeechSettings((next) => {
       setSpeechSettings(next);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeLanguageSettings((next) => {
+      setLanguageSettings(next);
     });
     return () => {
       unsubscribe();
@@ -315,19 +326,44 @@ export default function ModelSettingsScreen({ navigation }: Props) {
           vadPreset: 'default',
           autoSliceOnSpeechEnd: true,
           autoSliceThreshold: 0.3,
+          realtimeTranscriptionOptions: {
+            partialResults: true,
+          },
           transcribeOptions: {
             language: 'en',
             translate: false,
+            maxLen: 1,
+            tokenTimestamps: true,
           },
         },
         {
           onTranscribe: (event: RealtimeTranscribeEvent) => {
-            if (event.type !== 'transcribe') {
-              return;
-            }
-            const result = event.data?.result?.trim();
-            if (result) {
-              setTestResult((prev) => (prev ? `${prev}\n${result}` : result));
+            if (event.type === 'transcribe') {
+              const result = event.data?.result?.trim();
+              if (result) {
+                setTestResult((prev) => {
+                  const lines = prev.split('\n');
+                  const lastLine = lines[lines.length - 1];
+                  if (lastLine && lastLine.startsWith('[...] ')) {
+                    lines[lines.length - 1] = result;
+                    return lines.join('\n');
+                  }
+                  return prev ? `${prev}\n${result}` : result;
+                });
+              }
+            } else if (event.type === 'partial') {
+              const partial = event.data?.result?.trim();
+              if (partial) {
+                setTestResult((prev) => {
+                  const lines = prev.split('\n');
+                  const lastLine = lines[lines.length - 1];
+                  if (lastLine && lastLine.startsWith('[...] ')) {
+                    lines[lines.length - 1] = `[...] ${partial}`;
+                    return lines.join('\n');
+                  }
+                  return prev ? `${prev}\n[...] ${partial}` : `[...] ${partial}`;
+                });
+              }
             }
           },
           onError: (message: string | Error) => {
@@ -370,6 +406,10 @@ export default function ModelSettingsScreen({ navigation }: Props) {
 
   const handleToggleSpeechEngine = useCallback(async (engine: SpeechEngine) => {
     await setSpeechEngine(engine);
+  }, []);
+
+  const handleLanguageChange = useCallback(async (code: LanguageCode) => {
+    await setLanguageCode(code);
   }, []);
 
   return (
@@ -421,6 +461,32 @@ export default function ModelSettingsScreen({ navigation }: Props) {
                 native_cloud
               </Text>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Subtitle language</Text>
+          <Text style={styles.cardSubtitle}>Choose the language for speech recognition.</Text>
+          <View style={styles.languageGrid}>
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <TouchableOpacity
+                key={lang.code}
+                style={[
+                  styles.languageButton,
+                  languageSettings.code === lang.code ? styles.languageButtonActive : undefined,
+                ]}
+                onPress={() => handleLanguageChange(lang.code)}
+              >
+                <Text
+                  style={[
+                    styles.languageButtonText,
+                    languageSettings.code === lang.code ? styles.languageButtonTextActive : undefined,
+                  ]}
+                >
+                  {lang.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -756,6 +822,32 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   engineButtonTextActive: {
+    color: '#6366f1',
+  },
+  languageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  languageButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  languageButtonActive: {
+    backgroundColor: '#eef2ff',
+    borderColor: '#6366f1',
+  },
+  languageButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  languageButtonTextActive: {
     color: '#6366f1',
   },
 });
