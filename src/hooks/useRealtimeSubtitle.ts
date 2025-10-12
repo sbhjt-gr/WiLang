@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import RNFS from 'react-native-fs';
 import { initWhisper, initWhisperVad } from 'whisper.rn';
 import type { WhisperContext, WhisperVadContext } from 'whisper.rn';
-import type { RealtimeTranscribeEvent } from 'whisper.rn/realtime-transcription';
+import type { RealtimeTranscribeEvent, AudioStreamData } from 'whisper.rn/realtime-transcription';
 type RealtimeTranscriberCtor = typeof import('whisper.rn/realtime-transcription').RealtimeTranscriber;
 type AudioPcmStreamAdapterCtor = typeof import('whisper.rn/realtime-transcription/adapters/AudioPcmStreamAdapter').AudioPcmStreamAdapter;
 import { clearManualModel, clearManualVad, getCachedModelSettings, subscribeModelSettings, type ModelSettings } from '../services/ModelSettings';
@@ -225,8 +225,10 @@ export const useRealtimeSubtitle = (
         } catch {
         }
       }
-  const audioStream = new AudioPcmStreamAdapter();
+
+      const audioStream = new AudioPcmStreamAdapter();
       const language = options?.language ?? 'en';
+
       const transcriber = new RealtimeTranscriber(
         {
           whisperContext: whisperContextRef.current,
@@ -239,7 +241,7 @@ export const useRealtimeSubtitle = (
           audioMinSec: 1,
           vadPreset: 'default',
           autoSliceOnSpeechEnd: true,
-          autoSliceThreshold: 0.6,
+          autoSliceThreshold: 0.5,
           transcribeOptions: {
             language,
             translate: false,
