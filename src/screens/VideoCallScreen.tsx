@@ -19,7 +19,6 @@ import { RouteProp } from '@react-navigation/native';
 import { auth } from "../config/firebase";
 import { RootStackParamList } from '../types/navigation';
 import {WebRTCContext} from '../store/WebRTCContext';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { User } from '../store/WebRTCTypes';
 import ParticipantGrid from '../components/ParticipantGrid';
@@ -307,53 +306,39 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             />
           </View>
         ) : (
-          <View 
+          <View
             key="featured-waiting-view"
             style={styles.waitingContainer}
           >
-            <LinearGradient
-              colors={['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.2)']}
-              style={styles.waitingGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.waitingContent}>
-                <ActivityIndicator size="large" color="#8b5cf6" />
-                <Text style={styles.waitingText}>
-                  {currentMeetingId ? `Meeting: ${currentMeetingId}` : 'Setting up meeting...'}
-                </Text>
-                <Text style={styles.waitingSubtext}>
-                  {remoteParticipants?.length > 0 
-                    ? `${remoteParticipants.length} participant${remoteParticipants.length === 1 ? '' : 's'} connected`
-                    : 'Waiting for participants to join...'
-                  }
-                </Text>
-                
-                {/* Join Code UI for instant calls and meeting creation */}
-                {showJoinCodeUI && currentMeetingId && (
-                  <View style={styles.joinCodeContainer}>
-                    <Text style={styles.joinCodeLabel}>Share this code to invite others:</Text>
-                    <TouchableOpacity style={styles.joinCodeBox} onPress={copyJoinCode}>
-                      <Text style={styles.joinCodeText}>{currentMeetingId}</Text>
-                      <Ionicons name="copy-outline" size={20} color="#8b5cf6" />
+            <View style={styles.waitingContent}>
+              <ActivityIndicator size="large" color="#8b5cf6" />
+              <Text style={styles.waitingText}>
+                {currentMeetingId ? `Meeting: ${currentMeetingId}` : 'Setting up meeting...'}
+              </Text>
+              <Text style={styles.waitingSubtext}>
+                {remoteParticipants?.length > 0
+                  ? `${remoteParticipants.length} participant${remoteParticipants.length === 1 ? '' : 's'} connected`
+                  : 'Waiting for participants to join...'
+                }
+              </Text>
+
+              {/* Join Code UI for instant calls and meeting creation */}
+              {showJoinCodeUI && currentMeetingId && (
+                <View style={styles.joinCodeContainer}>
+                  <Text style={styles.joinCodeLabel}>Share this code to invite others:</Text>
+                  <TouchableOpacity style={styles.joinCodeBox} onPress={copyJoinCode}>
+                    <Text style={styles.joinCodeText}>{currentMeetingId}</Text>
+                    <Ionicons name="copy-outline" size={20} color="#8b5cf6" />
+                  </TouchableOpacity>
+                  <View style={styles.shareButtons}>
+                    <TouchableOpacity style={[styles.shareButton, { backgroundColor: '#8b5cf6' }]} onPress={shareJoinCode}>
+                      <Ionicons name="share-outline" size={20} color="#ffffff" />
+                      <Text style={styles.shareButtonText}>Share Code</Text>
                     </TouchableOpacity>
-                    <View style={styles.shareButtons}>
-                      <TouchableOpacity style={styles.shareButton} onPress={shareJoinCode}>
-                        <LinearGradient
-                          colors={['#667eea', '#764ba2']}
-                          style={styles.shareButtonGradient}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                        >
-                          <Ionicons name="share-outline" size={20} color="#ffffff" />
-                          <Text style={styles.shareButtonText}>Share Code</Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </View>
                   </View>
-                )}
-              </View>
-            </LinearGradient>
+                </View>
+              )}
+            </View>
           </View>
         )}
         
@@ -361,22 +346,15 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         {localStream && (
           <View
             key={`featured-local-stream`}
-            style={styles.localVideoContainer}
+            style={[styles.localVideoContainer, { backgroundColor: '#1f2937', borderWidth: 2, borderColor: '#8b5cf6' }]}
           >
-            <LinearGradient
-              colors={['#8b5cf6', '#ec4899']}
-              style={styles.localVideoGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <RTCView
-                style={styles.localVideo}
-                streamURL={localStream.toURL()}
-                objectFit="cover"
-                mirror={true}
-                zOrder={1}
-              />
-            </LinearGradient>
+            <RTCView
+              style={styles.localVideo}
+              streamURL={localStream.toURL()}
+              objectFit="cover"
+              mirror={true}
+              zOrder={1}
+            />
           </View>
         )}
       </View>
@@ -385,19 +363,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
   if (!localStream) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: '#0a0a0a' }]}>
         <StatusBar backgroundColor="black" style="light" />
-        <LinearGradient
-          colors={['#0f0f23', '#1a1a2e']}
-          style={styles.loadingGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.loadingContent}>
-            <ActivityIndicator size="large" color="#8b5cf6" />
-            <Text style={styles.loadingText}>Setting up camera...</Text>
-          </View>
-        </LinearGradient>
+        <View style={styles.loadingContent}>
+          <ActivityIndicator size="large" color="#8b5cf6" />
+          <Text style={styles.loadingText}>Setting up camera...</Text>
+        </View>
       </View>
     );
   }
@@ -423,39 +394,25 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           pointerEvents={controlsVisible ? 'auto' : 'none'}
         >
         {totalParticipants >= 2 && (
-          <TouchableOpacity style={styles.topControlButton} onPress={toggleViewMode}>
-            <LinearGradient
-              colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.6)']}
-              style={styles.topControlGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons 
-                name={shouldUseFeaturedViewForCall ? "grid" : "person"} 
-                size={20} 
-                color="#ffffff" 
-              />
-              <Text style={styles.topControlText}>
-                {shouldUseFeaturedViewForCall ? "Grid" : "Focus"}
-              </Text>
-            </LinearGradient>
+          <TouchableOpacity style={[styles.topControlButton, { backgroundColor: 'rgba(0,0,0,0.7)' }]} onPress={toggleViewMode}>
+            <Ionicons
+              name={shouldUseFeaturedViewForCall ? "grid" : "person"}
+              size={20}
+              color="#ffffff"
+            />
+            <Text style={styles.topControlText}>
+              {shouldUseFeaturedViewForCall ? "Grid" : "Focus"}
+            </Text>
           </TouchableOpacity>
         )}
-        
-        <View style={styles.meetingInfo}>
-          <LinearGradient
-            colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.6)']}
-            style={styles.meetingInfoGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={styles.meetingIdText}>
-              {currentMeetingId ? `ID: ${currentMeetingId}` : 'Connecting...'}
-            </Text>
-            <Text style={styles.participantCountText}>
-              {totalParticipants} participant{totalParticipants === 1 ? '' : 's'}
-            </Text>
-          </LinearGradient>
+
+        <View style={[styles.meetingInfo, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+          <Text style={styles.meetingIdText}>
+            {currentMeetingId ? `ID: ${currentMeetingId}` : 'Connecting...'}
+          </Text>
+          <Text style={styles.participantCountText}>
+            {totalParticipants} participant{totalParticipants === 1 ? '' : 's'}
+          </Text>
         </View>
       </View>
       )}
@@ -465,60 +422,34 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           style={styles.bottomControls}
           pointerEvents={controlsVisible ? 'auto' : 'none'}
         >
-        <LinearGradient
-          colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.1)']}
-          style={styles.controlsBackground}
-          start={{ x: 0, y: 1 }}
-          end={{ x: 0, y: 0 }}
-        >
+        <View style={styles.controlsBackground}>
           <View style={styles.controlButtonsRow}>
             <TouchableOpacity
-              style={[styles.controlButton, styles.secondaryButton]}
+              style={[styles.controlButton, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
               onPress={switchCamera}
             >
-              <LinearGradient
-                colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
-                style={styles.controlButtonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name="camera-reverse" size={24} color="#8b5cf6" />
-              </LinearGradient>
+              <Ionicons name="camera-reverse" size={24} color="#8b5cf6" />
             </TouchableOpacity>
-            
+
             <TouchableOpacity
-              style={[styles.controlButton, isMuted ? styles.mutedButton : styles.secondaryButton]}
+              style={[styles.controlButton, { backgroundColor: isMuted ? '#dc2626' : 'rgba(255,255,255,0.15)' }]}
               onPress={toggleMute}
             >
-              <LinearGradient
-                colors={isMuted ? ['#ff6b6b', '#ee5a52'] : ['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
-                style={styles.controlButtonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons
-                  name={isMuted ? 'mic-off' : 'mic'}
-                  size={24}
-                  color={isMuted ? '#ffffff' : '#8b5cf6'}
-                />
-              </LinearGradient>
+              <Ionicons
+                name={isMuted ? 'mic-off' : 'mic'}
+                size={24}
+                color={isMuted ? '#ffffff' : '#8b5cf6'}
+              />
             </TouchableOpacity>
-            
+
             <TouchableOpacity
-              style={[styles.controlButton, styles.endCallButton]}
+              style={[styles.controlButton, styles.endCallButton, { backgroundColor: '#dc2626' }]}
               onPress={handleCloseCall}
             >
-              <LinearGradient
-                colors={['#ff6b6b', '#ee5a52']}
-                style={styles.controlButtonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name="call" size={28} color="#ffffff" />
-              </LinearGradient>
+              <Ionicons name="call" size={28} color="#ffffff" />
             </TouchableOpacity>
           </View>
-        </LinearGradient>
+        </View>
       </View>
       )}
     </TouchableOpacity>
@@ -531,9 +462,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a0a0a',
   },
   loadingContainer: {
-    flex: 1,
-  },
-  loadingGradient: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -567,14 +495,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-  },
-  waitingGradient: {
-    width: '100%',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
   },
   waitingContent: {
     alignItems: 'center',
@@ -618,7 +539,7 @@ const styles = StyleSheet.create({
   joinCodeText: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#667eea',
+    color: '#8b5cf6',
     letterSpacing: 2,
     marginRight: 12,
   },
@@ -627,10 +548,7 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     borderRadius: 12,
-    overflow: 'hidden',
     minWidth: 140,
-  },
-  shareButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -650,10 +568,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
   },
-  localVideoGradient: {
-    flex: 1,
-    padding: 3,
-  },
   localVideo: {
     flex: 1,
     borderRadius: 13,
@@ -670,9 +584,6 @@ const styles = StyleSheet.create({
   },
   topControlButton: {
     borderRadius: 20,
-    overflow: 'hidden',
-  },
-  topControlGradient: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     flexDirection: 'row',
@@ -686,9 +597,6 @@ const styles = StyleSheet.create({
   },
   meetingInfo: {
     borderRadius: 20,
-    overflow: 'hidden',
-  },
-  meetingInfoGradient: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     alignItems: 'center',
@@ -713,6 +621,7 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingBottom: 40,
     paddingHorizontal: 20,
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   controlButtonsRow: {
     flexDirection: 'row',
@@ -724,15 +633,9 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    overflow: 'hidden',
-  },
-  controlButtonGradient: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  secondaryButton: {},
-  mutedButton: {},
   endCallButton: {
     width: 72,
     height: 72,

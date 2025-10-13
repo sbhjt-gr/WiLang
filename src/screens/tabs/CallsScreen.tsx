@@ -3,7 +3,6 @@ import { View, ScrollView, StyleSheet, Platform, TouchableOpacity, StatusBar, Te
 import { Text, Image } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 
@@ -69,19 +68,12 @@ export default function CallsScreen({ navigation }: Props) {
         <View style={styles.actionsSection}>
           <View style={styles.instantActions}>
             <TouchableOpacity
-              style={styles.primaryActionCard}
+              style={[styles.primaryActionCard, { backgroundColor: '#8b5cf6' }]}
               onPress={createMeeting}
             >
-              <LinearGradient
-                colors={colors.gradient1}
-                style={styles.primaryActionGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name="videocam" size={32} color={colors.textInverse} />
-                <Text style={[styles.primaryActionTitle, { color: colors.textInverse }]}>Start a meeting</Text>
-                <Text style={styles.primaryActionSubtitle}>Begin translating immediately</Text>
-              </LinearGradient>
+              <Ionicons name="videocam" size={32} color="#ffffff" />
+              <Text style={styles.primaryActionTitle}>Start a meeting</Text>
+              <Text style={styles.primaryActionSubtitle}>Begin translating immediately</Text>
             </TouchableOpacity>
 
             <View style={styles.secondaryActions}>
@@ -90,7 +82,7 @@ export default function CallsScreen({ navigation }: Props) {
                 onPress={() => {}}
               >
                 <View style={styles.secondaryActionContent}>
-                  <Ionicons name="mic" size={24} color={colors.success} />
+                  <Ionicons name="mic" size={24} color="#8b5cf6" />
                   <Text style={[styles.secondaryActionTitle, { color: colors.text }]}>Voice Only</Text>
                 </View>
               </TouchableOpacity>
@@ -100,7 +92,7 @@ export default function CallsScreen({ navigation }: Props) {
                 onPress={() => {}}
               >
                 <View style={styles.secondaryActionContent}>
-                  <Ionicons name="people" size={24} color={colors.warning} />
+                  <Ionicons name="people" size={24} color="#8b5cf6" />
                   <Text style={[styles.secondaryActionTitle, { color: colors.text }]}>Group Call</Text>
                 </View>
               </TouchableOpacity>
@@ -150,64 +142,57 @@ export default function CallsScreen({ navigation }: Props) {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
           <View style={[styles.recentCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.recentItem, { borderBottomColor: colors.borderLight }]}>
-              <View style={[styles.recentIcon, { backgroundColor: colors.primaryLight }]}>
-                <Ionicons name="videocam" size={20} color={colors.primary} />
+              <View style={[styles.recentIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                <Ionicons name="videocam" size={20} color="#8b5cf6" />
               </View>
               <View style={styles.recentContent}>
                 <Text style={[styles.recentTitle, { color: colors.text }]}>Video Call with Sarah</Text>
                 <Text style={[styles.recentTime, { color: colors.textSecondary }]}>2 hours ago • 25 minutes • 🇪🇸 Spanish</Text>
               </View>
-              <TouchableOpacity style={[styles.recentAction, { backgroundColor: colors.primaryLight }]}>
-                <Ionicons name="call-outline" size={16} color={colors.primary} />
+              <TouchableOpacity style={[styles.recentAction, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                <Ionicons name="call-outline" size={16} color="#8b5cf6" />
               </TouchableOpacity>
             </View>
 
             <View style={[styles.recentItem, { borderBottomColor: colors.borderLight }]}>
-              <View style={[styles.recentIcon, { backgroundColor: colors.successLight }]}>
-                <Ionicons name="people" size={20} color={colors.success} />
+              <View style={[styles.recentIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                <Ionicons name="people" size={20} color="#8b5cf6" />
               </View>
               <View style={styles.recentContent}>
                 <Text style={[styles.recentTitle, { color: colors.text }]}>Team Meeting</Text>
                 <Text style={[styles.recentTime, { color: colors.textSecondary }]}>Yesterday • 45 minutes • 🇫🇷 French, 🇩🇪 German</Text>
               </View>
-              <TouchableOpacity style={[styles.recentAction, { backgroundColor: colors.primaryLight }]}>
-                <Ionicons name="repeat-outline" size={16} color={colors.primary} />
+              <TouchableOpacity style={[styles.recentAction, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                <Ionicons name="repeat-outline" size={16} color="#8b5cf6" />
               </TouchableOpacity>
             </View>
 
             <View style={[styles.recentItem, { borderBottomColor: colors.borderLight }]}>
-              <View style={[styles.recentIcon, { backgroundColor: colors.warningLight }]}>
-                <Ionicons name="mic" size={20} color={colors.warning} />
+              <View style={[styles.recentIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                <Ionicons name="mic" size={20} color="#8b5cf6" />
               </View>
               <View style={styles.recentContent}>
                 <Text style={[styles.recentTitle, { color: colors.text }]}>Voice Call with Alex</Text>
                 <Text style={[styles.recentTime, { color: colors.textSecondary }]}>3 days ago • 15 minutes • 🇯🇵 Japanese</Text>
               </View>
-              <TouchableOpacity style={[styles.recentAction, { backgroundColor: colors.primaryLight }]}>
-                <Ionicons name="call-outline" size={16} color={colors.primary} />
+              <TouchableOpacity style={[styles.recentAction, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                <Ionicons name="call-outline" size={16} color="#8b5cf6" />
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        <View
-          style={styles.languageBanner}
-        >
-          <LinearGradient
-            colors={colors.gradient3}
-            style={styles.languageGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Ionicons name="globe-outline" size={24} color={colors.textInverse} />
+        <View style={styles.languageBanner}>
+          <View style={[styles.languageContainer, { backgroundColor: colors.surface }]}>
+            <Ionicons name="globe-outline" size={24} color="#8b5cf6" />
             <View style={styles.languageContent}>
-              <Text style={[styles.languageTitle, { color: colors.textInverse }]}>30+ Languages Supported</Text>
-              <Text style={styles.languageSubtitle}>Real-time translation powered by AI</Text>
+              <Text style={[styles.languageTitle, { color: colors.text }]}>30+ Languages Supported</Text>
+              <Text style={[styles.languageSubtitle, { color: colors.textSecondary }]}>Real-time translation powered by AI</Text>
             </View>
-            <TouchableOpacity style={styles.languageButton}>
-              <Ionicons name="arrow-forward" size={16} color={colors.textInverse} />
+            <TouchableOpacity style={[styles.languageButton, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+              <Ionicons name="arrow-forward" size={16} color="#8b5cf6" />
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -233,9 +218,6 @@ const styles = StyleSheet.create({
   },
   primaryActionCard: {
     borderRadius: 20,
-    overflow: 'hidden',
-  },
-  primaryActionGradient: {
     padding: 32,
     alignItems: 'center',
   },
@@ -244,6 +226,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 12,
     marginBottom: 4,
+    color: '#ffffff',
   },
   primaryActionSubtitle: {
     fontSize: 14,
@@ -393,7 +376,7 @@ const styles = StyleSheet.create({
   languageBanner: {
     marginBottom: 24,
   },
-  languageGradient: {
+  languageContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
@@ -410,13 +393,11 @@ const styles = StyleSheet.create({
   },
   languageSubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
   },
   languageButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },

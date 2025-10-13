@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from '@rneui/themed';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 
@@ -53,10 +52,8 @@ export default function HistoryScreen() {
 
   const getCallColor = (type: string) => {
     switch (type) {
-      case 'outgoing': return colors.success;
-      case 'incoming': return colors.primary;
-      case 'missed': return colors.error;
-      default: return colors.textSecondary;
+      case 'missed': return '#dc2626';
+      default: return '#8b5cf6';
     }
   };
 
@@ -69,30 +66,16 @@ export default function HistoryScreen() {
       >
         <View style={styles.statsSection}>
           <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={colors.gradient1}
-                style={styles.statGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name="time-outline" size={20} color={colors.textInverse} />
-                <Text style={[styles.statNumber, { color: colors.textInverse }]}>47h</Text>
-                <Text style={styles.statLabel}>Total Time</Text>
-              </LinearGradient>
+            <View style={[styles.statCard, { backgroundColor: '#8b5cf6' }]}>
+              <Ionicons name="time-outline" size={20} color="#ffffff" />
+              <Text style={styles.statNumber}>47h</Text>
+              <Text style={styles.statLabel}>Total Time</Text>
             </View>
 
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={colors.gradient6}
-                style={styles.statGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name="call-outline" size={20} color={colors.textInverse} />
-                <Text style={[styles.statNumber, { color: colors.textInverse }]}>124</Text>
-                <Text style={styles.statLabel}>Total Calls</Text>
-              </LinearGradient>
+            <View style={[styles.statCard, { backgroundColor: '#8b5cf6' }]}>
+              <Ionicons name="call-outline" size={20} color="#ffffff" />
+              <Text style={styles.statNumber}>124</Text>
+              <Text style={styles.statLabel}>Total Calls</Text>
             </View>
           </View>
         </View>
@@ -106,7 +89,7 @@ export default function HistoryScreen() {
               style={[styles.callCard, { backgroundColor: colors.surface }]}
             >
               <View style={styles.callInfo}>
-                <View style={[styles.callIcon, { backgroundColor: call.type === 'outgoing' ? colors.successLight : call.type === 'incoming' ? colors.primaryLight : colors.errorLight }]}>
+                <View style={[styles.callIcon, { backgroundColor: call.type === 'missed' ? 'rgba(220, 38, 38, 0.15)' : 'rgba(139, 92, 246, 0.15)' }]}>
                   <Ionicons
                     name={getCallIcon(call.type)}
                     size={20}
@@ -121,8 +104,8 @@ export default function HistoryScreen() {
               </View>
               <View style={styles.callMeta}>
                 <Text style={[styles.duration, { color: colors.textSecondary }]}>{call.duration}</Text>
-                <TouchableOpacity style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}>
-                  <Ionicons name="videocam-outline" size={16} color={colors.primary} />
+                <TouchableOpacity style={[styles.redialButton, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                  <Ionicons name="videocam-outline" size={16} color="#8b5cf6" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -155,9 +138,6 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     borderRadius: 16,
-    overflow: 'hidden',
-  },
-  statGradient: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 20,
@@ -168,6 +148,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 8,
     marginBottom: 4,
+    color: '#ffffff',
   },
   statLabel: {
     fontSize: 12,

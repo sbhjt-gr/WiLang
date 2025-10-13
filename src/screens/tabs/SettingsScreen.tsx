@@ -3,7 +3,6 @@ import { View, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-nat
 import { Text } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../config/firebase';
 import { useTheme } from '../../theme';
@@ -83,19 +82,12 @@ export default function SettingsScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.profileSection}>
-          <View style={styles.profileCard}>
-            <LinearGradient
-              colors={colors.gradient1}
-              style={styles.profileGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.avatarContainer}>
-                <Text style={[styles.avatarText, { color: colors.textInverse }]}>U</Text>
-              </View>
-              <Text style={[styles.userName, { color: colors.textInverse }]}>User Name</Text>
-              <Text style={styles.userEmail}>{auth.currentUser?.email || 'user@example.com'}</Text>
-            </LinearGradient>
+          <View style={[styles.profileCard, { backgroundColor: '#8b5cf6' }]}>
+            <View style={styles.avatarContainer}>
+              <Text style={styles.avatarText}>U</Text>
+            </View>
+            <Text style={styles.userName}>User Name</Text>
+            <Text style={styles.userEmail}>{auth.currentUser?.email || 'user@example.com'}</Text>
           </View>
         </View>
 
@@ -131,16 +123,9 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.logoutSection}>
-          <TouchableOpacity style={styles.logoutCard} onPress={LogOut}>
-            <LinearGradient
-              colors={colors.gradient5}
-              style={styles.logoutGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Ionicons name="log-out-outline" size={20} color={colors.textInverse} />
-              <Text style={[styles.logoutText, { color: colors.textInverse }]}>Sign Out</Text>
-            </LinearGradient>
+          <TouchableOpacity style={[styles.logoutCard, { backgroundColor: '#dc2626' }]} onPress={LogOut}>
+            <Ionicons name="log-out-outline" size={20} color="#ffffff" />
+            <Text style={styles.logoutText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -167,9 +152,6 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     borderRadius: 20,
-    overflow: 'hidden',
-  },
-  profileGradient: {
     alignItems: 'center',
     padding: 32,
   },
@@ -185,11 +167,13 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 32,
     fontWeight: '700',
+    color: '#ffffff',
   },
   userName: {
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 4,
+    color: '#ffffff',
   },
   userEmail: {
     fontSize: 14,
@@ -242,9 +226,6 @@ const styles = StyleSheet.create({
   },
   logoutCard: {
     borderRadius: 16,
-    overflow: 'hidden',
-  },
-  logoutGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -255,5 +236,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+    color: '#ffffff',
   },
 });

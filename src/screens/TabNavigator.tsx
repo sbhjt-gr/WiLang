@@ -5,7 +5,6 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../types/navigation';
 import CallsScreen from './tabs/CallsScreen';
@@ -91,35 +90,28 @@ export default function TabNavigator({ navigation, route }: Props) {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style="light" backgroundColor="transparent" translucent />
 
-      <View style={styles.headerContainer}>
-        <LinearGradient
-          colors={colors.gradient1}
-          style={styles.headerGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <SafeAreaView edges={['top']}>
-            <View style={styles.headerContent}>
-              <View style={styles.headerLeft}>
-                <View style={styles.logoContainer}>
-                  <Ionicons name="videocam" size={20} color={colors.textInverse} />
-                </View>
-                <Text style={[styles.headerTitle, { color: colors.textInverse }]}>{getHeaderTitle()}</Text>
+      <View style={[styles.headerContainer, { backgroundColor: '#8b5cf6' }]}>
+        <SafeAreaView edges={['top']}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerLeft}>
+              <View style={styles.logoContainer}>
+                <Ionicons name="videocam" size={20} color="#ffffff" />
               </View>
-              <View style={styles.headerRight}>
-                <TouchableOpacity style={styles.headerButton}>
-                  <Ionicons name="search-outline" size={20} color={colors.textInverse} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.headerButton}>
-                  <Ionicons name="notifications-outline" size={20} color={colors.textInverse} />
-                  <View style={styles.notificationBadge}>
-                    <View style={[styles.notificationDot, { backgroundColor: colors.error }]} />
-                  </View>
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
             </View>
-          </SafeAreaView>
-        </LinearGradient>
+            <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.headerButton}>
+                <Ionicons name="search-outline" size={20} color="#ffffff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.headerButton}>
+                <Ionicons name="notifications-outline" size={20} color="#ffffff" />
+                <View style={styles.notificationBadge}>
+                  <View style={[styles.notificationDot, { backgroundColor: '#dc2626' }]} />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
       </View>
 
       <View style={[styles.content, { backgroundColor: colors.background }]}>
@@ -138,13 +130,13 @@ export default function TabNavigator({ navigation, route }: Props) {
                 <Ionicons
                   name={activeTab === tab.key ? tab.iconFocused : tab.icon}
                   size={22}
-                  color={activeTab === tab.key ? colors.primary : colors.textTertiary}
+                  color={activeTab === tab.key ? '#8b5cf6' : colors.textTertiary}
                 />
               </View>
               <Text style={[
                 styles.tabLabel,
                 { color: colors.textTertiary },
-                activeTab === tab.key && { color: colors.primary, fontWeight: '600' }
+                activeTab === tab.key && { color: '#8b5cf6', fontWeight: '600' }
               ]}>
                 {tab.title}
               </Text>
@@ -170,8 +162,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
     zIndex: 1000,
-  },
-  headerGradient: {
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
@@ -199,6 +189,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
+    color: '#ffffff',
   },
   headerRight: {
     flexDirection: 'row',
