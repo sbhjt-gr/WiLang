@@ -2,13 +2,12 @@ import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { View, StyleSheet, Image, Platform, ScrollView, TouchableOpacity, StatusBar, TextInput, Keyboard, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
 import { Text } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { loginWithEmail, initializeFirebase, signInWithGoogle, onAuthStateChange, updateUserPhone } from '../../services/FirebaseService';
+import { loginWithEmail, initializeFirebase, signInWithGoogle, onAuthStateChange } from '../../services/FirebaseService';
 import { RootStackParamList } from '../../types/navigation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme';
-import GlassModal from '../../components/GlassModal';
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'LoginScreen'>;
 
@@ -24,9 +23,7 @@ export default function LoginScreen({ navigation }: Props) {
   const [emailFocused, setEmailFocused] = useState<boolean>(false);
   const [passwordFocused, setPasswordFocused] = useState<boolean>(false);
   const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false);
-  const [showPhoneModal, setShowPhoneModal] = useState<boolean>(false);
-  const [phoneNumber, setPhoneNumber] = useState<string>("");
-  const [phoneError, setPhoneError] = useState<string>("");
+  const [waitingForPhone, setWaitingForPhone] = useState<boolean>(false);
   const { colors } = useTheme();
 
   useEffect(() => {
@@ -68,40 +65,11 @@ export default function LoginScreen({ navigation }: Props) {
       if (!result.success) {
         alert(result.error || 'Google sign-in failed');
         setIsLoading(false);
-      } else if (result.needsPhone) {
-        setIsLoading(false);
-        setShowPhoneModal(true);
+      } else {
+        setWaitingForPhone(true);
       }
     } catch (err: any) {
       alert('Google sign-in failed. Please try again.');
-      setIsLoading(false);
-    }
-  };
-
-  const handlePhoneSubmit = async (): Promise<void> => {
-    if (!phoneNumber.trim()) {
-      setPhoneError('Phone number is required');
-      return;
-    }
-
-    if (!/^\d{10}$/.test(phoneNumber.replace(/\D/g, ''))) {
-      setPhoneError('Phone number must be 10 digits');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const result = await updateUserPhone(phoneNumber);
-      if (result.success) {
-        setShowPhoneModal(false);
-        setPhoneNumber("");
-        setPhoneError("");
-      } else {
-        setPhoneError(result.error || 'Failed to update phone number');
-      }
-    } catch (err: any) {
-      setPhoneError('Failed to update phone number');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -119,9 +87,9 @@ export default function LoginScreen({ navigation }: Props) {
         await initializeFirebase();
 
         const unsubscribe = onAuthStateChange((authUser) => {
-          if (authUser) {
-            navigation.replace('HomeScreen', {signedUp: 0});
-          } else {
+          if (authUser && !waitingForPhone) {
+            navigation.replace('PhoneCheckScreen', { from: 'login', signedUp: 0 });
+          } else if (!authUser) {
             setIsLoading(false);
           }
         });
@@ -132,7 +100,7 @@ export default function LoginScreen({ navigation }: Props) {
     };
     
     initAuth();
-  }, []);
+  }, [waitingForPhone]);
 
   const renderInput = (
     placeholder: string,
@@ -316,51 +284,6 @@ export default function LoginScreen({ navigation }: Props) {
         </ScrollView>
       </TouchableWithoutFeedback>
       </SafeAreaView>
-
-      <GlassModal
-        isVisible={showPhoneModal}
-        onClose={() => {}}
-        title="Complete Your Profile"
-        subtitle="Please provide your phone number"
-        icon="call-outline"
-        height={320}
-      >
-        <View style={styles.phoneModalContent}>
-          <View style={[
-            styles.phoneInputWrapper,
-            { backgroundColor: colors.surface, borderColor: colors.border }
-          ]}>
-            <Ionicons name="call-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
-            <TextInput
-              style={[styles.phoneInput, { color: colors.text }]}
-              placeholder="Phone Number"
-              placeholderTextColor={colors.textTertiary}
-              value={phoneNumber}
-              onChangeText={(text) => {
-                setPhoneNumber(text);
-                setPhoneError("");
-              }}
-              keyboardType="phone-pad"
-              autoFocus
-              onSubmitEditing={handlePhoneSubmit}
-            />
-          </View>
-          {phoneError ? (
-            <Text style={[styles.phoneError, { color: colors.error }]}>{phoneError}</Text>
-          ) : null}
-          <TouchableOpacity
-            style={[styles.phoneSubmitButton, { backgroundColor: '#8b5cf6' }]}
-            onPress={handlePhoneSubmit}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.phoneSubmitButtonText}>Continue</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </GlassModal>
     </View>
   );
 }

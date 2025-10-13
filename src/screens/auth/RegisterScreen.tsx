@@ -6,9 +6,8 @@ import { RootStackParamList } from '../../types/navigation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { registerWithEmail, signInWithGoogle, updateUserPhone } from '../../services/FirebaseService';
+import { registerWithEmail, signInWithGoogle } from '../../services/FirebaseService';
 import { useTheme } from '../../theme';
-import GlassModal from '../../components/GlassModal';
 
 type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'RegisterScreen'>;
 
@@ -46,9 +45,6 @@ export default function RegisterScreen({ navigation }: Props) {
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [focusedField, setFocusedField] = useState<string>('');
   const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false);
-  const [showPhoneModal, setShowPhoneModal] = useState<boolean>(false);
-  const [googlePhoneNumber, setGooglePhoneNumber] = useState<string>("");
-  const [googlePhoneError, setGooglePhoneError] = useState<string>("");
   const { colors } = useTheme();
 
   useEffect(() => {
@@ -111,7 +107,7 @@ export default function RegisterScreen({ navigation }: Props) {
 
       if (result.success) {
         Alert.alert('Success', 'Account created successfully! Please check your email for verification.', [
-          { text: 'OK', onPress: () => navigation.replace('HomeScreen', {signedUp: 1}) }
+          { text: 'OK', onPress: () => navigation.replace('PhoneCheckScreen', { from: 'register', signedUp: 1 }) }
         ]);
       } else {
         Alert.alert('Registration Failed', result.error || 'Registration failed. Please try again.');
@@ -129,47 +125,13 @@ export default function RegisterScreen({ navigation }: Props) {
       const result = await signInWithGoogle();
 
       if (result.success) {
-        if (result.needsPhone) {
-          setIsLoading(false);
-          setShowPhoneModal(true);
-        } else {
-          navigation.replace('HomeScreen', {signedUp: 1});
-        }
+        navigation.replace('PhoneCheckScreen', { from: 'register', signedUp: 1 });
       } else {
         Alert.alert('Google Sign-Up Failed', result.error || 'Google sign-up failed. Please try again.');
         setIsLoading(false);
       }
     } catch (error: any) {
       Alert.alert('Error', 'Google sign-up failed. Please try again.');
-      setIsLoading(false);
-    }
-  };
-
-  const handleGooglePhoneSubmit = async (): Promise<void> => {
-    if (!googlePhoneNumber.trim()) {
-      setGooglePhoneError('Phone number is required');
-      return;
-    }
-
-    if (!/^\d{10}$/.test(googlePhoneNumber.replace(/\D/g, ''))) {
-      setGooglePhoneError('Phone number must be 10 digits');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const result = await updateUserPhone(googlePhoneNumber);
-      if (result.success) {
-        setShowPhoneModal(false);
-        setGooglePhoneNumber("");
-        setGooglePhoneError("");
-        navigation.replace('HomeScreen', {signedUp: 1});
-      } else {
-        setGooglePhoneError(result.error || 'Failed to update phone number');
-      }
-    } catch (err: any) {
-      setGooglePhoneError('Failed to update phone number');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -352,51 +314,6 @@ export default function RegisterScreen({ navigation }: Props) {
         </ScrollView>
       </TouchableWithoutFeedback>
       </SafeAreaView>
-
-      <GlassModal
-        isVisible={showPhoneModal}
-        onClose={() => {}}
-        title="Complete Your Profile"
-        subtitle="Please provide your phone number"
-        icon="call-outline"
-        height={320}
-      >
-        <View style={styles.phoneModalContent}>
-          <View style={[
-            styles.phoneInputWrapper,
-            { backgroundColor: colors.surface, borderColor: colors.border }
-          ]}>
-            <Ionicons name="call-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
-            <TextInput
-              style={[styles.phoneInput, { color: colors.text }]}
-              placeholder="Phone Number"
-              placeholderTextColor={colors.textTertiary}
-              value={googlePhoneNumber}
-              onChangeText={(text) => {
-                setGooglePhoneNumber(text);
-                setGooglePhoneError("");
-              }}
-              keyboardType="phone-pad"
-              autoFocus
-              onSubmitEditing={handleGooglePhoneSubmit}
-            />
-          </View>
-          {googlePhoneError ? (
-            <Text style={[styles.phoneError, { color: colors.error }]}>{googlePhoneError}</Text>
-          ) : null}
-          <TouchableOpacity
-            style={[styles.phoneSubmitButton, { backgroundColor: '#8b5cf6' }]}
-            onPress={handleGooglePhoneSubmit}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.phoneSubmitButtonText}>Continue</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </GlassModal>
     </View>
   );
 }
