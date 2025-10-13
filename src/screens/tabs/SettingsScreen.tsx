@@ -89,12 +89,12 @@ export default function SettingsScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.profileSection}>
-          <View style={[styles.profileCard, { backgroundColor: '#8b5cf6' }]}>
-            <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>U</Text>
+          <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
+            <View style={[styles.avatarContainer, { backgroundColor: 'transparent', borderColor: '#8b5cf6', borderWidth: 2 }]}>
+              <Text style={[styles.avatarText, { color: '#8b5cf6' }]}>U</Text>
             </View>
-            <Text style={styles.userName}>User Name</Text>
-            <Text style={styles.userEmail}>{auth.currentUser?.email || 'user@example.com'}</Text>
+            <Text style={[styles.userName, { color: colors.text }]}>User Name</Text>
+            <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{auth.currentUser?.email || 'user@example.com'}</Text>
           </View>
         </View>
 
@@ -111,7 +111,7 @@ export default function SettingsScreen({ navigation }: Props) {
                 onPress={option.onPress}
               >
                 <View style={styles.settingLeft}>
-                  <View style={[styles.settingIcon, { backgroundColor: `${option.color}20` }]}>
+                  <View style={styles.settingIcon}>
                     <Ionicons name={option.icon} size={20} color={option.color} />
                   </View>
                   <View style={styles.settingText}>
@@ -126,9 +126,9 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.logoutSection}>
-          <TouchableOpacity style={[styles.logoutCard, { backgroundColor: '#dc2626' }]} onPress={LogOut}>
-            <Ionicons name="log-out-outline" size={20} color="#ffffff" />
-            <Text style={styles.logoutText}>Sign Out</Text>
+          <TouchableOpacity style={[styles.logoutCard, { backgroundColor: colors.surface, borderColor: '#dc2626', borderWidth: 1 }]} onPress={LogOut}>
+            <Ionicons name="log-out-outline" size={20} color="#dc2626" />
+            <Text style={[styles.logoutText, { color: '#dc2626' }]}>Sign Out</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -159,7 +159,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -167,17 +166,14 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#ffffff',
   },
   userName: {
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 4,
-    color: '#ffffff',
   },
   userEmail: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
   },
   settingsSection: {
     marginBottom: 32,
@@ -236,6 +232,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
-    color: '#ffffff',
   },
 });

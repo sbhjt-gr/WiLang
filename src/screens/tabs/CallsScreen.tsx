@@ -68,12 +68,12 @@ export default function CallsScreen({ navigation }: Props) {
         <View style={styles.actionsSection}>
           <View style={styles.instantActions}>
             <TouchableOpacity
-              style={[styles.primaryActionCard, { backgroundColor: '#8b5cf6' }]}
+              style={[styles.primaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
               onPress={createMeeting}
             >
-              <Ionicons name="videocam" size={32} color="#ffffff" />
-              <Text style={styles.primaryActionTitle}>Start a meeting</Text>
-              <Text style={styles.primaryActionSubtitle}>Begin translating immediately</Text>
+              <Ionicons name="videocam" size={32} color="#8b5cf6" />
+              <Text style={[styles.primaryActionTitle, { color: colors.text }]}>Start a meeting</Text>
+              <Text style={[styles.primaryActionSubtitle, { color: colors.textSecondary }]}>Begin translating immediately</Text>
             </TouchableOpacity>
 
             <View style={styles.secondaryActions}>
@@ -125,11 +125,11 @@ export default function CallsScreen({ navigation }: Props) {
             </View>
 
             <TouchableOpacity
-              style={[styles.joinMeetingButton, { backgroundColor: colors.primary }, !id.trim() && { backgroundColor: colors.border }]}
+              style={[styles.joinMeetingButton, { backgroundColor: colors.surface, borderColor: '#8b5cf6', borderWidth: 1 }, !id.trim() && { borderColor: colors.border }]}
               onPress={meet}
               disabled={!id.trim()}
             >
-              <Text style={[styles.joinMeetingButtonText, { color: colors.textInverse }, !id.trim() && { color: colors.textTertiary }]}>
+              <Text style={[styles.joinMeetingButtonText, { color: '#8b5cf6' }, !id.trim() && { color: colors.textTertiary }]}>
                 Join Meeting
               </Text>
             </TouchableOpacity>
@@ -142,40 +142,40 @@ export default function CallsScreen({ navigation }: Props) {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
           <View style={[styles.recentCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.recentItem, { borderBottomColor: colors.borderLight }]}>
-              <View style={[styles.recentIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+              <View style={styles.recentIcon}>
                 <Ionicons name="videocam" size={20} color="#8b5cf6" />
               </View>
               <View style={styles.recentContent}>
                 <Text style={[styles.recentTitle, { color: colors.text }]}>Video Call with Sarah</Text>
                 <Text style={[styles.recentTime, { color: colors.textSecondary }]}>2 hours ago • 25 minutes • 🇪🇸 Spanish</Text>
               </View>
-              <TouchableOpacity style={[styles.recentAction, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+              <TouchableOpacity style={styles.recentAction}>
                 <Ionicons name="call-outline" size={16} color="#8b5cf6" />
               </TouchableOpacity>
             </View>
 
             <View style={[styles.recentItem, { borderBottomColor: colors.borderLight }]}>
-              <View style={[styles.recentIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+              <View style={styles.recentIcon}>
                 <Ionicons name="people" size={20} color="#8b5cf6" />
               </View>
               <View style={styles.recentContent}>
                 <Text style={[styles.recentTitle, { color: colors.text }]}>Team Meeting</Text>
                 <Text style={[styles.recentTime, { color: colors.textSecondary }]}>Yesterday • 45 minutes • 🇫🇷 French, 🇩🇪 German</Text>
               </View>
-              <TouchableOpacity style={[styles.recentAction, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+              <TouchableOpacity style={styles.recentAction}>
                 <Ionicons name="repeat-outline" size={16} color="#8b5cf6" />
               </TouchableOpacity>
             </View>
 
             <View style={[styles.recentItem, { borderBottomColor: colors.borderLight }]}>
-              <View style={[styles.recentIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+              <View style={styles.recentIcon}>
                 <Ionicons name="mic" size={20} color="#8b5cf6" />
               </View>
               <View style={styles.recentContent}>
                 <Text style={[styles.recentTitle, { color: colors.text }]}>Voice Call with Alex</Text>
                 <Text style={[styles.recentTime, { color: colors.textSecondary }]}>3 days ago • 15 minutes • 🇯🇵 Japanese</Text>
               </View>
-              <TouchableOpacity style={[styles.recentAction, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+              <TouchableOpacity style={styles.recentAction}>
                 <Ionicons name="call-outline" size={16} color="#8b5cf6" />
               </TouchableOpacity>
             </View>
@@ -189,7 +189,7 @@ export default function CallsScreen({ navigation }: Props) {
               <Text style={[styles.languageTitle, { color: colors.text }]}>30+ Languages Supported</Text>
               <Text style={[styles.languageSubtitle, { color: colors.textSecondary }]}>Real-time translation powered by AI</Text>
             </View>
-            <TouchableOpacity style={[styles.languageButton, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+            <TouchableOpacity style={styles.languageButton}>
               <Ionicons name="arrow-forward" size={16} color="#8b5cf6" />
             </TouchableOpacity>
           </View>
@@ -226,11 +226,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 12,
     marginBottom: 4,
-    color: '#ffffff',
   },
   primaryActionSubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
   },
   secondaryActions: {

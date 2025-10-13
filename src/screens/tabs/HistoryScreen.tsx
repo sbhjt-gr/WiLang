@@ -66,16 +66,16 @@ export default function HistoryScreen() {
       >
         <View style={styles.statsSection}>
           <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { backgroundColor: '#8b5cf6' }]}>
-              <Ionicons name="time-outline" size={20} color="#ffffff" />
-              <Text style={styles.statNumber}>47h</Text>
-              <Text style={styles.statLabel}>Total Time</Text>
+            <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
+              <Ionicons name="time-outline" size={20} color="#8b5cf6" />
+              <Text style={[styles.statNumber, { color: colors.text }]}>47h</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Time</Text>
             </View>
 
-            <View style={[styles.statCard, { backgroundColor: '#8b5cf6' }]}>
-              <Ionicons name="call-outline" size={20} color="#ffffff" />
-              <Text style={styles.statNumber}>124</Text>
-              <Text style={styles.statLabel}>Total Calls</Text>
+            <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
+              <Ionicons name="call-outline" size={20} color="#8b5cf6" />
+              <Text style={[styles.statNumber, { color: colors.text }]}>124</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Calls</Text>
             </View>
           </View>
         </View>
@@ -89,7 +89,7 @@ export default function HistoryScreen() {
               style={[styles.callCard, { backgroundColor: colors.surface }]}
             >
               <View style={styles.callInfo}>
-                <View style={[styles.callIcon, { backgroundColor: call.type === 'missed' ? 'rgba(220, 38, 38, 0.15)' : 'rgba(139, 92, 246, 0.15)' }]}>
+                <View style={styles.callIcon}>
                   <Ionicons
                     name={getCallIcon(call.type)}
                     size={20}
@@ -104,7 +104,7 @@ export default function HistoryScreen() {
               </View>
               <View style={styles.callMeta}>
                 <Text style={[styles.duration, { color: colors.textSecondary }]}>{call.duration}</Text>
-                <TouchableOpacity style={[styles.redialButton, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                <TouchableOpacity style={styles.redialButton}>
                   <Ionicons name="videocam-outline" size={16} color="#8b5cf6" />
                 </TouchableOpacity>
               </View>
@@ -148,11 +148,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 8,
     marginBottom: 4,
-    color: '#ffffff',
   },
   statLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
   },
   historySection: {
