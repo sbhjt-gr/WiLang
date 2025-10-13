@@ -107,7 +107,7 @@ export default function RegisterScreen({ navigation }: Props) {
 
       if (result.success) {
         Alert.alert('Success', 'Account created successfully! Please check your email for verification.', [
-          { text: 'OK', onPress: () => navigation.replace('PhoneCheckScreen', { from: 'register', signedUp: 1 }) }
+          { text: 'OK', onPress: () => navigation.replace('AccountLoadingScreen', { from: 'register', signedUp: 1 }) }
         ]);
       } else {
         Alert.alert('Registration Failed', result.error || 'Registration failed. Please try again.');
@@ -125,7 +125,7 @@ export default function RegisterScreen({ navigation }: Props) {
       const result = await signInWithGoogle();
 
       if (result.success) {
-        navigation.replace('PhoneCheckScreen', { from: 'register', signedUp: 1 });
+        navigation.replace('AccountLoadingScreen', { from: 'register', signedUp: 1 });
       } else {
         Alert.alert('Google Sign-Up Failed', result.error || 'Google sign-up failed. Please try again.');
         setIsLoading(false);

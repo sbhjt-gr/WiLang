@@ -23,7 +23,6 @@ export default function LoginScreen({ navigation }: Props) {
   const [emailFocused, setEmailFocused] = useState<boolean>(false);
   const [passwordFocused, setPasswordFocused] = useState<boolean>(false);
   const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false);
-  const [waitingForPhone, setWaitingForPhone] = useState<boolean>(false);
   const { colors } = useTheme();
 
   useEffect(() => {
@@ -45,7 +44,9 @@ export default function LoginScreen({ navigation }: Props) {
       try {
         setIsLoading(true);
         const result = await loginWithEmail(email, password);
-        if (!result.success) {
+        if (result.success) {
+          navigation.replace('AccountLoadingScreen', { from: 'login', signedUp: 0 });
+        } else {
           alert(result.error || 'Login failed');
           setIsLoading(false);
         }
@@ -62,11 +63,11 @@ export default function LoginScreen({ navigation }: Props) {
     try {
       setIsLoading(true);
       const result = await signInWithGoogle();
-      if (!result.success) {
+      if (result.success) {
+        navigation.replace('AccountLoadingScreen', { from: 'login', signedUp: 0 });
+      } else {
         alert(result.error || 'Google sign-in failed');
         setIsLoading(false);
-      } else {
-        setWaitingForPhone(true);
       }
     } catch (err: any) {
       alert('Google sign-in failed. Please try again.');
@@ -79,28 +80,6 @@ export default function LoginScreen({ navigation }: Props) {
       headerShown: false
     });
   }, []);
-  
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        setIsLoading(true);
-        await initializeFirebase();
-
-        const unsubscribe = onAuthStateChange((authUser) => {
-          if (authUser && !waitingForPhone) {
-            navigation.replace('PhoneCheckScreen', { from: 'login', signedUp: 0 });
-          } else if (!authUser) {
-            setIsLoading(false);
-          }
-        });
-        return unsubscribe;
-      } catch (_error) {
-        setIsLoading(false);
-      }
-    };
-    
-    initAuth();
-  }, [waitingForPhone]);
 
   const renderInput = (
     placeholder: string,

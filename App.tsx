@@ -7,7 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import TabNavigator from './src/screens/TabNavigator';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
-import PhoneCheckScreen from './src/screens/auth/PhoneCheckScreen';
+import AccountLoadingScreen from './src/screens/auth/AccountLoadingScreen';
 import PhoneNumberScreen from './src/screens/auth/PhoneNumberScreen';
 import UsersScreen from './src/screens/UsersScreen';
 import { initializeFirebase } from './src/services/FirebaseService';
@@ -55,7 +55,7 @@ export default function App() {
                   headerShown: false,
                   animation: 'slide_from_right'
                 }}
-                initialRouteName="LoginScreen"
+                initialRouteName="AccountLoadingScreen"
               >
                 <Stack.Screen
                   name="LoginScreen"
@@ -66,8 +66,8 @@ export default function App() {
                   component={RegisterScreen}
                 />
                 <Stack.Screen
-                  name="PhoneCheckScreen"
-                  component={PhoneCheckScreen}
+                  name="AccountLoadingScreen"
+                  component={AccountLoadingScreen}
                 />
                 <Stack.Screen
                   name="PhoneNumberScreen"

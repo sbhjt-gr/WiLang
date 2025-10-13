@@ -1,53 +1,47 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { Text } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types/navigation';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, firestore } from '../../config/firebase';
 
-type PhoneCheckScreenNavigationProp = StackNavigationProp<RootStackParamList, 'PhoneCheckScreen'>;
-type PhoneCheckScreenRouteProp = RouteProp<RootStackParamList, 'PhoneCheckScreen'>;
+type AccountLoadingScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AccountLoadingScreen'>;
+type AccountLoadingScreenRouteProp = RouteProp<RootStackParamList, 'AccountLoadingScreen'>;
 
 interface Props {
-  navigation: PhoneCheckScreenNavigationProp;
-  route: PhoneCheckScreenRouteProp;
+  navigation: AccountLoadingScreenNavigationProp;
+  route: AccountLoadingScreenRouteProp;
 }
 
-export default function PhoneCheckScreen({ navigation, route }: Props) {
+export default function AccountLoadingScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
-  const [statusMessage, setStatusMessage] = useState<string>('verifying_account');
-  const fromScreen = route.params?.from || 'login';
+  const fromScreen = route.params?.from || 'app_launch';
   const signedUp = route.params?.signedUp || 0;
 
   useEffect(() => {
-    checkPhoneNumber();
+    performAccountChecks();
   }, []);
 
-  const checkPhoneNumber = async (): Promise<void> => {
+  const performAccountChecks = async (): Promise<void> => {
     try {
       const user = auth.currentUser;
       
       if (!user) {
-        setStatusMessage('auth_check_failed');
         setTimeout(() => {
           navigation.replace('LoginScreen');
-        }, 1500);
+        }, 1000);
         return;
       }
-
-      setStatusMessage('checking_profile');
       
       const userRef = doc(firestore, 'users', user.uid);
       const userDoc = await getDoc(userRef);
 
       if (!userDoc.exists()) {
-        setStatusMessage('profile_incomplete');
         setTimeout(() => {
           navigation.replace('PhoneNumberScreen', { from: fromScreen });
         }, 1000);
@@ -58,42 +52,18 @@ export default function PhoneCheckScreen({ navigation, route }: Props) {
       const hasPhone = userData?.phone && userData.phone.trim().length > 0;
 
       if (!hasPhone) {
-        setStatusMessage('phone_required');
         setTimeout(() => {
           navigation.replace('PhoneNumberScreen', { from: fromScreen });
         }, 1000);
       } else {
-        setStatusMessage('profile_complete');
         setTimeout(() => {
           navigation.replace('HomeScreen', { signedUp });
         }, 800);
       }
     } catch (error: any) {
-      setStatusMessage('verification_error');
       setTimeout(() => {
-        navigation.replace('HomeScreen', { signedUp });
+        navigation.replace('LoginScreen');
       }, 1500);
-    }
-  };
-
-  const getStatusText = (): string => {
-    switch (statusMessage) {
-      case 'verifying_account':
-        return 'Verifying your account';
-      case 'checking_profile':
-        return 'Checking profile';
-      case 'profile_incomplete':
-        return 'Setting up profile';
-      case 'phone_required':
-        return 'Additional info needed';
-      case 'profile_complete':
-        return 'All set';
-      case 'auth_check_failed':
-        return 'Authentication required';
-      case 'verification_error':
-        return 'Continuing';
-      default:
-        return 'Loading';
     }
   };
 
@@ -112,13 +82,17 @@ export default function PhoneCheckScreen({ navigation, route }: Props) {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           <View style={styles.logoContainer}>
-            <Ionicons name="shield-checkmark" size={64} color="#ffffff" />
+            <Image 
+              source={require('../../../assets/wilang.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </View>
           
           <ActivityIndicator size="large" color="#ffffff" style={styles.loader} />
           
           <Text style={styles.statusText}>
-            {getStatusText()}
+            Just a moment...
           </Text>
         </View>
       </SafeAreaView>
@@ -177,6 +151,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 32,
+  },
+  logo: {
+    width: 80,
+    height: 80,
   },
   loader: {
     marginBottom: 24,
