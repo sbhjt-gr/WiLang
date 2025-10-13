@@ -6,9 +6,6 @@ import {
   Text,
   View,
   TouchableOpacity,
-  Alert,
-  PanResponder,
-  StatusBar as RNStatusBar,
   Share,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -22,6 +19,8 @@ import {WebRTCContext} from '../store/WebRTCContext';
 import { Ionicons } from '@expo/vector-icons';
 import { User } from '../store/WebRTCTypes';
 import ParticipantGrid from '../components/ParticipantGrid';
+import GlassModal from '../components/GlassModal';
+import { useTheme } from '../theme';
 
 const {width, height} = Dimensions.get('window');
 
@@ -34,6 +33,7 @@ interface Props {
 }
 
 export default function VideoCallScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
   const {
     localStream,
     remoteStream,
@@ -58,9 +58,36 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [isGridMode, setIsGridMode] = useState(false);
   const [isInstantCall, setIsInstantCall] = useState(false);
   const [showJoinCodeUI, setShowJoinCodeUI] = useState(false);
+  const [modalConfig, setModalConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    icon: string;
+    buttons: Array<{text: string; onPress?: () => void}>;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    icon: 'information-circle',
+    buttons: [],
+  });
 
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
+
+  const showModal = useCallback((title: string, message: string, icon: string = 'information-circle', buttons: Array<{text: string; onPress?: () => void}> = [{text: 'OK'}]) => {
+    setModalConfig({
+      visible: true,
+      title,
+      message,
+      icon,
+      buttons,
+    });
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModalConfig(prev => ({ ...prev, visible: false }));
+  }, []);
 
   const toggleViewMode = useCallback(() => {
     setIsGridMode(prev => !prev);
@@ -68,7 +95,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
   const shareJoinCode = useCallback(async () => {
     if (!currentMeetingId) {
-      Alert.alert('Please wait', 'Meeting code is still being generated.');
+      showModal('Please wait', 'Meeting code is still being generated.', 'time');
       return;
     }
     
@@ -81,19 +108,19 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert('Error', `Unable to share join code: ${message}`);
+      showModal('Error', `Unable to share join code: ${message}`, 'alert-circle');
     }
-  }, [currentMeetingId]);
+  }, [currentMeetingId, showModal]);
 
   const copyJoinCode = useCallback(() => {
     if (!currentMeetingId) {
-      Alert.alert('Please wait', 'Meeting code is still being generated.');
+      showModal('Please wait', 'Meeting code is still being generated.', 'time');
       return;
     }
-    
+
     Clipboard.setStringAsync(currentMeetingId);
-    Alert.alert('Copied!', 'Join code copied to clipboard');
-  }, [currentMeetingId]);
+    showModal('Copied!', 'Join code copied to clipboard', 'checkmark-circle');
+  }, [currentMeetingId, showModal]);
 
   const handleCloseCall = useCallback(() => {
     closeCall();
@@ -144,19 +171,20 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           joinAttempted.current = true;
           
           const meetingId = route.params.joinCode || route.params.id;
-          
+
           if (!meetingId) {
-            Alert.alert('Error', 'No meeting ID provided to join.');
-            navigation.goBack();
+            showModal('Error', 'No meeting ID provided to join.', 'alert-circle', [
+              { text: 'OK', onPress: () => { closeModal(); navigation.goBack(); } }
+            ]);
             return;
           }
-          
+
           const joined = await joinMeeting(meetingId, socketConnection);
-          
+
           if (!joined) {
-            Alert.alert('Error', 'Could not join meeting. Please check the meeting ID and try again.');
-            joinAttempted.current = false;
-            navigation.goBack();
+            showModal('Error', 'Could not join meeting. Please check the meeting ID and try again.', 'alert-circle', [
+              { text: 'OK', onPress: () => { closeModal(); joinAttempted.current = false; navigation.goBack(); } }
+            ]);
             return;
           }
           
@@ -201,17 +229,18 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               throw new Error('Meeting creation returned empty meeting ID');
             }
             setShowJoinCodeUI(true);
-            
-            Alert.alert(
+
+            showModal(
               'Meeting Created',
               `Your meeting ID is: ${meetingId}\n\nShare this ID with participants to join the meeting.`,
-              [{ text: 'OK' }]
+              'checkmark-circle'
             );
           } catch (meetingError) {
-            Alert.alert(
+            showModal(
               'Meeting Creation Failed',
               `Failed to create meeting: ${meetingError instanceof Error ? meetingError.message : 'Unknown error'}`,
-              [{ text: 'OK', onPress: () => navigation.goBack() }]
+              'alert-circle',
+              [{ text: 'OK', onPress: () => { closeModal(); navigation.goBack(); } }]
             );
             return;
           }
@@ -219,22 +248,21 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         
       } catch (error) {
         initializationAttempted.current = false;
-        
-        Alert.alert(
-          'Connection Error', 
+
+        showModal(
+          'Connection Error',
           `Failed to initialize video call: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check your camera and microphone permissions and try again.`,
+          'alert-circle',
           [
-            { text: 'Cancel', onPress: () => navigation.goBack() },
-            { text: 'Retry', onPress: () => {
-              initializationAttempted.current = false;
-            }}
+            { text: 'Cancel', onPress: () => { closeModal(); navigation.goBack(); } },
+            { text: 'Retry', onPress: () => { closeModal(); initializationAttempted.current = false; } }
           ]
         );
       }
     };
 
     initializeCall();
-  }, [route.params.type, route.params.joinCode, localStream, currentMeetingId]);
+  }, [route.params.type, route.params.joinCode, localStream, currentMeetingId, showModal, closeModal, navigation]);
 
   useEffect(() => {
     const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
@@ -407,6 +435,32 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           </View>
         </View>
       </View>
+
+      <GlassModal
+        isVisible={modalConfig.visible}
+        onClose={closeModal}
+        title={modalConfig.title}
+        icon={modalConfig.icon}
+        height={300}
+      >
+        <Text style={[styles.modalMessage, { color: colors.text }]}>
+          {modalConfig.message}
+        </Text>
+        <View style={styles.modalButtons}>
+          {modalConfig.buttons.map((button, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[styles.modalButton, { backgroundColor: '#8b5cf6' }]}
+              onPress={() => {
+                closeModal();
+                button.onPress?.();
+              }}
+            >
+              <Text style={styles.modalButtonText}>{button.text}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </GlassModal>
     </View>
   );
 }
@@ -597,5 +651,27 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
+  },
+  modalMessage: {
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'flex-end',
+  },
+  modalButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, ScrollView, StyleSheet, Platform, TouchableOpacity, StatusBar, TextInput, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Platform, TouchableOpacity, StatusBar, TextInput } from 'react-native';
 import { Text, Image } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
+import GlassModal from '../../components/GlassModal';
 
 type CallsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -16,6 +17,30 @@ export default function CallsScreen({ navigation }: Props) {
   const [id, setID] = useState<string>('');
   const textInputRef = useRef<TextInput>(null);
   const { colors } = useTheme();
+  const [modalConfig, setModalConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    icon: string;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    icon: 'information-circle',
+  });
+
+  const showModal = (title: string, message: string, icon: string = 'information-circle') => {
+    setModalConfig({
+      visible: true,
+      title,
+      message,
+      icon,
+    });
+  };
+
+  const closeModal = () => {
+    setModalConfig(prev => ({ ...prev, visible: false }));
+  };
 
   const meet = (): void => {
     if (id.trim()) {
@@ -24,13 +49,13 @@ export default function CallsScreen({ navigation }: Props) {
       const numericId = parseInt(rawInput);
       if (isOnlyNumeric && !isNaN(numericId)) {
         navigation.navigate('VideoCallScreen', {
-          id: numericId.toString(), 
+          id: numericId.toString(),
           type: 'join',
           joinCode: numericId.toString()
         });
       } else {
         const cleanCode = rawInput.toUpperCase();
-        
+
         if (/^[A-Z0-9]{4,8}$/.test(cleanCode)) {
           navigation.navigate('VideoCallScreen', {
             id: Date.now().toString(),
@@ -38,11 +63,11 @@ export default function CallsScreen({ navigation }: Props) {
             joinCode: cleanCode
           });
         } else {
-          Alert.alert("Invalid Code", "Join codes should be 4-8 characters using letters and numbers only.");
+          showModal("Invalid Code", "Join codes should be 4-8 characters using letters and numbers only.", "alert-circle");
         }
       }
     } else {
-      Alert.alert("Missing Meeting ID", "Please enter a valid meeting ID or join code to join the call.");
+      showModal("Missing Meeting ID", "Please enter a valid meeting ID or join code to join the call.", "information-circle");
     }
   };
   
@@ -195,6 +220,26 @@ export default function CallsScreen({ navigation }: Props) {
           </View>
         </View>
       </ScrollView>
+
+      <GlassModal
+        isVisible={modalConfig.visible}
+        onClose={closeModal}
+        title={modalConfig.title}
+        icon={modalConfig.icon}
+        height={250}
+      >
+        <Text style={[styles.modalMessage, { color: colors.text }]}>
+          {modalConfig.message}
+        </Text>
+        <View style={styles.modalButtons}>
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: '#8b5cf6' }]}
+            onPress={closeModal}
+          >
+            <Text style={styles.modalButtonText}>OK</Text>
+          </TouchableOpacity>
+        </View>
+      </GlassModal>
     </View>
   );
 }
@@ -398,5 +443,27 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'flex-end',
+  },
+  modalButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

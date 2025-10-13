@@ -1,5 +1,4 @@
 import React, {useState, useRef, useEffect} from 'react';
-import {Alert} from 'react-native';
 import {mediaDevices, MediaStream} from 'react-native-webrtc';
 import {WebRTCContext} from './WebRTCContext';
 import {User, WebRTCContextType} from './WebRTCTypes';
@@ -70,7 +69,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           peerManager.current?.handleIceCandidate(data);
         },
         onMeetingEnded: () => {
-          Alert.alert('Meeting ended');
           leaveMeeting();
         },
         onUsersChange: (users: User[]) => {
@@ -266,7 +264,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
 
   const call = (user: User) => {
     if (!socket || !localStream) {
-      Alert.alert('Not ready to make calls');
       return;
     }
 

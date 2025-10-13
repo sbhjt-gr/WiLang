@@ -1,4 +1,3 @@
-import {Alert} from 'react-native';
 import socketio from 'socket.io-client';
 import {User} from './WebRTCTypes';
 import {SERVER_URL, SERVER_URLS, WEBRTC_CONFIG} from './WebRTCConfig';
@@ -124,7 +123,6 @@ export class WebRTCSocketManager {
     });
 
     io.on('meeting-ended', () => {
-      Alert.alert('Meeting ended');
       this.onMeetingEnded?.();
     });
 
