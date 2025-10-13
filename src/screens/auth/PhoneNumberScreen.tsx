@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme';
-import { updateUserPhone } from '../../services/FirebaseService';
+import { updateUserPhone, checkPhoneNumberExists } from '../../services/FirebaseService';
 
 type PhoneNumberScreenNavigationProp = StackNavigationProp<RootStackParamList, 'PhoneNumberScreen'>;
 type PhoneNumberScreenRouteProp = RouteProp<RootStackParamList, 'PhoneNumberScreen'>;
@@ -34,23 +34,43 @@ export default function PhoneNumberScreen({ navigation, route }: Props) {
     }
 
     const cleanPhone = phoneNumber.replace(/\D/g, '');
-    if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+    if (cleanPhone.length !== 10) {
       setPhoneError('phone_invalid');
       return;
     }
 
     try {
       setIsLoading(true);
-      const result = await updateUserPhone(phoneNumber);
+      
+      const phoneWithPrefix = `+91${cleanPhone}`;
+      
+      const phoneCheck = await checkPhoneNumberExists(phoneWithPrefix);
+      
+      if (phoneCheck.error) {
+        setPhoneError(phoneCheck.error);
+        setIsLoading(false);
+        return;
+      }
+      
+      if (phoneCheck.exists) {
+        setPhoneError('phone_already_exists');
+        setIsLoading(false);
+        return;
+      }
+      
+      const result = await updateUserPhone(phoneWithPrefix);
       
       if (result.success) {
-        navigation.replace('HomeScreen', { signedUp: fromScreen === 'register' ? 1 : 0 });
+        navigation.replace('AccountLoadingScreen', { 
+          from: fromScreen, 
+          signedUp: fromScreen === 'register' ? 1 : 0 
+        });
       } else {
         setPhoneError(result.error || 'phone_update_failed');
+        setIsLoading(false);
       }
     } catch (err: any) {
       setPhoneError('phone_update_failed');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -85,7 +105,7 @@ export default function PhoneNumberScreen({ navigation, route }: Props) {
               </View>
               <Text style={styles.welcomeTitle}>Complete Your Profile</Text>
               <Text style={styles.welcomeSubtitle}>
-                Please provide your phone number to continue. This helps us secure your account.
+                Please provide your phone number to continue.
               </Text>
             </View>
 
@@ -105,14 +125,18 @@ export default function PhoneNumberScreen({ navigation, route }: Props) {
                       color={phoneFocused ? colors.primary : colors.textTertiary} 
                       style={styles.inputIcon} 
                     />
+                    <Text style={[styles.prefixText, { color: colors.text }]}>+91</Text>
                     <TextInput
                       style={[styles.textInput, { color: colors.text }]}
-                      placeholder="Enter your phone number"
+                      placeholder="Enter 10 digit phone number"
                       placeholderTextColor={colors.textTertiary}
                       value={phoneNumber}
                       onChangeText={(text) => {
-                        setPhoneNumber(text);
-                        setPhoneError("");
+                        const cleanedText = text.replace(/\D/g, '');
+                        if (cleanedText.length <= 10) {
+                          setPhoneNumber(cleanedText);
+                          setPhoneError("");
+                        }
                       }}
                       keyboardType="phone-pad"
                       autoFocus
@@ -121,6 +145,7 @@ export default function PhoneNumberScreen({ navigation, route }: Props) {
                       onFocus={() => setPhoneFocused(true)}
                       onBlur={() => setPhoneFocused(false)}
                       returnKeyType="done"
+                      maxLength={10}
                     />
                   </View>
                 </View>
@@ -130,9 +155,10 @@ export default function PhoneNumberScreen({ navigation, route }: Props) {
                     <Ionicons name="alert-circle" size={16} color={colors.error} />
                     <Text style={[styles.errorText, { color: colors.error }]}>
                       {phoneError === 'phone_required' && 'Phone number is required'}
-                      {phoneError === 'phone_invalid' && 'Please enter a valid phone number (10-15 digits)'}
+                      {phoneError === 'phone_invalid' && 'Please enter exactly 10 digits'}
+                      {phoneError === 'phone_already_exists' && 'This phone number is already registered with another account'}
                       {phoneError === 'phone_update_failed' && 'Failed to update phone number. Please try again.'}
-                      {!['phone_required', 'phone_invalid', 'phone_update_failed'].includes(phoneError) && phoneError}
+                      {!['phone_required', 'phone_invalid', 'phone_already_exists', 'phone_update_failed'].includes(phoneError) && phoneError}
                     </Text>
                   </View>
                 ) : null}
@@ -161,13 +187,6 @@ export default function PhoneNumberScreen({ navigation, route }: Props) {
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
-
-                <View style={styles.infoBox}>
-                  <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} style={styles.infoIcon} />
-                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                    Your phone number will be kept secure and used only for account verification and security purposes.
-                  </Text>
-                </View>
               </View>
             </View>
 
@@ -284,6 +303,11 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     marginRight: 12,
+  },
+  prefixText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 8,
   },
   textInput: {
     flex: 1,

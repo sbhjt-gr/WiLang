@@ -10,6 +10,7 @@ export {
   isAuthenticated,
   getUserProfile,
   updateUserPhone,
+  checkPhoneNumberExists,
   onAuthStateChange,
   type UserData
 } from './FirebaseAuth';

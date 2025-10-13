@@ -17,7 +17,10 @@ import {
   serverTimestamp,
   Timestamp,
   collection,
-  addDoc
+  addDoc,
+  query,
+  where,
+  getDocs
 } from 'firebase/firestore';
 import { auth, firestore } from '../config/firebase';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
@@ -483,6 +486,36 @@ export const updateUserPhone = async (phone: string): Promise<{ success: boolean
     return {
       success: false,
       error: 'Failed to update phone number.'
+    };
+  }
+};
+
+export const checkPhoneNumberExists = async (phone: string): Promise<{ exists: boolean; error?: string }> => {
+  try {
+    const cleanPhone = phone.replace(/\D/g, '');
+    
+    if (__DEV__) {
+      console.log('checkPhoneNumberExists_start', { phone: cleanPhone });
+    }
+
+    const usersRef = collection(firestore, 'users');
+    const q = query(usersRef, where('phone', '==', phone));
+    const querySnapshot = await getDocs(q);
+
+    const exists = !querySnapshot.empty;
+    
+    if (__DEV__) {
+      console.log('checkPhoneNumberExists_result', { exists, count: querySnapshot.size });
+    }
+
+    return { exists };
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('checkPhoneNumberExists_error', error);
+    }
+    return {
+      exists: false,
+      error: 'Failed to check phone number.'
     };
   }
 };
