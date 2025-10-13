@@ -55,30 +55,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     createMeetingWithSocket,
   } = useContext(WebRTCContext);
 
-  const [controlsVisible, setControlsVisible] = useState(true);
   const [isGridMode, setIsGridMode] = useState(false);
   const [isInstantCall, setIsInstantCall] = useState(false);
   const [showJoinCodeUI, setShowJoinCodeUI] = useState(false);
-  
+
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
-  const controlsTimer = useRef<NodeJS.Timeout | null>(null);
-
-  const toggleControls = useCallback(() => {
-    if (controlsTimer.current) {
-      clearTimeout(controlsTimer.current);
-    }
-
-    if (controlsVisible) {
-      setControlsVisible(false);
-    } else {
-      setControlsVisible(true);
-      
-      controlsTimer.current = setTimeout(() => {
-        setControlsVisible(false);
-      }, 4000);
-    }
-  }, [controlsVisible]);
 
   const toggleViewMode = useCallback(() => {
     setIsGridMode(prev => !prev);
@@ -123,18 +105,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       headerShown: false,
     });
   }, [navigation]);
-
-  useEffect(() => {
-    controlsTimer.current = setTimeout(() => {
-      setControlsVisible(false);
-    }, 4000);
-
-    return () => {
-      if (controlsTimer.current) {
-        clearTimeout(controlsTimer.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (route.params.type === 'join' && route.params.joinCode && !joinAttempted.current) {
@@ -378,21 +348,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const shouldUseFeaturedViewForCall = totalParticipants <= 2 && !isGridMode;
 
   return (
-    <TouchableOpacity
-      style={styles.container}
-      activeOpacity={1}
-      onPress={toggleControls}
-    >
+    <View style={styles.container}>
       <StatusBar backgroundColor="black" style="light" />
-      <RNStatusBar hidden />
-      
+
       {shouldUseFeaturedViewForCall ? renderFeaturedView() : renderGridView()}
 
-      {controlsVisible && (
-        <View
-          style={styles.topControls}
-          pointerEvents={controlsVisible ? 'auto' : 'none'}
-        >
+      <View style={styles.topControls}>
         {totalParticipants >= 2 && (
           <TouchableOpacity style={[styles.topControlButton, { backgroundColor: 'rgba(0,0,0,0.7)' }]} onPress={toggleViewMode}>
             <Ionicons
@@ -415,13 +376,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           </Text>
         </View>
       </View>
-      )}
-      
-      {controlsVisible && (
-        <View
-          style={styles.bottomControls}
-          pointerEvents={controlsVisible ? 'auto' : 'none'}
-        >
+
+      <View style={styles.bottomControls}>
         <View style={styles.controlsBackground}>
           <View style={styles.controlButtonsRow}>
             <TouchableOpacity
@@ -451,8 +407,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           </View>
         </View>
       </View>
-      )}
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -563,6 +518,8 @@ const styles = StyleSheet.create({
   },
   localVideoContainer: {
     position: 'absolute',
+    bottom: 120,
+    right: 20,
     width: 120,
     height: 160,
     borderRadius: 16,

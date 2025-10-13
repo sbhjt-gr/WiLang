@@ -125,7 +125,7 @@ const ParticipantGrid: React.FC<ParticipantGridProps> = ({
   }, [participants, createAnimatedParticipant, animateParticipantEntry, animateParticipantExit]);
 
   const getOptimalLayout = (count: number) => {
-    if (count <= 2) return { rows: 1, cols: 2 };
+    if (count <= 2) return { rows: 2, cols: 1 };
     if (count <= 4) return { rows: 2, cols: 2 };
     if (count <= 6) return { rows: 2, cols: 3 };
     if (count <= 9) return { rows: 3, cols: 3 };
