@@ -11,6 +11,7 @@ import UsersScreen from './src/screens/UsersScreen';
 import { initializeFirebase } from './src/services/FirebaseService';
 import VideoCallScreen from './src/screens/VideoCallScreen';
 import EnvironmentConfig from './src/screens/EnvironmentConfig';
+import ThemeSettingsScreen from './src/screens/ThemeSettingsScreen';
 import { RootStackParamList } from './src/types/navigation';
 import WebRTCProvider from './src/store/WebRTCProvider';
 import WebRTCInitializer from './src/components/WebRTCInitializer';
@@ -77,6 +78,10 @@ export default function App() {
                 <Stack.Screen
                   name="EnvironmentConfig"
                   component={EnvironmentConfig}
+                />
+                <Stack.Screen
+                  name="ThemeSettingsScreen"
+                  component={ThemeSettingsScreen}
                 />
               </Stack.Navigator>
             </NavigationContainer>

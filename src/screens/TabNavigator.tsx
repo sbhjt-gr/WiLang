@@ -88,7 +88,7 @@ export default function TabNavigator({ navigation, route }: Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style="light" backgroundColor="transparent" translucent />
+      <StatusBar style="light" backgroundColor="#8b5cf6" />
 
       <View style={[styles.headerContainer, { backgroundColor: '#8b5cf6' }]}>
         <SafeAreaView edges={['top']}>

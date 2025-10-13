@@ -6,7 +6,6 @@ import { RootStackParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../config/firebase';
 import { useTheme } from '../../theme';
-import { ThemeToggle } from '../../components/ThemeToggle';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -41,11 +40,19 @@ export default function SettingsScreen({ navigation }: Props) {
 
   const settingsOptions = useMemo(() => ([
     {
+      id: 'theme',
+      title: 'Theme',
+      subtitle: 'Appearance and display settings',
+      icon: 'color-palette-outline' as const,
+      color: '#8b5cf6',
+      onPress: () => navigation.navigate('ThemeSettingsScreen'),
+    },
+    {
       id: 'notifications',
       title: 'Notifications',
       subtitle: 'Manage call notifications',
       icon: 'notifications-outline' as const,
-      color: '#667eea',
+      color: '#8b5cf6',
       onPress: () => {},
     },
     {
@@ -53,7 +60,7 @@ export default function SettingsScreen({ navigation }: Props) {
       title: 'Audio & Video',
       subtitle: 'Camera and microphone settings',
       icon: 'videocam-outline' as const,
-      color: '#10b981',
+      color: '#8b5cf6',
       onPress: () => {},
     },
     {
@@ -61,7 +68,7 @@ export default function SettingsScreen({ navigation }: Props) {
       title: 'Privacy',
       subtitle: 'Privacy and security settings',
       icon: 'shield-outline' as const,
-      color: '#f59e0b',
+      color: '#8b5cf6',
       onPress: () => {},
     },
     {
@@ -89,10 +96,6 @@ export default function SettingsScreen({ navigation }: Props) {
             <Text style={styles.userName}>User Name</Text>
             <Text style={styles.userEmail}>{auth.currentUser?.email || 'user@example.com'}</Text>
           </View>
-        </View>
-
-        <View style={styles.themeSection}>
-          <ThemeToggle />
         </View>
 
         <View style={styles.settingsSection}>
@@ -145,9 +148,6 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   profileSection: {
-    marginBottom: 24,
-  },
-  themeSection: {
     marginBottom: 24,
   },
   profileCard: {

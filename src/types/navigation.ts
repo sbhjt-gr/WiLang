@@ -5,6 +5,7 @@ export type RootStackParamList = {
   VideoCallScreen: { id: string; type?: 'join' | 'create' | 'incoming' | 'outgoing' | 'instant'; joinCode?: string };
   UsersScreen: undefined;
   EnvironmentConfig: undefined;
+  ThemeSettingsScreen: undefined;
 };
 
 export type TabParamList = {

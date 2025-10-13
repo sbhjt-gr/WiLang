@@ -1,4 +1,5 @@
 export type ThemeMode = 'light' | 'dark' | 'pitchBlack';
+export type ThemePreference = 'system' | ThemeMode;
 
 export interface ThemeColors {
   primary: string;
