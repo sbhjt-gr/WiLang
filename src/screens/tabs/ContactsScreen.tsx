@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useContext } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Linking, FlatList, TextInput, ActivityIndicator, Platform, RefreshControl, Image } from 'react-native';
 import { Text } from '@rneui/themed';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,6 +8,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { videoCallService } from '../../services/VideoCallService';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme';
+import { WebRTCContext } from '../../store/WebRTCContext';
+import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
+import { firestore, auth } from '../../config/firebase';
 
 interface Contact {
   id: string;
@@ -17,6 +20,8 @@ interface Contact {
   phoneNumbers?: { number?: string; }[];
   emails?: { email?: string; }[];
   imageUri?: string;
+  registeredPhone?: string;
+  registeredUserId?: string;
 }
 
 interface ContactsScreenProps {
@@ -26,6 +31,7 @@ interface ContactsScreenProps {
 export default function ContactsScreen({ navigation }: ContactsScreenProps) {
   const navigationHook = useNavigation();
   const { colors } = useTheme();
+  const webRTCContext = useContext(WebRTCContext);
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [permissionStatus, setPermissionStatus] = useState<'undetermined' | 'granted' | 'denied'>('undetermined');
@@ -33,6 +39,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
+  const [isCheckingRegistration, setIsCheckingRegistration] = useState(false);
 
   useEffect(() => {
     checkInitialPermissionStatus();
@@ -102,10 +109,70 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
         }));
 
       setContacts(filteredContacts);
+      setIsLoading(false);
+
+      checkRegisteredContacts(filteredContacts);
+
     } catch {
       Alert.alert('Error', 'Failed to load contacts. Please try again.');
-    } finally {
       setIsLoading(false);
+    }
+  };
+
+  const normalizePhoneNumber = (phone: string): string => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 10) {
+      return `+91${cleaned}`;
+    }
+    if (cleaned.length === 12 && cleaned.startsWith('91')) {
+      return `+${cleaned}`;
+    }
+    if (cleaned.length === 13 && cleaned.startsWith('091')) {
+      return `+${cleaned.substring(1)}`;
+    }
+    return phone;
+  };
+
+  const checkRegisteredContacts = async (contactsList: Contact[]) => {
+    try {
+      setIsCheckingRegistration(true);
+      const phoneNumbers: string[] = [];
+      const phoneToContactMap = new Map<string, Contact>();
+
+      for (const contact of contactsList) {
+        if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
+          const phoneNumber = contact.phoneNumbers[0].number;
+          if (phoneNumber) {
+            const normalizedPhone = normalizePhoneNumber(phoneNumber);
+            phoneNumbers.push(normalizedPhone);
+            phoneToContactMap.set(normalizedPhone, contact);
+          }
+        }
+      }
+
+      const batchSize = 10;
+      for (let i = 0; i < phoneNumbers.length; i += batchSize) {
+        const batch = phoneNumbers.slice(i, i + batchSize);
+        const usersRef = collection(firestore, 'users');
+        const q = query(usersRef, where('phone', 'in', batch));
+        const querySnapshot = await getDocs(q);
+
+        querySnapshot.docs.forEach(doc => {
+          const userData = doc.data();
+          const contact = phoneToContactMap.get(userData.phone);
+          if (contact) {
+            contact.registeredPhone = userData.phone;
+            contact.registeredUserId = doc.id;
+          }
+        });
+
+        setContacts([...contactsList]);
+      }
+
+      setIsCheckingRegistration(false);
+    } catch (error) {
+      console.error('check_registered_contacts_error', error);
+      setIsCheckingRegistration(false);
     }
   };
 
@@ -137,20 +204,25 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
       return;
     }
 
+    const actions = [
+      { text: 'Cancel', style: 'cancel' as const },
+      {
+        text: 'Voice Call',
+        onPress: () => handleVoiceCall(phoneNumber)
+      }
+    ];
+
+    if (contact.registeredUserId && contact.registeredPhone) {
+      actions.push({
+        text: 'Video Call',
+        onPress: () => handleVideoCall(contact)
+      });
+    }
+
     Alert.alert(
       contact.name,
-      'Choose an action:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Voice Call',
-          onPress: () => handleVoiceCall(phoneNumber)
-        },
-        {
-          text: 'Video Call',
-          onPress: () => handleVideoCall(contact)
-        }
-      ]
+      contact.registeredUserId ? 'WiLang User - Choose an action:' : 'Choose an action:',
+      actions
     );
   };
 
@@ -161,11 +233,25 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
 
   const handleVideoCall = async (contact: Contact) => {
     try {
+      if (!contact.registeredUserId || !contact.registeredPhone) {
+        Alert.alert('Not Available', 'This contact is not registered on WiLang.');
+        return;
+      }
+
+      if (!webRTCContext) {
+        Alert.alert('Error', 'WebRTC service not available.');
+        return;
+      }
+
       if (navigationHook) {
         videoCallService.setNavigationRef({ current: navigationHook });
       }
-      
-      await videoCallService.startVideoCall(contact);
+
+      await videoCallService.startVideoCallWithPhone(
+        contact.registeredUserId,
+        contact.registeredPhone,
+        contact.name
+      );
     } catch {
       Alert.alert('Error', 'Failed to start video call. Please try again.');
     }
@@ -232,7 +318,12 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
           </View>
         )}
         <View style={styles.contactDetails}>
-          <Text style={[styles.contactName, { color: colors.text }]} numberOfLines={1}>{contact.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[styles.contactName, { color: colors.text }]} numberOfLines={1}>{contact.name}</Text>
+            {contact.registeredUserId && (
+              <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+            )}
+          </View>
           {contact.phoneNumbers?.[0]?.number && (
             <Text style={[styles.phoneNumber, { color: colors.textSecondary }]} numberOfLines={1}>
               {contact.phoneNumbers[0].number}
@@ -240,15 +331,17 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
           )}
         </View>
       </View>
-      <TouchableOpacity
-        style={[styles.callButton, { backgroundColor: colors.primaryLight }]}
-        onPress={(e) => {
-          e.stopPropagation();
-          handleVideoCall(contact);
-        }}
-      >
-        <Ionicons name="videocam-outline" size={20} color={colors.primary} />
-      </TouchableOpacity>
+      {contact.registeredUserId && contact.registeredPhone && (
+        <TouchableOpacity
+          style={[styles.callButton, { backgroundColor: colors.primaryLight }]}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleVideoCall(contact);
+          }}
+        >
+          <Ionicons name="videocam-outline" size={20} color={colors.primary} />
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 

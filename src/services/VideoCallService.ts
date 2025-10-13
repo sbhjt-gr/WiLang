@@ -86,6 +86,37 @@ export class VideoCallService {
     }
   }
 
+  async startVideoCallWithPhone(userId: string, phone: string, name: string): Promise<void> {
+    try {
+      if (!this.webRTCContext) {
+        Alert.alert('Error', 'Video calling is not initialized. Please try again.');
+        return;
+      }
+
+      if (!this.webRTCContext.localStream) {
+        const initialized = await this.initializeVideoCall();
+        if (!initialized) {
+          Alert.alert('Error', 'Failed to initialize camera and microphone.');
+          return;
+        }
+      }
+
+      if (this.navigationRef?.current) {
+        this.navigationRef.current.navigate('VideoCallScreen', {
+          id: `call_${userId}`,
+          type: 'outgoing',
+          contact: {
+            id: userId,
+            name: name,
+            phoneNumbers: [{ number: phone }]
+          }
+        });
+      }
+    } catch (_error) {
+      Alert.alert('Error', 'Failed to start video call. Please try again.');
+    }
+  }
+
   private startMockCall(contact: Contact) {
     try {
       const mockUser = this.convertContactToUser(contact);

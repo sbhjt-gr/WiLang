@@ -38,12 +38,12 @@ export interface ThemeColors {
   overlay: string;
   overlayLight: string;
 
-  gradient1: string[];
-  gradient2: string[];
-  gradient3: string[];
-  gradient4: string[];
-  gradient5: string[];
-  gradient6: string[];
+  gradient1: readonly [string, string, ...string[]];
+  gradient2: readonly [string, string, ...string[]];
+  gradient3: readonly [string, string, ...string[]];
+  gradient4: readonly [string, string, ...string[]];
+  gradient5: readonly [string, string, ...string[]];
+  gradient6: readonly [string, string, ...string[]];
 
   statusBar: 'light-content' | 'dark-content';
 }
