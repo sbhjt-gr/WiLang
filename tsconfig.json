@@ -25,18 +25,7 @@
     "typeRoots": [
       "./src/types",
       "./node_modules/@types"
-    ],
-    "paths": {
-      "whisper.rn": [
-        "./node_modules/whisper.rn/lib/typescript/index"
-      ],
-      "whisper.rn/*": [
-        "./node_modules/whisper.rn/lib/typescript/*"
-      ],
-      "whisper.rn/lib/commonjs/*": [
-        "./node_modules/whisper.rn/lib/typescript/*"
-      ]
-    }
+    ]
   },
   "include": [
     "**/*.ts",

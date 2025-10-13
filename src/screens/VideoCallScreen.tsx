@@ -23,8 +23,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { User } from '../store/WebRTCTypes';
 import ParticipantGrid from '../components/ParticipantGrid';
-import { useRealtimeSubtitle } from '../hooks/useRealtimeSubtitle';
-import { CallSubtitles } from '../components/CallSubtitles';
 
 const {width, height} = Dimensions.get('window');
 
@@ -66,12 +64,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
   const controlsTimer = useRef<NodeJS.Timeout | null>(null);
-  const {
-    subtitle,
-    segments,
-    status: subtitleStatus,
-    error: subtitleError,
-  } = useRealtimeSubtitle(Boolean(localStream)); // Auto-detect language
 
   const toggleControls = useCallback(() => {
     if (controlsTimer.current) {
@@ -424,13 +416,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       <RNStatusBar hidden />
       
       {shouldUseFeaturedViewForCall ? renderFeaturedView() : renderGridView()}
-      
-      <CallSubtitles
-        text={subtitle}
-        status={subtitleStatus}
-        error={subtitleError}
-        isPartial={segments.length > 0 && segments[segments.length - 1].id.startsWith('partial-')}
-      />
 
       {controlsVisible && (
         <View

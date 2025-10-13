@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Text } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -6,7 +6,6 @@ import { RootStackParamList } from '../../types/navigation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../config/firebase';
-import { getCachedModelSettings, subscribeModelSettings, type ModelSettings } from '../../services/ModelSettings';
 import { useTheme } from '../../theme';
 import { ThemeToggle } from '../../components/ThemeToggle';
 
@@ -17,32 +16,7 @@ interface Props {
 }
 
 export default function SettingsScreen({ navigation }: Props) {
-  const [modelSettings, setModelSettings] = useState<ModelSettings>(getCachedModelSettings());
   const { colors } = useTheme();
-
-  useEffect(() => {
-    const unsubscribe = subscribeModelSettings((settings) => {
-      setModelSettings(settings);
-    });
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  const modelSubtitle = useMemo(() => {
-    const modelName = modelSettings.manualModelName;
-    const vadName = modelSettings.manualVadName;
-    if (modelName && vadName) {
-      return `Model: ${modelName} • Detector: ${vadName}`;
-    }
-    if (!modelName && !vadName) {
-      return 'No model or detector imported';
-    }
-    if (!modelName) {
-      return vadName ? `Model missing • Detector: ${vadName}` : 'Model missing';
-    }
-    return vadName ? `Model: ${modelName} • Detector missing` : `Model: ${modelName} • Detector missing`;
-  }, [modelSettings.manualModelName, modelSettings.manualVadName]);
 
   const LogOut = async (): Promise<void> => {
     Alert.alert(
@@ -67,14 +41,6 @@ export default function SettingsScreen({ navigation }: Props) {
   };
 
   const settingsOptions = useMemo(() => ([
-    {
-      id: 'model',
-      title: 'Speech model',
-      subtitle: modelSubtitle,
-      icon: 'cloud-upload-outline' as const,
-      color: '#22d3ee',
-      onPress: () => navigation.navigate('ModelSettings'),
-    },
     {
       id: 'notifications',
       title: 'Notifications',
@@ -107,7 +73,7 @@ export default function SettingsScreen({ navigation }: Props) {
       color: '#8b5cf6',
       onPress: () => {},
     },
-  ]), [modelSubtitle, navigation]);
+  ]), [navigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
