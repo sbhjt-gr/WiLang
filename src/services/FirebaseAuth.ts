@@ -39,6 +39,7 @@ export type UserData = {
   displayName: string | null;
   emailVerified: boolean;
   photoURL: string | null;
+  phone?: string | null;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
   lastLoginAt?: Timestamp;
@@ -131,10 +132,148 @@ export const onAuthStateChange = (callback: (user: FirebaseUser | null) => void)
   return onAuthStateChanged(auth, callback);
 };
 
+const sanitizeData = (obj: any): any => {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeData).filter(item => item !== undefined);
+  }
+  
+  if (typeof obj === 'object' && !(obj instanceof Date)) {
+    const sanitized: any = {};
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        const value = sanitizeData(obj[key]);
+        if (value !== undefined) {
+          sanitized[key] = value;
+        }
+      }
+    }
+    return Object.keys(sanitized).length > 0 ? sanitized : null;
+  }
+  
+  return obj;
+};
+
+const createUserDocument = async (user: FirebaseUser, additionalData?: any): Promise<void> => {
+  if (!user) return;
+
+  try {
+    const userRef = doc(firestore, 'users', user.uid);
+
+    if (__DEV__) {
+      console.log('createUserDocument_checking_existence', user.uid);
+    }
+
+    let userDoc;
+    try {
+      userDoc = await getDoc(userRef);
+      if (__DEV__) {
+        console.log('createUserDocument_doc_check_complete', { exists: userDoc.exists() });
+      }
+    } catch (getError: any) {
+      if (__DEV__) {
+        console.error('createUserDocument_get_error', getError?.message || getError);
+      }
+      userDoc = { exists: () => false };
+    }
+
+    if (!userDoc.exists()) {
+      const { email, displayName, photoURL, emailVerified } = user;
+      const ipData = await getIpAddress();
+      const geoData = ipData.ip ? await getGeoLocationFromIp(ipData.ip) : { geo: null };
+      const deviceInfo = await getDeviceInfo();
+
+      const userData: UserData = {
+        uid: user.uid,
+        email: email || null,
+        displayName: displayName || additionalData?.name || null,
+        emailVerified,
+        photoURL: photoURL || null,
+        createdAt: serverTimestamp() as Timestamp,
+        updatedAt: serverTimestamp() as Timestamp,
+        lastLoginAt: serverTimestamp() as Timestamp,
+        trustedEmail: email ? isEmailFromTrustedProvider(email) : false,
+        registrationInfo: sanitizeData({
+          method: additionalData?.authMethod || 'email',
+          ipAddress: ipData.ip,
+          geoLocation: geoData.geo,
+          deviceInfo,
+          timestamp: serverTimestamp()
+        }),
+        lastLoginInfo: sanitizeData({
+          timestamp: serverTimestamp(),
+          ipAddress: ipData.ip,
+          geoLocation: geoData.geo,
+          deviceInfo
+        }),
+        settings: {
+          language: 'en',
+          notifications: true,
+          theme: 'system'
+        },
+        status: {
+          isActive: true,
+          isOnline: false
+        },
+        ...additionalData
+      };
+
+      if (__DEV__) {
+        console.log('createUserDocument_writing_new', user.uid);
+      }
+
+      await setDoc(userRef, userData);
+      await storeUserSecurityInfo(user.uid, ipData, geoData, deviceInfo);
+
+      if (__DEV__) {
+        console.log('createUserDocument_write_success');
+      }
+    } else {
+      const ipData = await getIpAddress();
+      const geoData = ipData.ip ? await getGeoLocationFromIp(ipData.ip) : { geo: null };
+      const deviceInfo = await getDeviceInfo();
+
+      if (__DEV__) {
+        console.log('createUserDocument_updating_existing', user.uid);
+      }
+
+      await setDoc(userRef, {
+        lastLoginAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        lastLoginInfo: sanitizeData({
+          timestamp: serverTimestamp(),
+          ipAddress: ipData.ip,
+          geoLocation: geoData.geo,
+          deviceInfo
+        })
+      }, { merge: true });
+
+      await storeUserSecurityInfo(user.uid, ipData, geoData, deviceInfo);
+
+      if (__DEV__) {
+        console.log('createUserDocument_update_success');
+      }
+    }
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('createUserDocument_fatal_error', {
+        code: error?.code,
+        message: error?.message,
+        name: error?.name
+      });
+    }
+    throw error;
+  }
+};
+
 export const registerWithEmail = async (
   name: string,
   email: string,
-  password: string
+  password: string,
+  phone?: string
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -145,6 +284,12 @@ export const registerWithEmail = async (
         displayName: name
       });
     }
+
+    await createUserDocument(user, {
+      name,
+      phone: phone || null,
+      authMethod: 'email'
+    });
 
     await storeAuthState(user);
     return { success: true };
@@ -163,6 +308,8 @@ export const loginWithEmail = async (
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+
+    await createUserDocument(user, { authMethod: 'email' });
     await storeAuthState(user);
     return { success: true };
   } catch (error: any) {
@@ -173,7 +320,7 @@ export const loginWithEmail = async (
   }
 };
 
-export const signInWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
+export const signInWithGoogle = async (): Promise<{ success: boolean; error?: string; needsPhone?: boolean }> => {
   try {
     await GoogleSignin.hasPlayServices();
 
@@ -217,13 +364,36 @@ export const signInWithGoogle = async (): Promise<{ success: boolean; error?: st
     const userCredential = await signInWithCredential(auth, googleCredential);
     const user = userCredential.user;
 
+    if (__DEV__) {
+      console.log('Firebase auth successful, creating/checking user document...');
+    }
+
+    // Check if phone exists before creating document
+    const userRef = doc(firestore, 'users', user.uid);
+    const userDoc = await getDoc(userRef);
+    const needsPhone = !userDoc.exists() || !userDoc.data()?.phone;
+
+    if (__DEV__) {
+      console.log('User doc exists:', userDoc.exists(), 'needsPhone:', needsPhone);
+    }
+
+    // Create or update user document
+    try {
+      await createUserDocument(user, { authMethod: 'google' });
+    } catch (docError) {
+      if (__DEV__) {
+        console.error('Failed to create user document:', docError);
+      }
+      // Continue anyway - auth was successful
+    }
+
     await storeAuthState(user);
 
     if (__DEV__) {
-      console.log('native_google_sign_in_success', { uid: user.uid });
+      console.log('native_google_sign_in_success', { uid: user.uid, needsPhone });
     }
 
-    return { success: true };
+    return { success: true, needsPhone };
   } catch (error: any) {
     if (__DEV__) {
       console.error('native_google_sign_in_error', error);
@@ -277,6 +447,42 @@ export const sendVerificationEmail = async (): Promise<{ success: boolean; error
     return {
       success: false,
       error: mapAuthError(error, 'Failed to send verification email.')
+    };
+  }
+};
+
+export const updateUserPhone = async (phone: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      if (__DEV__) {
+        console.log('updateUserPhone_no_user');
+      }
+      return { success: false, error: 'No user logged in' };
+    }
+
+    if (__DEV__) {
+      console.log('updateUserPhone_start', { uid: user.uid, phone });
+    }
+
+    const userRef = doc(firestore, 'users', user.uid);
+    await setDoc(userRef, {
+      phone,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    if (__DEV__) {
+      console.log('updateUserPhone_success');
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    if (__DEV__) {
+      console.error('updateUserPhone_error', error);
+    }
+    return {
+      success: false,
+      error: 'Failed to update phone number.'
     };
   }
 };

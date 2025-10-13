@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, browserLocalPersistence, getReactNativePersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+
 const extra = Constants.expoConfig?.extra;
+
 const firebaseConfig = {
   apiKey: extra?.FIREBASE_API_KEY,
   authDomain: extra?.FIREBASE_AUTH_DOMAIN,
@@ -14,6 +16,7 @@ const firebaseConfig = {
   appId: extra?.FIREBASE_APP_ID,
   measurementId: extra?.FIREBASE_MEASUREMENT_ID
 };
+
 const app = initializeApp(firebaseConfig);
 
 const persistence = Platform.OS === 'web'
@@ -23,5 +26,11 @@ const persistence = Platform.OS === 'web'
 export const auth = initializeAuth(app, {
   persistence
 });
-export const firestore = getFirestore(app);
+
+export const firestore = initializeFirestore(app, {
+  cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+  experimentalForceLongPolling: true,
+  experimentalAutoDetectLongPolling: false
+});
+
 export default app; 

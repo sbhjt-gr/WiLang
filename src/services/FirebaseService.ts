@@ -9,6 +9,7 @@ export {
   getCurrentUser,
   isAuthenticated,
   getUserProfile,
+  updateUserPhone,
   onAuthStateChange,
   type UserData
 } from './FirebaseAuth';
