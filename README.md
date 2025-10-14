@@ -1,10 +1,10 @@
-# WhisperLang
+# WiLang
 
-WhisperLang is a comprehensive video calling application built with Expo and React Native that delivers professional-grade communication features. The app combines Firebase authentication, WebRTC technology, and an intuitive user interface to provide seamless video calling experiences across iOS, Android, and web platforms.
+WiLang is a comprehensive video calling application built with Expo and React Native that delivers professional-grade communication features. The app combines Firebase authentication, WebRTC technology, and an intuitive user interface to provide seamless video calling experiences across iOS, Android, and web platforms.
 
-<img width="100" alt="Screenshot_20250810-232446_WhisperLang" src="https://github.com/user-attachments/assets/1504a035-6046-41a6-a600-35da55384313" />
-<img width="100" alt="Screenshot_20250810-232454_WhisperLang" src="https://github.com/user-attachments/assets/cb320865-f52a-4cab-99bd-b38e9d88eb58" />
-<img width="100" alt="Screenshot_20250810-233023_WhisperLang" src="https://github.com/user-attachments/assets/1dc99b3d-a00d-4d41-bfb4-1b6a4f53d336" />
+<img width="100" alt="Screenshot_20250810-232446_whisperlang" src="https://github.com/user-attachments/assets/1504a035-6046-41a6-a600-35da55384313" />
+<img width="100" alt="Screenshot_20250810-232454_whisperlang" src="https://github.com/user-attachments/assets/cb320865-f52a-4cab-99bd-b38e9d88eb58" />
+<img width="100" alt="Screenshot_20250810-233023_whisperlang" src="https://github.com/user-attachments/assets/1dc99b3d-a00d-4d41-bfb4-1b6a4f53d336" />
 
 ## Key Features
 
@@ -37,7 +37,7 @@ WhisperLang is a comprehensive video calling application built with Expo and Rea
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd whisperlang
+   cd WiLang
    ```
 
 2. **Install dependencies**
@@ -73,7 +73,7 @@ WhisperLang is a comprehensive video calling application built with Expo and Rea
 1. **Start the Signaling Server First**
    ```bash
    # Navigate to server directory
-   cd ../whisperlang-server
+   cd ../WiLang-server
    
    # Install server dependencies
    npm install
@@ -86,7 +86,7 @@ WhisperLang is a comprehensive video calling application built with Expo and Rea
 2. **Start the React Native App**
    ```bash
    # In a new terminal, navigate back to main app
-   cd ../whisperlang
+   cd ../WiLang
    
    # Start the Expo development server
    yarn start
@@ -103,8 +103,8 @@ WhisperLang is a comprehensive video calling application built with Expo and Rea
 #### 1. Clone and Install
 ```bash
 # Clone the repository
-git clone https://github.com/sbhjt-gr/whisperlang.git
-cd whisperlang
+git clone https://github.com/sbhjt-gr/WiLang.git
+cd WiLang
 
 # Install dependencies
 yarn install
@@ -144,7 +144,7 @@ FIREBASE_IOS_API_KEY=your-ios-api-key
 FIREBASE_IOS_APP_ID=1:123456789012:ios:abcdef123456
 FIREBASE_IOS_CLIENT_ID=your-ios-client-id.googleusercontent.com
 FIREBASE_IOS_REVERSED_CLIENT_ID=com.googleusercontent.apps.your-reversed-client-id
-FIREBASE_IOS_BUNDLE_ID=com.gorai.whisperlang
+FIREBASE_IOS_BUNDLE_ID=com.gorai.WiLang
 ```
 
 #### 3. Firebase Configuration Files
@@ -160,8 +160,8 @@ cp ~/Downloads/google-services.json android/app/
 **For iOS:**
 ```bash
 # Download GoogleService-Info.plist from Firebase Console
-# Place it in: ios/WhisperLang/GoogleService-Info.plist
-cp ~/Downloads/GoogleService-Info.plist ios/WhisperLang/
+# Place it in: ios/WiLang/GoogleService-Info.plist
+cp ~/Downloads/GoogleService-Info.plist ios/WiLang/
 ```
 
 #### 4. Platform-Specific Setup
@@ -194,7 +194,7 @@ npx expo run:ios --simulator
 
 **Terminal 1 - Signaling Server:**
 ```bash
-cd whisperlang-server
+cd WiLang-server
 npm install
 npm start
 # Server running on http://localhost:3000
@@ -202,7 +202,7 @@ npm start
 
 **Terminal 2 - React Native App:**
 ```bash
-cd whisperlang
+cd WiLang
 yarn start
 # Choose your platform:
 # - Press 'a' for Android
@@ -257,7 +257,7 @@ npx expo run:ios --clear
 ```bash
 # Verify files exist
 ls android/app/google-services.json
-ls ios/WhisperLang/GoogleService-Info.plist
+ls ios/WiLang/GoogleService-Info.plist
 
 # Check environment variables
 echo $FIREBASE_PROJECT_ID
@@ -279,7 +279,7 @@ curl http://localhost:3000
 ```bash
 # Test server endpoint
 curl http://localhost:3000
-# Should return: {"message": "WhisperLang WebRTC Signaling Server", "status": "Running", ...}
+# Should return: {"message": "WiLang WebRTC Signaling Server", "status": "Running", ...}
 
 # Check WebSocket connection (in browser console)
 const socket = io('http://localhost:3000');
@@ -354,7 +354,7 @@ export DEBUG=expo:*
 5. **Configure environment variables** (see Installation section)
 
 ### WebRTC Signaling Server
-WhisperLang requires a signaling server for WebRTC connections. The app connects to the server configured in the .env file.
+WiLang requires a signaling server for WebRTC connections. The app connects to the server configured in the .env file.
 
 The signaling server handles:
 - User registration and discovery
@@ -478,11 +478,11 @@ Production builds automatically use environment variables configured in the Expo
 ## Deployment
 
 ### Signaling Server
-The app requires a WebRTC signaling server for production use. A Node.js/Socket.IO server is included in the `whisperlang-server` directory:
+The app requires a WebRTC signaling server for production use. A Node.js/Socket.IO server is included in the `WiLang-server` directory:
 
 ```bash
 # Deploy to Render, Heroku, or similar
-cd ../whisperlang-server
+cd ../WiLang-server
 npm install
 npm start
 ```
