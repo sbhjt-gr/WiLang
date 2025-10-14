@@ -16,6 +16,10 @@ export class WebRTCSocketManager {
   private onIceCandidateReceived?: (data: any) => void;
   private onMeetingEnded?: () => void;
   private onUsersChange?: (users: User[]) => void;
+  private onIncomingCall?: (data: any) => void;
+  private onCallAccepted?: (data: any) => void;
+  private onCallDeclined?: (data: any) => void;
+  private onCallCancelled?: (data: any) => void;
 
   setCallbacks(callbacks: {
     onUserJoined?: (user: User) => void;
@@ -25,6 +29,10 @@ export class WebRTCSocketManager {
     onIceCandidateReceived?: (data: any) => void;
     onMeetingEnded?: () => void;
     onUsersChange?: (users: User[]) => void;
+    onIncomingCall?: (data: any) => void;
+    onCallAccepted?: (data: any) => void;
+    onCallDeclined?: (data: any) => void;
+    onCallCancelled?: (data: any) => void;
   }) {
     this.onUserJoined = callbacks.onUserJoined;
     this.onUserLeft = callbacks.onUserLeft;
@@ -33,6 +41,10 @@ export class WebRTCSocketManager {
     this.onIceCandidateReceived = callbacks.onIceCandidateReceived;
     this.onMeetingEnded = callbacks.onMeetingEnded;
     this.onUsersChange = callbacks.onUsersChange;
+    this.onIncomingCall = callbacks.onIncomingCall;
+    this.onCallAccepted = callbacks.onCallAccepted;
+    this.onCallDeclined = callbacks.onCallDeclined;
+    this.onCallCancelled = callbacks.onCallCancelled;
   }
 
   private async connectWithFallback(urls: string[], username: string): Promise<SocketInstance> {
@@ -169,6 +181,26 @@ export class WebRTCSocketManager {
 
       this.onIceCandidateReceived?.(transformedData);
     });
+
+    io.on('incoming-call', (data: any) => {
+      console.log('incoming_call_received', data);
+      this.onIncomingCall?.(data);
+    });
+
+    io.on('call-accepted', (data: any) => {
+      console.log('call_accepted_received', data);
+      this.onCallAccepted?.(data);
+    });
+
+    io.on('call-declined', (data: any) => {
+      console.log('call_declined_received', data);
+      this.onCallDeclined?.(data);
+    });
+
+    io.on('call-cancelled', (data: any) => {
+      console.log('call_cancelled_received', data);
+      this.onCallCancelled?.(data);
+    });
   }
 
   sendOffer(offer: any, targetPeerId: string, meetingId: string) {
@@ -209,6 +241,71 @@ export class WebRTCSocketManager {
 
   setMeetingId(meetingId: string) {
     this.currentMeetingId = meetingId;
+  }
+
+  registerUser(userData: {
+    username: string;
+    userId: string;
+    phoneNumber?: string;
+    peerId?: string;
+    fcmToken?: string;
+  }) {
+    if (!this.socket) {
+      throw new Error('Socket not initialized');
+    }
+
+    this.socket.emit('register-user', userData);
+  }
+
+  initiateCall(callData: {
+    recipientUserId?: string;
+    recipientPhone?: string;
+    callerId: string;
+    callerName: string;
+    callerPhone?: string;
+    callType: string;
+  }): Promise<{ success: boolean; callId?: string; error?: string }> {
+    return new Promise((resolve) => {
+      if (!this.socket) {
+        resolve({ success: false, error: 'Socket not initialized' });
+        return;
+      }
+
+      this.socket.emit('initiate-call', callData);
+
+      const timeout = setTimeout(() => {
+        resolve({ success: false, error: 'timeout' });
+      }, 30000);
+
+      this.socket.once('call-initiated', (response: any) => {
+        clearTimeout(timeout);
+        resolve(response);
+      });
+    });
+  }
+
+  acceptCall(data: { callId: string; callerSocketId: string }) {
+    if (!this.socket) {
+      throw new Error('Socket not initialized');
+    }
+
+    this.socket.emit('accept-call-request', data);
+  }
+
+  declineCall(data: { callId: string; callerSocketId: string }) {
+    if (!this.socket) {
+      throw new Error('Socket not initialized');
+    }
+
+    this.socket.emit('decline-call-request', data);
+  }
+
+  cancelCall(data: { callId: string; recipientSocketId?: string; recipientPhone?: string }) {
+    if (!this.socket) {
+      throw new Error('Socket not initialized');
+    }
+
+    this.socket.emit('cancel-call-request', data);
   }
 
   getMeetingId(): string | null {

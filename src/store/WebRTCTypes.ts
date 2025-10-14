@@ -27,6 +27,7 @@ export interface WebRTCContextType {
   remoteStream?: MediaStream | null;
   isMuted?: boolean;
   users?: User[];
+  socketManager?: any;
   initialize: (username?: string) => Promise<any>;
   reset: () => Promise<void>;
   createMeeting: () => Promise<string>;

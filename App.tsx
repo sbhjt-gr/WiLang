@@ -8,6 +8,7 @@ import TabNavigator from './src/screens/TabNavigator';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import AccountLoadingScreen from './src/screens/auth/AccountLoadingScreen';
+import { navigationRef } from './src/utils/navigationRef';
 import PhoneNumberScreen from './src/screens/auth/PhoneNumberScreen';
 import UsersScreen from './src/screens/UsersScreen';
 import { initializeFirebase } from './src/services/FirebaseService';
@@ -52,7 +53,7 @@ export default function App() {
       <WebRTCProvider>
         <WebRTCInitializer>
           <SafeAreaProvider>
-            <NavigationContainer theme={customTheme}>
+            <NavigationContainer ref={navigationRef} theme={customTheme}>
               <StatusBar style="light" />
               <Stack.Navigator
                 screenOptions={{

@@ -73,6 +73,62 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         },
         onUsersChange: (users: User[]) => {
           setUsers(users);
+        },
+        onIncomingCall: (callData: any) => {
+          console.log('incoming_call_received', callData);
+          const { navigationRef, navigate } = require('../utils/navigationRef');
+          
+          if (navigationRef.isReady()) {
+            console.log('navigating_to_calling_screen');
+            navigate('CallingScreen', {
+              callType: 'incoming',
+              callerName: callData.callerName,
+              callerPhone: callData.callerPhone,
+              callerId: callData.callerId
+            });
+          } else {
+            console.log('navigation_not_ready');
+            setTimeout(() => {
+              if (navigationRef.isReady()) {
+                console.log('retry_navigation');
+                navigate('CallingScreen', {
+                  callType: 'incoming',
+                  callerName: callData.callerName,
+                  callerPhone: callData.callerPhone,
+                  callerId: callData.callerId
+                });
+              }
+            }, 500);
+          }
+        },
+        onCallAccepted: (data: any) => {
+          console.log('call_accepted_notification', data);
+          const { navigationRef } = require('../utils/navigationRef');
+          if (navigationRef.current) {
+            navigationRef.current.navigate('VideoCallScreen', {
+              id: data.callId || 'call_' + Date.now(),
+              type: 'outgoing',
+              callerId: data.recipientId
+            });
+          }
+        },
+        onCallDeclined: (data: any) => {
+          console.log('call_declined_notification', data);
+          const { navigationRef } = require('../utils/navigationRef');
+          const { Alert } = require('react-native');
+          if (navigationRef.current) {
+            navigationRef.current.goBack();
+          }
+          Alert.alert('Call Declined', 'The recipient declined your call.');
+        },
+        onCallCancelled: (data: any) => {
+          console.log('call_cancelled_notification', data);
+          const { navigationRef } = require('../utils/navigationRef');
+          const { Alert } = require('react-native');
+          if (navigationRef.current) {
+            navigationRef.current.goBack();
+          }
+          Alert.alert('Call Cancelled', 'The caller cancelled the call.');
         }
       });
       peerManager.current.setCallbacks({
@@ -176,7 +232,66 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     }
   }, [username]);
 
-  const initialize = async (currentUsername?: string): Promise<any> => {
+  useEffect(() => {
+    const autoConnectSocket = async () => {
+      if (socketManager.current && !socket) {
+        try {
+          const { getCurrentUser } = require('../services/FirebaseService');
+          const { doc, getDoc } = require('firebase/firestore');
+          const { firestore } = require('../config/firebase');
+          
+          const currentUser = getCurrentUser();
+          
+          if (currentUser) {
+            console.log('attempting_socket_auto_connect', currentUser.uid);
+            
+            let phoneNumber = currentUser.phoneNumber;
+            
+            if (!phoneNumber) {
+              try {
+                const userDoc = await getDoc(doc(firestore, 'users', currentUser.uid));
+                if (userDoc.exists()) {
+                  phoneNumber = userDoc.data()?.phone;
+                }
+              } catch (error) {
+                console.log('failed_to_fetch_phone');
+              }
+            }
+            
+            const userDisplayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'User';
+            const io = await socketManager.current.initializeSocket(userDisplayName);
+            
+            setSocket(io);
+            setPeerId(io.id || '');
+            peerIdRef.current = io.id || '';
+            socketRef.current = io;
+            
+            socketManager.current.registerUser({
+              username: userDisplayName,
+              userId: currentUser.uid,
+              phoneNumber: phoneNumber || undefined,
+              peerId: io.id,
+              fcmToken: undefined
+            });
+            
+            console.log('socket_auto_connected', currentUser.uid, phoneNumber);
+          } else {
+            console.log('no_user_logged_in');
+          }
+        } catch (error) {
+          console.log('socket_auto_connect_failed', error);
+        }
+      }
+    };
+
+    const timer = setTimeout(() => {
+      autoConnectSocket();
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const initialize = async (currentUsername?: string) => {
     if (socket && socket.connected && localStream) {
       return {socket, localStream};
     }
@@ -220,6 +335,36 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
 
       (io as any).localStream = newStream;
       (io as any).currentPeerId = io.id;
+
+      const { getCurrentUser } = require('../services/FirebaseService');
+      const { doc, getDoc } = require('firebase/firestore');
+      const { firestore } = require('../config/firebase');
+      
+      const currentUser = getCurrentUser();
+      
+      if (currentUser && socketManager.current) {
+        let phoneNumber = currentUser.phoneNumber;
+        
+        if (!phoneNumber) {
+          try {
+            const userDoc = await getDoc(doc(firestore, 'users', currentUser.uid));
+            if (userDoc.exists()) {
+              phoneNumber = userDoc.data()?.phone;
+            }
+          } catch (error) {
+            console.log('failed_to_fetch_phone');
+          }
+        }
+        
+        socketManager.current.registerUser({
+          username: finalUsername,
+          userId: currentUser.uid,
+          phoneNumber: phoneNumber || undefined,
+          peerId: io.id,
+          fcmToken: undefined
+        });
+        console.log('user_registered', currentUser.uid, phoneNumber);
+      }
 
       setIsInitialized(true);
       return {socket: io, localStream: newStream};
@@ -375,6 +520,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     remoteStream,
     isMuted,
     users,
+    socketManager,
     initialize,
     reset,
     createMeeting,

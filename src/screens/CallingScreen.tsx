@@ -6,15 +6,14 @@ import { useTheme } from '../theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { videoCallService } from '../services/VideoCallService';
 
 interface CallingScreenProps {
   callType: 'outgoing' | 'incoming';
   callerName: string;
   callerPhone?: string;
   callerImage?: string;
-  onAccept?: () => void;
-  onDecline?: () => void;
-  onCancel?: () => void;
+  callerId?: string;
 }
 
 const { width, height } = Dimensions.get('window');
@@ -65,18 +64,33 @@ export default function CallingScreen() {
   };
 
   const handleAccept = () => {
-    params.onAccept?.();
-    navigation.navigate('VideoCallScreen' as never);
+    if (params.callType === 'incoming' && params.callerId) {
+      videoCallService.acceptIncomingCall(params.callerId);
+    }
+    (navigation as any).navigate('VideoCallScreen', {
+      id: `call_${params.callerId || Date.now()}`,
+      type: 'incoming'
+    });
   };
 
   const handleDecline = () => {
-    params.onDecline?.();
-    navigation.goBack();
+    if (params.callType === 'incoming' && params.callerId) {
+      videoCallService.declineIncomingCall(params.callerId);
+    }
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      (navigation as any).navigate('HomeScreen');
+    }
   };
 
   const handleCancel = () => {
-    params.onCancel?.();
-    navigation.goBack();
+    videoCallService.cancelOutgoingCall();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      (navigation as any).navigate('HomeScreen');
+    }
   };
 
   const getInitials = (name: string) => {

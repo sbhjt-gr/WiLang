@@ -10,9 +10,7 @@ export type RootStackParamList = {
     callerName: string;
     callerPhone?: string;
     callerImage?: string;
-    onAccept?: () => void;
-    onDecline?: () => void;
-    onCancel?: () => void;
+    callerId?: string;
   };
   UsersScreen: undefined;
   EnvironmentConfig: undefined;

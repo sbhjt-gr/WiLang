@@ -101,17 +101,50 @@ export class VideoCallService {
         }
       }
 
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        Alert.alert('Error', 'User not authenticated.');
+        return;
+      }
+
+      const socketManager = this.webRTCContext.socketManager?.current;
+      if (!socketManager) {
+        Alert.alert('Error', 'Socket not connected. Please try again.');
+        return;
+      }
+
       if (this.navigationRef?.current) {
         this.navigationRef.current.navigate('CallingScreen', {
           callType: 'outgoing',
           callerName: name,
           callerPhone: phone,
-          onCancel: () => {
-            this.navigationRef?.current?.goBack();
-          }
+          callerId: userId
         });
       }
+
+      const callData = {
+        recipientUserId: userId,
+        recipientPhone: phone,
+        callerId: currentUser.uid,
+        callerName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Unknown',
+        callerPhone: currentUser.phoneNumber,
+        callType: 'video'
+      };
+
+      const result = await socketManager.initiateCall(callData);
+      
+      if (!result.success) {
+        if (this.navigationRef?.current) {
+          this.navigationRef.current.goBack();
+        }
+        Alert.alert('Error', result.error === 'timeout' ? 'Call timed out. User may be offline.' : 'Failed to initiate call.');
+      }
+
+      console.log('call_initiated', result);
     } catch (_error) {
+      if (this.navigationRef?.current) {
+        this.navigationRef.current.goBack();
+      }
       Alert.alert('Error', 'Failed to start video call. Please try again.');
     }
   }
@@ -145,16 +178,10 @@ export class VideoCallService {
           callType: 'incoming',
           callerName: caller.name || caller.username,
           callerPhone: caller.phoneNumbers?.[0]?.number,
-          onAccept: () => {
-            this.acceptCall(caller);
-            resolve();
-          },
-          onDecline: () => {
-            this.declineCall(caller);
-            resolve();
-          }
+          callerId: caller.id || caller.username
         });
       }
+      resolve();
     });
   }
 
@@ -174,6 +201,67 @@ export class VideoCallService {
   }
 
   private declineCall(_caller: User) {
+  }
+
+  acceptIncomingCall(callerId: string) {
+    const socketManager = this.webRTCContext?.socketManager?.current;
+    if (!socketManager) {
+      console.log('socket_error', 'not_connected');
+      return;
+    }
+
+    socketManager.acceptCall({
+      callId: callerId,
+      callerSocketId: callerId
+    });
+
+    if (this.navigationRef?.current) {
+      this.navigationRef.current.replace('VideoCallScreen', {
+        id: 'call_' + Date.now(),
+        type: 'incoming',
+        callerId: callerId
+      });
+    }
+
+    console.log('call_accepted', callerId);
+  }
+
+  declineIncomingCall(callerId: string) {
+    const socketManager = this.webRTCContext?.socketManager?.current;
+    if (!socketManager) {
+      console.log('socket_error', 'not_connected');
+      return;
+    }
+
+    socketManager.declineCall({
+      callId: callerId,
+      callerSocketId: callerId
+    });
+
+    if (this.navigationRef?.current) {
+      this.navigationRef.current.goBack();
+    }
+
+    console.log('call_declined', callerId);
+  }
+
+  cancelOutgoingCall() {
+    const socketManager = this.webRTCContext?.socketManager?.current;
+    if (!socketManager) {
+      console.log('socket_error', 'not_connected');
+      return;
+    }
+
+    socketManager.cancelCall({
+      callId: 'temp',
+      recipientSocketId: undefined
+    });
+
+    if (this.navigationRef?.current) {
+      this.navigationRef.current.goBack();
+    }
+
+    console.log('call_cancelled');
   }
 
   endCall() {
