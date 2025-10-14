@@ -11,6 +11,7 @@ import { useTheme } from '../../theme';
 import { WebRTCContext } from '../../store/WebRTCContext';
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { firestore, auth } from '../../config/firebase';
+import { getCachedRegisteredContacts, setCachedRegisteredContacts, clearCachedRegisteredContacts } from '../../utils/database';
 
 interface Contact {
   id: string;
@@ -96,7 +97,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
         sort: Contacts.SortTypes.FirstName,
       });
 
-      const filteredContacts = data
+      const filteredContacts: Contact[] = data
         .filter(contact => contact.name && (contact.phoneNumbers?.length || contact.emails?.length))
         .map(contact => ({
           id: contact.id || Math.random().toString(),
@@ -108,10 +109,27 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
           imageUri: contact.image?.uri,
         }));
 
+      const cachedData = await getCachedRegisteredContacts();
+      if (cachedData) {
+        filteredContacts.forEach(contact => {
+          if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
+            const phoneNumber = contact.phoneNumbers[0].number;
+            if (phoneNumber) {
+              const normalizedPhone = normalizePhoneNumber(phoneNumber);
+              const cached = cachedData.get(normalizedPhone);
+              if (cached) {
+                contact.registeredPhone = cached.phone;
+                contact.registeredUserId = cached.userId;
+              }
+            }
+          }
+        });
+      }
+
       setContacts(filteredContacts);
       setIsLoading(false);
 
-      checkRegisteredContacts(filteredContacts);
+      checkRegisteredContacts(filteredContacts, !cachedData);
 
     } catch {
       Alert.alert('Error', 'Failed to load contacts. Please try again.');
@@ -133,11 +151,17 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
     return phone;
   };
 
-  const checkRegisteredContacts = async (contactsList: Contact[]) => {
+  const checkRegisteredContacts = async (contactsList: Contact[], forceQuery: boolean = false) => {
     try {
+      if (!forceQuery) {
+        setIsCheckingRegistration(false);
+        return;
+      }
+
       setIsCheckingRegistration(true);
       const phoneNumbers: string[] = [];
       const phoneToContactMap = new Map<string, Contact>();
+      const registeredMap = new Map<string, { userId: string; phone: string }>();
 
       for (const contact of contactsList) {
         if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
@@ -163,11 +187,14 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
           if (contact) {
             contact.registeredPhone = userData.phone;
             contact.registeredUserId = doc.id;
+            registeredMap.set(userData.phone, { userId: doc.id, phone: userData.phone });
           }
         });
 
         setContacts([...contactsList]);
       }
+
+      await setCachedRegisteredContacts(registeredMap);
 
       setIsCheckingRegistration(false);
     } catch (error) {
@@ -179,6 +206,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
   const onRefresh = async () => {
     if (permissionStatus === 'granted') {
       setRefreshing(true);
+      await clearCachedRegisteredContacts();
       await loadContacts();
       setRefreshing(false);
     }

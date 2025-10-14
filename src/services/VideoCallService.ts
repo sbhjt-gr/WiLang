@@ -102,13 +102,12 @@ export class VideoCallService {
       }
 
       if (this.navigationRef?.current) {
-        this.navigationRef.current.navigate('VideoCallScreen', {
-          id: `call_${userId}`,
-          type: 'outgoing',
-          contact: {
-            id: userId,
-            name: name,
-            phoneNumbers: [{ number: phone }]
+        this.navigationRef.current.navigate('CallingScreen', {
+          callType: 'outgoing',
+          callerName: name,
+          callerPhone: phone,
+          onCancel: () => {
+            this.navigationRef?.current?.goBack();
           }
         });
       }
@@ -141,28 +140,21 @@ export class VideoCallService {
 
   async handleIncomingCall(caller: User): Promise<void> {
     return new Promise((resolve) => {
-      Alert.alert(
-        'Incoming Call',
-        `${caller.name || caller.username} is calling...`,
-        [
-          {
-            text: 'Decline',
-            style: 'destructive',
-            onPress: () => {
-              this.declineCall(caller);
-              resolve();
-            }
+      if (this.navigationRef?.current) {
+        this.navigationRef.current.navigate('CallingScreen', {
+          callType: 'incoming',
+          callerName: caller.name || caller.username,
+          callerPhone: caller.phoneNumbers?.[0]?.number,
+          onAccept: () => {
+            this.acceptCall(caller);
+            resolve();
           },
-          {
-            text: 'Accept',
-            onPress: () => {
-              this.acceptCall(caller);
-              resolve();
-            }
+          onDecline: () => {
+            this.declineCall(caller);
+            resolve();
           }
-        ],
-        { cancelable: false }
-      );
+        });
+      }
     });
   }
 

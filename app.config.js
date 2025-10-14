@@ -28,6 +28,7 @@ export default {
         NSCameraUsageDescription: "WiLang needs access to your camera for video calls.",
         NSMicrophoneUsageDescription: "WiLang needs access to your microphone for voice and video calls.",
         NSSpeechRecognitionUsageDescription: "WiLang needs access to speech recognition for real-time subtitle transcription.",
+        UIBackgroundModes: ["audio", "voip"],
         CFBundleURLTypes: [
           {
             CFBundleURLName: "google",
@@ -50,7 +51,9 @@ export default {
         "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.CHANGE_NETWORK_STATE",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.VIBRATE"
       ]
     },
     web: {
@@ -71,6 +74,7 @@ export default {
       GOOGLE_SIGN_IN_IOS_CLIENT_ID: process.env.GOOGLE_SIGN_IN_IOS_CLIENT_ID
     },
     plugins: [
+      "expo-sqlite",
       [
         "expo-build-properties",
         {

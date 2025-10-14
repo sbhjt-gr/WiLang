@@ -5,6 +5,15 @@ export type RootStackParamList = {
   AccountLoadingScreen: { from?: 'login' | 'register' | 'app_launch'; signedUp?: number } | undefined;
   PhoneNumberScreen: { from: 'login' | 'register' | 'app_launch' };
   VideoCallScreen: { id: string; type?: 'join' | 'create' | 'incoming' | 'outgoing' | 'instant'; joinCode?: string };
+  CallingScreen: { 
+    callType: 'outgoing' | 'incoming';
+    callerName: string;
+    callerPhone?: string;
+    callerImage?: string;
+    onAccept?: () => void;
+    onDecline?: () => void;
+    onCancel?: () => void;
+  };
   UsersScreen: undefined;
   EnvironmentConfig: undefined;
   ThemeSettingsScreen: undefined;

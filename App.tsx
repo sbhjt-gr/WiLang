@@ -11,7 +11,9 @@ import AccountLoadingScreen from './src/screens/auth/AccountLoadingScreen';
 import PhoneNumberScreen from './src/screens/auth/PhoneNumberScreen';
 import UsersScreen from './src/screens/UsersScreen';
 import { initializeFirebase } from './src/services/FirebaseService';
+import { initDatabase } from './src/utils/database';
 import VideoCallScreen from './src/screens/VideoCallScreen';
+import CallingScreen from './src/screens/CallingScreen';
 import EnvironmentConfig from './src/screens/EnvironmentConfig';
 import ThemeSettingsScreen from './src/screens/ThemeSettingsScreen';
 import { RootStackParamList } from './src/types/navigation';
@@ -34,9 +36,11 @@ export default function App() {
     const initApp = async () => {
       try {
         await initializeFirebase();
-        console.log('Firebase initialized successfully');
+        console.log('firebase_initialized');
+        await initDatabase();
+        console.log('database_initialized');
       } catch (error) {
-        console.error('Failed to initialize Firebase:', error);
+        console.error('app_init_error', error);
       }
     };
     
@@ -84,6 +88,14 @@ export default function App() {
                 <Stack.Screen
                   name="VideoCallScreen"
                   component={VideoCallScreen}
+                />
+                <Stack.Screen
+                  name="CallingScreen"
+                  component={CallingScreen}
+                  options={{
+                    presentation: 'fullScreenModal',
+                    animation: 'fade'
+                  }}
                 />
                 <Stack.Screen
                   name="EnvironmentConfig"
