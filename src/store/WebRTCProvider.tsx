@@ -84,7 +84,9 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
               callType: 'incoming',
               callerName: callData.callerName,
               callerPhone: callData.callerPhone,
-              callerId: callData.callerId
+              callerId: callData.callerId,
+              meetingId: callData.meetingId,
+              meetingToken: callData.meetingToken
             });
           } else {
             console.log('navigation_not_ready');
@@ -95,7 +97,9 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
                   callType: 'incoming',
                   callerName: callData.callerName,
                   callerPhone: callData.callerPhone,
-                  callerId: callData.callerId
+                  callerId: callData.callerId,
+                  meetingId: callData.meetingId,
+                  meetingToken: callData.meetingToken
                 });
               }
             }, 500);
@@ -106,9 +110,11 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           const { navigationRef } = require('../utils/navigationRef');
           if (navigationRef.current) {
             navigationRef.current.navigate('VideoCallScreen', {
-              id: data.callId || 'call_' + Date.now(),
+              id: data.meetingId || data.callId || 'call_' + Date.now(),
               type: 'outgoing',
-              callerId: data.recipientId
+              callerId: data.recipientId,
+              joinCode: data.meetingId,
+              meetingToken: data.meetingToken
             });
           }
         },

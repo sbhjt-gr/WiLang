@@ -4,13 +4,20 @@ export type RootStackParamList = {
   RegisterScreen: undefined;
   AccountLoadingScreen: { from?: 'login' | 'register' | 'app_launch'; signedUp?: number } | undefined;
   PhoneNumberScreen: { from: 'login' | 'register' | 'app_launch' };
-  VideoCallScreen: { id: string; type?: 'join' | 'create' | 'incoming' | 'outgoing' | 'instant'; joinCode?: string };
+  VideoCallScreen: { 
+    id: string; 
+    type?: 'join' | 'create' | 'incoming' | 'outgoing' | 'instant'; 
+    joinCode?: string;
+    meetingToken?: string;
+  };
   CallingScreen: { 
     callType: 'outgoing' | 'incoming';
     callerName: string;
     callerPhone?: string;
     callerImage?: string;
     callerId?: string;
+    meetingId?: string;
+    meetingToken?: string;
   };
   UsersScreen: undefined;
   EnvironmentConfig: undefined;

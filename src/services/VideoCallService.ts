@@ -203,27 +203,21 @@ export class VideoCallService {
   private declineCall(_caller: User) {
   }
 
-  acceptIncomingCall(callerId: string) {
+  acceptIncomingCall(callerId: string, meetingId?: string, meetingToken?: string) {
     const socketManager = this.webRTCContext?.socketManager?.current;
     if (!socketManager) {
-      console.log('socket_error', 'not_connected');
+      console.log('socket_error');
       return;
     }
 
     socketManager.acceptCall({
       callId: callerId,
-      callerSocketId: callerId
+      callerSocketId: callerId,
+      meetingId,
+      meetingToken
     });
 
-    if (this.navigationRef?.current) {
-      this.navigationRef.current.replace('VideoCallScreen', {
-        id: 'call_' + Date.now(),
-        type: 'incoming',
-        callerId: callerId
-      });
-    }
-
-    console.log('call_accepted', callerId);
+    console.log('call_accepted', callerId, meetingId);
   }
 
   declineIncomingCall(callerId: string) {

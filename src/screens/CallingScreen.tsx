@@ -14,6 +14,8 @@ interface CallingScreenProps {
   callerPhone?: string;
   callerImage?: string;
   callerId?: string;
+  meetingId?: string;
+  meetingToken?: string;
 }
 
 const { width, height } = Dimensions.get('window');
@@ -65,11 +67,17 @@ export default function CallingScreen() {
 
   const handleAccept = () => {
     if (params.callType === 'incoming' && params.callerId) {
-      videoCallService.acceptIncomingCall(params.callerId);
+      videoCallService.acceptIncomingCall(
+        params.callerId,
+        params.meetingId,
+        params.meetingToken
+      );
     }
     (navigation as any).navigate('VideoCallScreen', {
-      id: `call_${params.callerId || Date.now()}`,
-      type: 'incoming'
+      id: params.meetingId || `call_${params.callerId || Date.now()}`,
+      type: 'incoming',
+      joinCode: params.meetingId,
+      meetingToken: params.meetingToken
     });
   };
 
