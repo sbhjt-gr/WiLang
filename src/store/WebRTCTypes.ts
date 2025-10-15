@@ -32,7 +32,7 @@ export interface WebRTCContextType {
   reset: () => Promise<void>;
   createMeeting: () => Promise<string>;
   createMeetingWithSocket: (socket: any) => Promise<string>;
-  joinMeeting: (meetingId: string, socket?: any) => Promise<boolean>;
+  joinMeeting: (meetingId: string, socket?: any, meetingToken?: string, userId?: string) => Promise<boolean>;
   refreshParticipantVideo: (participantPeerId: string) => Promise<void>;
   setUsername: (username: string) => void;
   leaveMeeting: () => void;

@@ -393,12 +393,22 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     return meetingManager.current.createMeeting(socketToUse);
   };
 
-  const joinMeeting = (meetingId: string, socketToUse?: any): Promise<boolean> => {
+  const joinMeeting = (
+    meetingId: string, 
+    socketToUse?: any, 
+    meetingToken?: string, 
+    userId?: string
+  ): Promise<boolean> => {
     if (!meetingManager.current) {
       return Promise.reject('Meeting manager not initialized');
     }
     const activeSocket = socketToUse || socket;
-    return meetingManager.current.joinMeeting(meetingId, activeSocket);
+    return meetingManager.current.joinMeeting(
+      meetingId, 
+      activeSocket, 
+      meetingToken, 
+      userId
+    );
   };
 
   const leaveMeeting = () => {

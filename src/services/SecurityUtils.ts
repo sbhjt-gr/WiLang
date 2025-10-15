@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as Application from 'expo-application';
@@ -171,15 +172,24 @@ export const getDeviceInfo = async (): Promise<any> => {
 
 export const storeUserSecurityInfo = async (userId: string, ipData: any, geoData: any, deviceInfo: any): Promise<void> => {
   try {
+    const isSecureStoreAvailable = await SecureStore.isAvailableAsync();
+    if (!isSecureStoreAvailable) {
+      return;
+    }
+
     const securityInfo = {
       userId,
-      ipAddress: ipData.ip,
-      geolocation: geoData.geo,
-      deviceInfo,
+      ipAddress: ipData?.ip ?? null,
+      geolocation: geoData?.geo ?? null,
+      deviceInfo: deviceInfo ?? {},
       timestamp: new Date().toISOString(),
     };
-    
-    await AsyncStorage.setItem(`@security_info_${userId}`, JSON.stringify(securityInfo));
+
+    await SecureStore.setItemAsync(
+      `whisperlang_security_info_${userId}`,
+      JSON.stringify(securityInfo),
+      { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY }
+    );
   } catch (_error) {
   }
 };

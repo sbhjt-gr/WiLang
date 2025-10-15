@@ -75,7 +75,12 @@ export class WebRTCMeetingManager {
     });
   }
 
-  async joinMeeting(meetingId: string, socket: any): Promise<boolean> {
+  async joinMeeting(
+    meetingId: string, 
+    socket: any, 
+    meetingToken?: string, 
+    userId?: string
+  ): Promise<boolean> {
     return new Promise((resolve, reject) => {
       if (!socket?.connected) {
         reject('Socket not connected');
@@ -86,11 +91,21 @@ export class WebRTCMeetingManager {
         reject('Join meeting timeout');
       }, 10000);
 
-      socket.emit('join-meeting', { 
+      const joinData: any = { 
         meetingId, 
         username: this.username,
         peerId: socket.id 
-      }, (response: any) => {
+      };
+      
+      if (meetingToken) {
+        joinData.meetingToken = meetingToken;
+      }
+      
+      if (userId) {
+        joinData.userId = userId;
+      }
+
+      socket.emit('join-meeting', joinData, (response: any) => {
         clearTimeout(timeoutId);
         if (response && response.success) {
           this.currentMeetingId = meetingId;

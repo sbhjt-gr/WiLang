@@ -152,14 +152,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       
       try {
         let socketConnection = null;
-        if (!localStream || (route.params.type === 'join' && !currentMeetingId)) {
+        if (!localStream || (route.params.type === 'join' && !currentMeetingId) || route.params.type === 'incoming') {
           const initResult = await initialize(username);
           socketConnection = initResult.socket || initResult;
           if (!localStream && !initResult.localStream) {
             throw new Error('Failed to obtain local media stream after initialization');
           }
         }
-        if (route.params.type === 'join') {
+        if (route.params.type === 'join' || route.params.type === 'incoming') {
           if (joinAttempted.current) {
             if (!currentMeetingId) {
               joinAttempted.current = false;
@@ -171,6 +171,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           joinAttempted.current = true;
           
           const meetingId = route.params.joinCode || route.params.id;
+          const meetingToken = route.params.meetingToken;
 
           if (!meetingId) {
             showModal('Error', 'No meeting ID provided to join.', 'alert-circle', [
@@ -179,7 +180,62 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             return;
           }
 
-          const joined = await joinMeeting(meetingId, socketConnection);
+          const currentUser = auth.currentUser;
+          const userId = currentUser?.uid;
+
+          console.log('attempting_join', {
+            meetingId,
+            hasToken: !!meetingToken,
+            hasUserId: !!userId,
+            socketConnected: socketConnection?.connected
+          });
+
+          let joined = false;
+
+          try {
+            joined = await joinMeeting(
+              meetingId,
+              socketConnection,
+              meetingToken,
+              userId
+            );
+
+            console.log('join_result', joined);
+          } catch (joinError) {
+            const errorMessage = joinError instanceof Error
+              ? joinError.message
+              : typeof joinError === 'string'
+                ? joinError
+                : 'Unknown error';
+
+            const userFriendlyMessage = (() => {
+              switch (errorMessage) {
+                case 'meeting_not_found':
+                  return 'Meeting not found or has expired.';
+                case 'invalid_token':
+                  return 'Meeting authentication failed.';
+                case 'unauthorized_access':
+                  return 'You are not authorized to join this meeting.';
+                case 'meeting_expired':
+                  return 'Meeting has expired. Start a new call to continue.';
+                case 'meeting_ended':
+                  return 'Meeting has already ended.';
+                case 'Socket not connected':
+                  return 'Connection to server lost. Please retry.';
+                case 'Join meeting timeout':
+                  return 'Joining the meeting took too long. Please retry.';
+                default:
+                  return errorMessage || 'Could not join the meeting.';
+              }
+            })();
+
+            console.log('join_error', joinError);
+
+            showModal('Error', userFriendlyMessage, 'alert-circle', [
+              { text: 'OK', onPress: () => { closeModal(); joinAttempted.current = false; navigation.goBack(); } }
+            ]);
+            return;
+          }
 
           if (!joined) {
             showModal('Error', 'Could not join meeting. Please check the meeting ID and try again.', 'alert-circle', [
@@ -249,9 +305,17 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       } catch (error) {
         initializationAttempted.current = false;
 
+        const initializationErrorMessage = error instanceof Error
+          ? error.message
+          : typeof error === 'string'
+            ? error
+            : 'Unknown error';
+
+        console.log('initialize_call_error', error);
+
         showModal(
           'Connection Error',
-          `Failed to initialize video call: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check your camera and microphone permissions and try again.`,
+          `Failed to initialize video call: ${initializationErrorMessage}\n\nPlease check your camera and microphone permissions and try again.`,
           'alert-circle',
           [
             { text: 'Cancel', onPress: () => { closeModal(); navigation.goBack(); } },

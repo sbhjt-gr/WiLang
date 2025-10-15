@@ -278,6 +278,14 @@ export const registerWithEmail = async (
   password: string,
   phone?: string
 ): Promise<{ success: boolean; error?: string }> => {
+  const allowed = await checkRateLimiting();
+  if (!allowed) {
+    return {
+      success: false,
+      error: AUTH_ERROR_MESSAGES['auth/too-many-requests']
+    };
+  }
+
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
@@ -295,8 +303,10 @@ export const registerWithEmail = async (
     });
 
     await storeAuthState(user);
+    await resetAuthAttempts();
     return { success: true };
   } catch (error: any) {
+    await incrementAuthAttempts();
     return {
       success: false,
       error: mapAuthError(error, 'Registration failed. Please try again.')
@@ -308,14 +318,24 @@ export const loginWithEmail = async (
   email: string,
   password: string
 ): Promise<{ success: boolean; error?: string }> => {
+  const allowed = await checkRateLimiting();
+  if (!allowed) {
+    return {
+      success: false,
+      error: AUTH_ERROR_MESSAGES['auth/too-many-requests']
+    };
+  }
+
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
     await createUserDocument(user, { authMethod: 'email' });
     await storeAuthState(user);
+    await resetAuthAttempts();
     return { success: true };
   } catch (error: any) {
+    await incrementAuthAttempts();
     return {
       success: false,
       error: mapAuthError(error, 'Login failed. Please try again.')
@@ -331,7 +351,7 @@ export const signInWithGoogle = async (): Promise<{ success: boolean; error?: st
       console.log('native_google_sign_in_start');
     }
 
-  const userInfo = (await GoogleSignin.signIn()) as GoogleSignInResult;
+    const userInfo = (await GoogleSignin.signIn()) as GoogleSignInResult;
 
     if (__DEV__) {
       console.log('google_signin_userInfo', {
@@ -341,25 +361,43 @@ export const signInWithGoogle = async (): Promise<{ success: boolean; error?: st
       });
     }
 
-  let idToken = userInfo.idToken;
+    if (!userInfo) {
+      await GoogleSignin.signOut();
+      return {
+        success: false,
+        error: 'Sign-in failed'
+      };
+    }
+
+    let idToken = userInfo.idToken;
 
     if (!idToken) {
       if (__DEV__) {
-        console.log('attempting_to_get_tokens_silently');
+        console.log('idToken_not_in_response_fetching_tokens');
       }
-
-      const tokens = await GoogleSignin.getTokens();
-      idToken = tokens.idToken;
-
-      if (__DEV__) {
-        console.log('silent_tokens', { hasIdToken: !!tokens.idToken });
+      try {
+        const tokens = await GoogleSignin.getTokens();
+        idToken = tokens.idToken;
+        if (__DEV__) {
+          console.log('tokens_fetched', { hasIdToken: !!idToken });
+        }
+      } catch (tokenError) {
+        if (__DEV__) {
+          console.error('token_fetch_failed', tokenError);
+        }
+        await GoogleSignin.signOut();
+        return {
+          success: false,
+          error: 'Sign-in failed'
+        };
       }
     }
 
     if (!idToken) {
+      await GoogleSignin.signOut();
       return {
         success: false,
-        error: 'No ID token received from Google'
+        error: 'Sign-in failed'
       };
     }
 
@@ -391,6 +429,7 @@ export const signInWithGoogle = async (): Promise<{ success: boolean; error?: st
     }
 
     await storeAuthState(user);
+    await resetAuthAttempts();
 
     if (__DEV__) {
       console.log('native_google_sign_in_success', { uid: user.uid, needsPhone });
@@ -402,9 +441,11 @@ export const signInWithGoogle = async (): Promise<{ success: boolean; error?: st
       console.error('native_google_sign_in_error', error);
     }
 
+    await GoogleSignin.signOut().catch(() => {});
+
     let errorMessage = 'Google sign-in failed. Please try again.';
 
-    if (error.code === 'SIGN_IN_CANCELLED') {
+    if (error.code === 'SIGN_IN_CANCELLED' || error.code === '-5' || error.message?.includes('cancel')) {
       errorMessage = 'Sign-in was cancelled';
     } else if (error.code === 'IN_PROGRESS') {
       errorMessage = 'Sign-in already in progress';
