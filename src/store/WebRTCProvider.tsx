@@ -152,17 +152,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       }
     };
 
-    const initCallHistory = async () => {
-      try {
-        await callHistoryService.initializeDatabase();
-        console.log('call_history_db_initialized');
-      } catch (error) {
-        console.log('call_history_db_init_failed', error);
-      }
-    };
-
     initCrypto();
-    initCallHistory();
 
     if (!socketManager.current) {
       socketManager.current = new WebRTCSocketManager();

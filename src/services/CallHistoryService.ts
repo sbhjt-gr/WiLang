@@ -1,6 +1,6 @@
 import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '../config/firebase';
-import * as SQLite from 'expo-sqlite';
+import { getDatabase, initDatabase } from '../utils/database';
 
 export interface CallHistoryEntry {
   id?: string;
@@ -17,37 +17,13 @@ export interface CallHistoryEntry {
 }
 
 class CallHistoryService {
-  private db: SQLite.SQLiteDatabase | null = null;
-
-  async initializeDatabase() {
-    if (this.db) return this.db;
-
-    try {
-      this.db = await SQLite.openDatabaseAsync('call_history.db');
-
-      await this.db.execAsync(`
-        CREATE TABLE IF NOT EXISTS call_history (
-          id TEXT PRIMARY KEY,
-          userId TEXT NOT NULL,
-          contactId TEXT,
-          contactName TEXT NOT NULL,
-          contactPhone TEXT,
-          type TEXT NOT NULL,
-          duration INTEGER NOT NULL,
-          timestamp INTEGER NOT NULL,
-          status TEXT NOT NULL,
-          meetingId TEXT,
-          encrypted INTEGER DEFAULT 0
-        );
-        CREATE INDEX IF NOT EXISTS idx_userId ON call_history(userId);
-        CREATE INDEX IF NOT EXISTS idx_timestamp ON call_history(timestamp DESC);
-      `);
-
-      return this.db;
-    } catch (error) {
-      console.log('db_init_failed', error);
-      throw error;
+  private async getDb() {
+    let db = getDatabase();
+    if (!db) {
+      await initDatabase();
+      db = getDatabase();
     }
+    return db;
   }
 
   async addCallToHistory(entry: CallHistoryEntry): Promise<string> {
@@ -90,7 +66,7 @@ class CallHistoryService {
   }
 
   private async cacheCallLocally(entry: CallHistoryEntry): Promise<void> {
-    const db = await this.initializeDatabase();
+    const db = await this.getDb();
     if (!db || !entry.id) return;
 
     try {
@@ -117,10 +93,19 @@ class CallHistoryService {
     }
   }
 
-  async getCallHistory(userId: string, limitCount: number = 50): Promise<CallHistoryEntry[]> {
+  async getCallHistory(userId: string, limitCount: number = 50, forceRefresh: boolean = false): Promise<CallHistoryEntry[]> {
     try {
       const cachedCalls = await this.getCachedHistory(userId, limitCount);
 
+      if (cachedCalls.length > 0 && !forceRefresh) {
+        console.log('call_history_loaded_from_cache', { count: cachedCalls.length });
+        
+        this.syncInBackground(userId, limitCount);
+        
+        return cachedCalls;
+      }
+
+      console.log('fetching_call_history_from_firestore');
       try {
         const q = query(
           collection(firestore, 'users', userId, 'callHistory'),
@@ -147,6 +132,7 @@ class CallHistoryService {
         });
 
         await this.syncCacheWithFirestore(calls);
+        console.log('call_history_synced_from_firestore', { count: calls.length });
 
         return calls;
       } catch (firestoreError) {
@@ -159,8 +145,43 @@ class CallHistoryService {
     }
   }
 
+  private syncInBackground(userId: string, limitCount: number): void {
+    setTimeout(async () => {
+      try {
+        const q = query(
+          collection(firestore, 'users', userId, 'callHistory'),
+          orderBy('timestamp', 'desc'),
+          limit(limitCount)
+        );
+
+        const snapshot = await getDocs(q);
+        const calls: CallHistoryEntry[] = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            userId: data.userId,
+            contactId: data.contactId,
+            contactName: data.contactName,
+            contactPhone: data.contactPhone,
+            type: data.type,
+            duration: data.duration,
+            timestamp: data.timestamp?.toMillis() || Date.now(),
+            status: data.status,
+            meetingId: data.meetingId,
+            encrypted: data.encrypted || false,
+          };
+        });
+
+        await this.syncCacheWithFirestore(calls);
+        console.log('background_sync_complete', { count: calls.length });
+      } catch (error) {
+        console.log('background_sync_failed', error);
+      }
+    }, 100);
+  }
+
   private async getCachedHistory(userId: string, limitCount: number): Promise<CallHistoryEntry[]> {
-    const db = await this.initializeDatabase();
+    const db = await this.getDb();
     if (!db) return [];
 
     try {
@@ -181,7 +202,7 @@ class CallHistoryService {
         [userId, limitCount]
       );
 
-      return result.map(row => ({
+      return result.map((row) => ({
         id: row.id,
         userId: row.userId,
         contactId: row.contactId || undefined,
@@ -216,7 +237,7 @@ class CallHistoryService {
     missedCalls: number;
     completedCalls: number;
   }> {
-    const db = await this.initializeDatabase();
+    const db = await this.getDb();
     if (!db) {
       return { totalCalls: 0, totalDuration: 0, missedCalls: 0, completedCalls: 0 };
     }
@@ -246,7 +267,7 @@ class CallHistoryService {
   }
 
   async clearCache(): Promise<void> {
-    const db = await this.initializeDatabase();
+    const db = await this.getDb();
     if (!db) return;
 
     try {

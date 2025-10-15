@@ -19,7 +19,7 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadCallHistory = async () => {
+  const loadCallHistory = async (forceRefresh: boolean = false) => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
       setLoading(false);
@@ -28,7 +28,7 @@ export default function HistoryScreen() {
 
     try {
       const [history, callStats] = await Promise.all([
-        callHistoryService.getCallHistory(currentUser.uid, 50),
+        callHistoryService.getCallHistory(currentUser.uid, 50, forceRefresh),
         callHistoryService.getCallStats(currentUser.uid),
       ]);
 
@@ -44,13 +44,13 @@ export default function HistoryScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadCallHistory();
+      loadCallHistory(false);
     }, [])
   );
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadCallHistory();
+    loadCallHistory(true);
   };
 
   const formatDuration = (seconds: number): string => {

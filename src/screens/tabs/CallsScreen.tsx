@@ -161,52 +161,6 @@ export default function CallsScreen({ navigation }: Props) {
           </View>
         </View>
 
-        <View
-          style={styles.recentSection}
-        >
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
-          <View style={[styles.recentCard, { backgroundColor: colors.surface }]}>
-            <View style={[styles.recentItem, { borderBottomColor: colors.borderLight }]}>
-              <View style={styles.recentIcon}>
-                <Ionicons name="videocam" size={20} color="#8b5cf6" />
-              </View>
-              <View style={styles.recentContent}>
-                <Text style={[styles.recentTitle, { color: colors.text }]}>Video Call with Sarah</Text>
-                <Text style={[styles.recentTime, { color: colors.textSecondary }]}>2 hours ago • 25 minutes • 🇪🇸 Spanish</Text>
-              </View>
-              <TouchableOpacity style={styles.recentAction}>
-                <Ionicons name="call-outline" size={16} color="#8b5cf6" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.recentItem, { borderBottomColor: colors.borderLight }]}>
-              <View style={styles.recentIcon}>
-                <Ionicons name="people" size={20} color="#8b5cf6" />
-              </View>
-              <View style={styles.recentContent}>
-                <Text style={[styles.recentTitle, { color: colors.text }]}>Team Meeting</Text>
-                <Text style={[styles.recentTime, { color: colors.textSecondary }]}>Yesterday • 45 minutes • 🇫🇷 French, 🇩🇪 German</Text>
-              </View>
-              <TouchableOpacity style={styles.recentAction}>
-                <Ionicons name="repeat-outline" size={16} color="#8b5cf6" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.recentItem, { borderBottomColor: colors.borderLight }]}>
-              <View style={styles.recentIcon}>
-                <Ionicons name="mic" size={20} color="#8b5cf6" />
-              </View>
-              <View style={styles.recentContent}>
-                <Text style={[styles.recentTitle, { color: colors.text }]}>Voice Call with Alex</Text>
-                <Text style={[styles.recentTime, { color: colors.textSecondary }]}>3 days ago • 15 minutes • 🇯🇵 Japanese</Text>
-              </View>
-              <TouchableOpacity style={styles.recentAction}>
-                <Ionicons name="call-outline" size={16} color="#8b5cf6" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
         <View style={styles.languageBanner}>
           <View style={[styles.languageContainer, { backgroundColor: colors.surface }]}>
             <Ionicons name="globe-outline" size={24} color="#8b5cf6" />
@@ -379,42 +333,6 @@ const styles = StyleSheet.create({
   },
   joinButtonIcon: {
     marginLeft: 8,
-  },
-  recentSection: {
-    marginBottom: 24,
-  },
-  recentCard: {
-    borderRadius: 16,
-    padding: 16,
-  },
-  recentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  recentIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  recentContent: {
-    flex: 1,
-  },
-  recentTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  recentTime: {
-    fontSize: 14,
-  },
-  recentAction: {
-    padding: 8,
-    borderRadius: 8,
   },
   languageBanner: {
     marginBottom: 24,

@@ -35,6 +35,7 @@ import {
   storeUserSecurityInfo
 } from './SecurityUtils';
 import { storeAuthState } from './AuthStorage';
+import { clearAllUserData } from '../utils/database';
 
 export type UserData = {
   uid: string;
@@ -289,6 +290,11 @@ export const registerWithEmail = async (
       });
     }
 
+    await clearAllUserData();
+    if (__DEV__) {
+      console.log('previous_user_data_cleared');
+    }
+
     await createUserDocument(user, {
       name,
       phone: phone || null,
@@ -322,6 +328,11 @@ export const loginWithEmail = async (
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+
+    await clearAllUserData();
+    if (__DEV__) {
+      console.log('previous_user_data_cleared');
+    }
 
     await createUserDocument(user, { authMethod: 'email' });
     await storeAuthState(user);
@@ -383,6 +394,11 @@ export const signInWithGoogle = async (): Promise<{ success: boolean; error?: st
 
     if (__DEV__) {
       console.log('firebase_auth_success', user.uid);
+    }
+
+    await clearAllUserData();
+    if (__DEV__) {
+      console.log('previous_user_data_cleared');
     }
 
     const userRef = doc(firestore, 'users', user.uid);
@@ -498,6 +514,11 @@ export const logoutUser = async (): Promise<{ success: boolean; error?: string }
     await signOut(auth);
     if (__DEV__) {
       console.log('firebase_signout_complete');
+    }
+
+    await clearAllUserData();
+    if (__DEV__) {
+      console.log('local_database_cleared');
     }
 
     await storeAuthState(null);

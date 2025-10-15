@@ -13,6 +13,22 @@ export const initDatabase = async (): Promise<void> => {
         cached_at INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_registered_contacts_phone ON registered_contacts(phone);
+      
+      CREATE TABLE IF NOT EXISTS call_history (
+        id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL,
+        contactId TEXT,
+        contactName TEXT NOT NULL,
+        contactPhone TEXT,
+        type TEXT NOT NULL,
+        duration INTEGER NOT NULL,
+        timestamp INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        meetingId TEXT,
+        encrypted INTEGER DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_call_history_userId ON call_history(userId);
+      CREATE INDEX IF NOT EXISTS idx_call_history_timestamp ON call_history(timestamp DESC);
     `);
   } catch (error) {
     console.error('db_init_error', error);
@@ -72,6 +88,21 @@ export const clearCachedRegisteredContacts = async (): Promise<void> => {
     await db.execAsync('DELETE FROM registered_contacts');
   } catch (error) {
     console.error('db_clear_error', error);
+  }
+};
+
+export const clearAllUserData = async (): Promise<void> => {
+  try {
+    if (!db) await initDatabase();
+    if (!db) return;
+
+    await db.execAsync(`
+      DELETE FROM registered_contacts;
+      DELETE FROM call_history;
+    `);
+    console.log('all_user_data_cleared');
+  } catch (error) {
+    console.error('db_clear_all_error', error);
   }
 };
 
