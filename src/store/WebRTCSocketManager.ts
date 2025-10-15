@@ -1,6 +1,7 @@
 import socketio from 'socket.io-client';
 import {User} from './WebRTCTypes';
 import {SERVER_URL, SERVER_URLS, WEBRTC_CONFIG} from './WebRTCConfig';
+import { KeyBundle } from '../crypto';
 
 type SocketInstance = ReturnType<typeof socketio>;
 
@@ -20,6 +21,7 @@ export class WebRTCSocketManager {
   private onCallAccepted?: (data: any) => void;
   private onCallDeclined?: (data: any) => void;
   private onCallCancelled?: (data: any) => void;
+  private onKeyBundleReceived?: (data: { fromUserId: string; bundle: KeyBundle }) => void;
 
   setCallbacks(callbacks: {
     onUserJoined?: (user: User) => void;
@@ -33,6 +35,7 @@ export class WebRTCSocketManager {
     onCallAccepted?: (data: any) => void;
     onCallDeclined?: (data: any) => void;
     onCallCancelled?: (data: any) => void;
+    onKeyBundleReceived?: (data: { fromUserId: string; bundle: KeyBundle }) => void;
   }) {
     this.onUserJoined = callbacks.onUserJoined;
     this.onUserLeft = callbacks.onUserLeft;
@@ -45,6 +48,7 @@ export class WebRTCSocketManager {
     this.onCallAccepted = callbacks.onCallAccepted;
     this.onCallDeclined = callbacks.onCallDeclined;
     this.onCallCancelled = callbacks.onCallCancelled;
+    this.onKeyBundleReceived = callbacks.onKeyBundleReceived;
   }
 
   private async connectWithFallback(urls: string[], username: string): Promise<SocketInstance> {
@@ -201,6 +205,11 @@ export class WebRTCSocketManager {
       console.log('call_cancelled_received', data);
       this.onCallCancelled?.(data);
     });
+
+    io.on('key-bundle-response', (data: { fromUserId: string; bundle: KeyBundle }) => {
+      console.log('key_bundle_received', data.fromUserId);
+      this.onKeyBundleReceived?.(data);
+    });
   }
 
   sendOffer(offer: any, targetPeerId: string, meetingId: string) {
@@ -284,7 +293,7 @@ export class WebRTCSocketManager {
     });
   }
 
-  acceptCall(data: { callId: string; callerSocketId: string }) {
+  acceptCall(data: { callId: string; callerSocketId: string; meetingId?: string; meetingToken?: string }) {
     if (!this.socket) {
       throw new Error('Socket not initialized');
     }
@@ -318,6 +327,34 @@ export class WebRTCSocketManager {
 
   getSocket(): SocketInstance | null {
     return this.socket;
+  }
+
+  uploadKeyBundle(bundle: KeyBundle) {
+    if (!this.socket) {
+      throw new Error('Socket not initialized');
+    }
+
+    this.socket.emit('upload-key-bundle', bundle);
+  }
+
+  requestKeyBundle(userId: string): Promise<KeyBundle | null> {
+    return new Promise((resolve) => {
+      if (!this.socket) {
+        resolve(null);
+        return;
+      }
+
+      const timeout = setTimeout(() => {
+        resolve(null);
+      }, 5000);
+
+      this.socket.once('key-bundle-response', (data: { success: boolean; bundle?: KeyBundle }) => {
+        clearTimeout(timeout);
+        resolve(data.success && data.bundle ? data.bundle : null);
+      });
+
+      this.socket.emit('request-key-bundle', userId);
+    });
   }
 
   disconnect() {

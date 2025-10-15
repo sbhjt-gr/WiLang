@@ -3,6 +3,7 @@ import {User} from './WebRTCTypes';
 import {ICE_SERVERS} from './WebRTCConfig';
 import {WebRTCSocketManager} from './WebRTCSocketManager';
 import {WebRTCSignalingHandler} from './WebRTCSignalingHandler';
+import { sessionManager, frameEncryptor, KeyBundle } from '../crypto';
 
 export class WebRTCPeerManager {
   private peerConnections = new Map<string, RTCPeerConnection>();
@@ -12,7 +13,8 @@ export class WebRTCPeerManager {
   private signalingHandler: WebRTCSignalingHandler;
   private peerId: string = '';
   private currentMeetingId: string | null = null;
-  
+  private e2eEnabled: boolean = true;
+
   private onRemoteStreamAdded?: (peerId: string, stream: MediaStream) => void;
   private onConnectionStateChanged?: (peerId: string, state: string) => void;
   private onParticipantUpdated?: (peerId: string, updates: Partial<User>) => void;
@@ -46,14 +48,14 @@ export class WebRTCPeerManager {
     this.signalingHandler.setMeetingId(meetingId);
   }
 
-  createPeerConnection(user: User, isInitiator: boolean): RTCPeerConnection | null {
+  async createPeerConnection(user: User, isInitiator: boolean): Promise<RTCPeerConnection | null> {
     if (!user.peerId) {
       return null;
     }
 
     const existingPc = this.peerConnections.get(user.peerId);
     if (existingPc) {
-      if (existingPc.connectionState === 'connected' || 
+      if (existingPc.connectionState === 'connected' ||
           existingPc.connectionState === 'connecting' ||
           existingPc.connectionState === 'new') {
         return existingPc;
@@ -63,17 +65,39 @@ export class WebRTCPeerManager {
       }
     }
 
+    if (this.e2eEnabled && user.userId) {
+      await this.establishE2ESession(user.peerId, user.userId);
+    }
+
     const pc = new RTCPeerConnection(ICE_SERVERS);
     this.peerConnections.set(user.peerId, pc);
 
     this.addLocalTracksToConnection(pc, user);
     this.setupPeerConnectionEvents(pc, user);
-    
+
     if (isInitiator) {
       this.signalingHandler.createAndSendOffer(pc, user);
     }
-    
+
     return pc;
+  }
+
+  private async establishE2ESession(peerId: string, userId: string): Promise<void> {
+    try {
+      if (sessionManager.hasSession(peerId)) {
+        return;
+      }
+
+      const bundle = await this.socketManager.requestKeyBundle(userId);
+      if (bundle) {
+        await sessionManager.establishSession(peerId, bundle);
+        console.log('e2e_session_established', peerId);
+      } else {
+        console.log('e2e_key_bundle_unavailable', peerId);
+      }
+    } catch (error) {
+      console.log('e2e_session_failed', error);
+    }
   }
 
   private addLocalTracksToConnection(pc: RTCPeerConnection, user: User) {
@@ -204,6 +228,11 @@ export class WebRTCPeerManager {
       this.peerConnections.delete(peerId);
       this.remoteStreams.delete(peerId);
     }
+
+    if (this.e2eEnabled) {
+      sessionManager.closeSession(peerId);
+      frameEncryptor.resetCounter(peerId);
+    }
   }
 
   closeAllConnections(): void {
@@ -212,6 +241,11 @@ export class WebRTCPeerManager {
     });
     this.peerConnections.clear();
     this.remoteStreams.clear();
+
+    if (this.e2eEnabled) {
+      sessionManager.closeAllSessions();
+      frameEncryptor.clearAllCounters();
+    }
   }
 
   getConnectionCount(): number {
@@ -226,5 +260,18 @@ export class WebRTCPeerManager {
       }
     });
     return active;
+  }
+
+  setE2EEnabled(enabled: boolean): void {
+    this.e2eEnabled = enabled;
+    frameEncryptor.setEnabled(enabled);
+  }
+
+  isE2EEnabled(): boolean {
+    return this.e2eEnabled;
+  }
+
+  getSecurityCode(peerId: string): string | undefined {
+    return sessionManager.getSecurityCode(peerId);
   }
 }

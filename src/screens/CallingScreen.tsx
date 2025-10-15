@@ -14,6 +14,8 @@ interface CallingScreenProps {
   callerPhone?: string;
   callerImage?: string;
   callerId?: string;
+  callerSocketId?: string;
+  callId?: string;
   meetingId?: string;
   meetingToken?: string;
 }
@@ -66,9 +68,10 @@ export default function CallingScreen() {
   };
 
   const handleAccept = () => {
-    if (params.callType === 'incoming' && params.callerId) {
+    if (params.callType === 'incoming' && params.callId && params.callerSocketId) {
       videoCallService.acceptIncomingCall(
-        params.callerId,
+        params.callId,
+        params.callerSocketId,
         params.meetingId,
         params.meetingToken
       );
@@ -82,8 +85,8 @@ export default function CallingScreen() {
   };
 
   const handleDecline = () => {
-    if (params.callType === 'incoming' && params.callerId) {
-      videoCallService.declineIncomingCall(params.callerId);
+    if (params.callType === 'incoming' && params.callId && params.callerSocketId) {
+      videoCallService.declineIncomingCall(params.callId, params.callerSocketId);
     }
     if (navigation.canGoBack()) {
       navigation.goBack();

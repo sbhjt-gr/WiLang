@@ -203,40 +203,50 @@ export class VideoCallService {
   private declineCall(_caller: User) {
   }
 
-  acceptIncomingCall(callerId: string, meetingId?: string, meetingToken?: string) {
+  acceptIncomingCall(callId: string, callerSocketId?: string, meetingId?: string, meetingToken?: string) {
     const socketManager = this.webRTCContext?.socketManager?.current;
     if (!socketManager) {
       console.log('socket_error');
       return;
     }
 
+    if (!callerSocketId) {
+      console.log('missing_caller_socket');
+      return;
+    }
+
     socketManager.acceptCall({
-      callId: callerId,
-      callerSocketId: callerId,
+      callId,
+      callerSocketId,
       meetingId,
       meetingToken
     });
 
-    console.log('call_accepted', callerId, meetingId);
+    console.log('call_accepted', callId, meetingId);
   }
 
-  declineIncomingCall(callerId: string) {
+  declineIncomingCall(callId: string, callerSocketId?: string) {
     const socketManager = this.webRTCContext?.socketManager?.current;
     if (!socketManager) {
       console.log('socket_error', 'not_connected');
       return;
     }
 
+    if (!callerSocketId) {
+      console.log('missing_caller_socket');
+      return;
+    }
+
     socketManager.declineCall({
-      callId: callerId,
-      callerSocketId: callerId
+      callId,
+      callerSocketId
     });
 
     if (this.navigationRef?.current) {
       this.navigationRef.current.goBack();
     }
 
-    console.log('call_declined', callerId);
+    console.log('call_declined', callId);
   }
 
   cancelOutgoingCall() {

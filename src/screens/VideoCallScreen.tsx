@@ -53,11 +53,15 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     peerId,
     setUsername,
     createMeetingWithSocket,
+    e2eStatus,
+    getSecurityCode,
   } = useContext(WebRTCContext);
 
   const [isGridMode, setIsGridMode] = useState(false);
   const [isInstantCall, setIsInstantCall] = useState(false);
   const [showJoinCodeUI, setShowJoinCodeUI] = useState(false);
+  const [isDirectCall, setIsDirectCall] = useState(false);
+  const [showSecurityCodeModal, setShowSecurityCodeModal] = useState(false);
   const [modalConfig, setModalConfig] = useState<{
     visible: boolean;
     title: string;
@@ -95,7 +99,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
   const shareJoinCode = useCallback(async () => {
     if (!currentMeetingId) {
-      showModal('Please wait', 'Meeting code is still being generated.', 'time');
+      showModal('Please wait', 'Call code is still being generated.', 'time');
       return;
     }
     
@@ -114,7 +118,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
   const copyJoinCode = useCallback(() => {
     if (!currentMeetingId) {
-      showModal('Please wait', 'Meeting code is still being generated.', 'time');
+      showModal('Please wait', 'Call code is still being generated.', 'time');
       return;
     }
 
@@ -127,6 +131,10 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     navigation.navigate('HomeScreen', {});
   }, [closeCall, navigation]);
 
+  const toggleSecurityCodeModal = useCallback(() => {
+    setShowSecurityCodeModal(prev => !prev);
+  }, []);
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerShown: false,
@@ -137,7 +145,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     if (route.params.type === 'join' && route.params.joinCode && !joinAttempted.current) {
       joinAttempted.current = true;
     }
-  }, [route.params.type, route.params.joinCode]);
+  }, [route.params.type, route.params.joinCode, route.params.autoJoinHandled]);
 
   useEffect(() => {
     if (initializationAttempted.current) {
@@ -152,14 +160,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       
       try {
         let socketConnection = null;
-        if (!localStream || (route.params.type === 'join' && !currentMeetingId) || route.params.type === 'incoming') {
+        if (!localStream || (route.params.type === 'join' && !currentMeetingId) || route.params.type === 'incoming' || route.params.type === 'outgoing') {
           const initResult = await initialize(username);
           socketConnection = initResult.socket || initResult;
           if (!localStream && !initResult.localStream) {
             throw new Error('Failed to obtain local media stream after initialization');
           }
         }
-        if (route.params.type === 'join' || route.params.type === 'incoming') {
+        if (route.params.type === 'join' || route.params.type === 'incoming' || route.params.type === 'outgoing') {
           if (joinAttempted.current) {
             if (!currentMeetingId) {
               joinAttempted.current = false;
@@ -168,13 +176,23 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             }
           }
           
+          // Mark as direct call for incoming/outgoing (hide meeting ID)
+          if (route.params.type === 'incoming' || route.params.type === 'outgoing') {
+            setIsDirectCall(true);
+          }
+          
           joinAttempted.current = true;
           
           const meetingId = route.params.joinCode || route.params.id;
           const meetingToken = route.params.meetingToken;
 
+          if (route.params.autoJoinHandled && currentMeetingId === meetingId) {
+            console.log('join_skipped_auto', { meetingId });
+            return;
+          }
+
           if (!meetingId) {
-            showModal('Error', 'No meeting ID provided to join.', 'alert-circle', [
+            showModal('Error', 'No call ID provided to join.', 'alert-circle', [
               { text: 'OK', onPress: () => { closeModal(); navigation.goBack(); } }
             ]);
             return;
@@ -211,21 +229,21 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             const userFriendlyMessage = (() => {
               switch (errorMessage) {
                 case 'meeting_not_found':
-                  return 'Meeting not found or has expired.';
+                  return 'Call not found or has expired.';
                 case 'invalid_token':
-                  return 'Meeting authentication failed.';
+                  return 'Call authentication failed.';
                 case 'unauthorized_access':
-                  return 'You are not authorized to join this meeting.';
+                  return 'You are not authorized to join this call.';
                 case 'meeting_expired':
-                  return 'Meeting has expired. Start a new call to continue.';
+                  return 'Call has expired. Start a new call to continue.';
                 case 'meeting_ended':
-                  return 'Meeting has already ended.';
+                  return 'Call has already ended.';
                 case 'Socket not connected':
                   return 'Connection to server lost. Please retry.';
                 case 'Join meeting timeout':
-                  return 'Joining the meeting took too long. Please retry.';
+                  return 'Joining the call took too long. Please retry.';
                 default:
-                  return errorMessage || 'Could not join the meeting.';
+                  return errorMessage || 'Could not join the call.';
               }
             })();
 
@@ -238,7 +256,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           }
 
           if (!joined) {
-            showModal('Error', 'Could not join meeting. Please check the meeting ID and try again.', 'alert-circle', [
+            showModal('Error', 'Could not join call. Please check the call ID and try again.', 'alert-circle', [
               { text: 'OK', onPress: () => { closeModal(); joinAttempted.current = false; navigation.goBack(); } }
             ]);
             return;
@@ -257,13 +275,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           const socket = initResult.socket || initResult;
           
           if (!socket || !socket.connected) {
-            throw new Error('Socket not connected - cannot create meeting');
+            throw new Error('Socket not connected - cannot create call');
           }
           
           const newMeetingId = await createMeetingWithSocket(socket);
           
           if (!newMeetingId) {
-            throw new Error('Meeting creation returned empty meeting ID');
+            throw new Error('Call creation returned empty call ID');
           }
           
         } else if (!route.params.type || route.params.type === 'create') {
@@ -275,26 +293,26 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             }
             
             if (!socketToUse || !socketToUse.connected) {
-              throw new Error('Socket not connected - cannot create meeting');
+              throw new Error('Socket not connected - cannot create call');
             }
             await new Promise(resolve => setTimeout(resolve, 100));
             
             const meetingId = await createMeeting();
             
             if (!meetingId) {
-              throw new Error('Meeting creation returned empty meeting ID');
+              throw new Error('Call creation returned empty call ID');
             }
             setShowJoinCodeUI(true);
 
             showModal(
-              'Meeting Created',
-              `Your meeting ID is: ${meetingId}\n\nShare this ID with participants to join the meeting.`,
+              'Call Created',
+              `Your call ID is: ${meetingId}\n\nShare this ID with participants to join the call.`,
               'checkmark-circle'
             );
           } catch (meetingError) {
             showModal(
-              'Meeting Creation Failed',
-              `Failed to create meeting: ${meetingError instanceof Error ? meetingError.message : 'Unknown error'}`,
+              'Call Creation Failed',
+              `Failed to create call: ${meetingError instanceof Error ? meetingError.message : 'Unknown error'}`,
               'alert-circle',
               [{ text: 'OK', onPress: () => { closeModal(); navigation.goBack(); } }]
             );
@@ -326,7 +344,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     };
 
     initializeCall();
-  }, [route.params.type, route.params.joinCode, localStream, currentMeetingId, showModal, closeModal, navigation]);
+  }, [route.params.type, route.params.joinCode, route.params.autoJoinHandled, localStream, currentMeetingId, showModal, closeModal, navigation]);
 
   useEffect(() => {
     const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
@@ -375,7 +393,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             <View style={styles.waitingContent}>
               <ActivityIndicator size="large" color="#8b5cf6" />
               <Text style={styles.waitingText}>
-                {currentMeetingId ? `Meeting: ${currentMeetingId}` : 'Setting up meeting...'}
+                {isDirectCall ? 'Connecting call...' : (currentMeetingId ? `Call: ${currentMeetingId}` : 'Setting up call...')}
               </Text>
               <Text style={styles.waitingSubtext}>
                 {remoteParticipants?.length > 0
@@ -385,7 +403,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               </Text>
 
               {/* Join Code UI for instant calls and meeting creation */}
-              {showJoinCodeUI && currentMeetingId && (
+              {showJoinCodeUI && currentMeetingId && !isDirectCall && (
                 <View style={styles.joinCodeContainer}>
                   <Text style={styles.joinCodeLabel}>Share this code to invite others:</Text>
                   <TouchableOpacity style={styles.joinCodeBox} onPress={copyJoinCode}>
@@ -459,13 +477,40 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         )}
 
-        <View style={[styles.meetingInfo, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
-          <Text style={styles.meetingIdText}>
-            {currentMeetingId ? `ID: ${currentMeetingId}` : 'Connecting...'}
-          </Text>
-          <Text style={styles.participantCountText}>
-            {totalParticipants} participant{totalParticipants === 1 ? '' : 's'}
-          </Text>
+        <View style={styles.topRightControls}>
+          {e2eStatus?.initialized && (
+            <TouchableOpacity 
+              style={[styles.e2eIndicator, { backgroundColor: 'rgba(0,0,0,0.7)' }]}
+              onPress={e2eStatus.activeSessions.length > 0 ? toggleSecurityCodeModal : undefined}
+              disabled={e2eStatus.activeSessions.length === 0}
+            >
+              {e2eStatus.keyExchangeInProgress ? (
+                <>
+                  <ActivityIndicator size="small" color="#fbbf24" />
+                  <Text style={styles.e2eText}>Securing...</Text>
+                </>
+              ) : e2eStatus.activeSessions.length > 0 ? (
+                <>
+                  <Ionicons name="lock-closed" size={16} color="#10b981" />
+                  <Text style={[styles.e2eText, { color: '#10b981' }]}>Encrypted</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="lock-open" size={16} color="#6b7280" />
+                  <Text style={[styles.e2eText, { color: '#9ca3af' }]}>Not Encrypted</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+
+          <View style={[styles.meetingInfo, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+            <Text style={styles.meetingIdText}>
+              {isDirectCall ? 'Video Call' : (currentMeetingId ? `ID: ${currentMeetingId}` : 'Connecting...')}
+            </Text>
+            <Text style={styles.participantCountText}>
+              {totalParticipants} participant{totalParticipants === 1 ? '' : 's'}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -523,6 +568,58 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               <Text style={styles.modalButtonText}>{button.text}</Text>
             </TouchableOpacity>
           ))}
+        </View>
+      </GlassModal>
+
+      <GlassModal
+        isVisible={showSecurityCodeModal}
+        onClose={toggleSecurityCodeModal}
+        title="End-to-End Encryption"
+        icon="shield-checkmark"
+        height={400}
+      >
+        <View style={styles.securityCodeContent}>
+          <View style={styles.securityBadge}>
+            <Ionicons name="lock-closed" size={24} color="#10b981" />
+            <Text style={[styles.securityBadgeText, { color: colors.text }]}>
+              Your call is encrypted
+            </Text>
+          </View>
+
+          <Text style={[styles.securityDescription, { color: colors.textSecondary }]}>
+            Your conversation is protected with end-to-end encryption. Only you and the participants can see and hear the call.
+          </Text>
+
+          {e2eStatus && e2eStatus.activeSessions.length > 0 && (
+            <View style={styles.securityCodesContainer}>
+              <Text style={[styles.securityCodesTitle, { color: colors.text }]}>
+                Security Verification Codes
+              </Text>
+              {e2eStatus.activeSessions.map((sessionPeerId) => {
+                const code = getSecurityCode?.(sessionPeerId);
+                const participant = participants.find(p => p.peerId === sessionPeerId);
+                
+                return (
+                  <View key={sessionPeerId} style={styles.securityCodeItem}>
+                    <Text style={[styles.participantName, { color: colors.text }]}>
+                      {participant?.username || participant?.name || 'Unknown'}
+                    </Text>
+                    {code ? (
+                      <Text style={styles.securityCodeValue}>{code}</Text>
+                    ) : (
+                      <Text style={[styles.securityCodePending, { color: colors.textSecondary }]}>
+                        Establishing secure connection...
+                      </Text>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          <Text style={[styles.securityFooter, { color: colors.textSecondary }]}>
+            Compare these codes with your participants to verify the connection is secure.
+          </Text>
         </View>
       </GlassModal>
     </View>
@@ -657,6 +754,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     zIndex: 10,
   },
+  topRightControls: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
   topControlButton: {
     borderRadius: 20,
     paddingHorizontal: 12,
@@ -668,6 +770,19 @@ const styles = StyleSheet.create({
   topControlText: {
     color: '#ffffff',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  e2eIndicator: {
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  e2eText: {
+    color: '#ffffff',
+    fontSize: 12,
     fontWeight: '600',
   },
   meetingInfo: {
@@ -737,5 +852,62 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  securityCodeContent: {
+    gap: 16,
+  },
+  securityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 12,
+  },
+  securityBadgeText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  securityDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  securityCodesContainer: {
+    marginTop: 8,
+    gap: 12,
+  },
+  securityCodesTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  securityCodeItem: {
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
+  },
+  participantName: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  securityCodeValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#8b5cf6',
+    letterSpacing: 1,
+    fontFamily: 'monospace',
+  },
+  securityCodePending: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  securityFooter: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });

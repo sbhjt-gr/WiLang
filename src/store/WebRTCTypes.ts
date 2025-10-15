@@ -4,12 +4,20 @@ export interface User {
   id: string;
   username: string;
   peerId: string;
+  userId?: string;
   name?: string;
   phoneNumbers?: {number?: string}[];
   emails?: {email?: string}[];
   isLocal?: boolean;
   hasActiveConnection?: boolean;
   isRefreshing?: boolean;
+}
+
+export interface E2EStatus {
+  initialized: boolean;
+  keyExchangeInProgress: boolean;
+  activeSessions: string[];
+  securityCodes: Map<string, string>;
 }
 
 export interface WebRTCContextType {
@@ -28,6 +36,7 @@ export interface WebRTCContextType {
   isMuted?: boolean;
   users?: User[];
   socketManager?: any;
+  e2eStatus?: E2EStatus;
   initialize: (username?: string) => Promise<any>;
   reset: () => Promise<void>;
   createMeeting: () => Promise<string>;
@@ -40,4 +49,5 @@ export interface WebRTCContextType {
   closeCall: () => void;
   switchCamera: () => void;
   toggleMute: () => void;
+  getSecurityCode?: (peerId: string) => string | undefined;
 }

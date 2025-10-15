@@ -9,6 +9,7 @@ export type RootStackParamList = {
     type?: 'join' | 'create' | 'incoming' | 'outgoing' | 'instant'; 
     joinCode?: string;
     meetingToken?: string;
+    autoJoinHandled?: boolean;
   };
   CallingScreen: { 
     callType: 'outgoing' | 'incoming';
@@ -16,6 +17,8 @@ export type RootStackParamList = {
     callerPhone?: string;
     callerImage?: string;
     callerId?: string;
+    callerSocketId?: string;
+    callId?: string;
     meetingId?: string;
     meetingToken?: string;
   };

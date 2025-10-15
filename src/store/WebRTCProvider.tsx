@@ -1,10 +1,11 @@
 import React, {useState, useRef, useEffect} from 'react';
 import {mediaDevices, MediaStream} from 'react-native-webrtc';
 import {WebRTCContext} from './WebRTCContext';
-import {User, WebRTCContextType} from './WebRTCTypes';
+import {User, WebRTCContextType, E2EStatus} from './WebRTCTypes';
 import {WebRTCSocketManager} from './WebRTCSocketManager';
 import {WebRTCPeerManager} from './WebRTCPeerManager';
 import {WebRTCMeetingManager} from './WebRTCMeetingManager';
+import { keyManager, sessionManager } from '../crypto';
 
 interface Props {
   children: React.ReactNode;
@@ -25,6 +26,12 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   const [currentMeetingId, setCurrentMeetingId] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isMuted, setIsMuted] = useState(false);
+  const [e2eStatus, setE2EStatus] = useState<E2EStatus>({
+    initialized: false,
+    keyExchangeInProgress: false,
+    activeSessions: [],
+    securityCodes: new Map(),
+  });
 
   const localStreamRef = useRef<MediaStream | null>(null);
   const socketRef = useRef<any>(null);
@@ -34,8 +41,80 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   const socketManager = useRef<WebRTCSocketManager | null>(null);
   const peerManager = useRef<WebRTCPeerManager | null>(null);
   const meetingManager = useRef<WebRTCMeetingManager | null>(null);
+  const callerJoinInProgressRef = useRef(false);
+  const keyExchangeCounterRef = useRef(0);
+
+  const startKeyExchange = () => {
+    keyExchangeCounterRef.current += 1;
+    setE2EStatus(prev => ({ ...prev, keyExchangeInProgress: true }));
+  };
+
+  const finishKeyExchange = () => {
+    keyExchangeCounterRef.current = Math.max(0, keyExchangeCounterRef.current - 1);
+    if (keyExchangeCounterRef.current === 0) {
+      setE2EStatus(prev => ({ ...prev, keyExchangeInProgress: false }));
+    }
+  };
+
+  const autoJoinCallerMeeting = async (meetingId: string, meetingToken?: string) => {
+    if (!meetingId || !meetingToken) {
+      return;
+    }
+    if (!meetingManager.current) {
+      return;
+    }
+    if (callerJoinInProgressRef.current) {
+      return;
+    }
+
+    callerJoinInProgressRef.current = true;
+
+    try {
+      const { auth } = require('../config/firebase');
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        return;
+      }
+
+      const userId = currentUser.uid;
+      const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'User';
+
+      let socketToUse = socketRef.current;
+
+      if (!localStreamRef.current || !socketToUse?.connected) {
+        const initResult = await initialize(displayName);
+        socketToUse = initResult.socket || socketRef.current;
+      }
+
+      if (!socketToUse?.connected) {
+        console.log('caller_auto_join_socket_not_ready');
+        return;
+      }
+
+      await meetingManager.current.joinMeeting(meetingId, socketToUse, meetingToken, userId);
+      console.log('caller_auto_join_success', { meetingId });
+    } catch (error) {
+      console.log('caller_auto_join_error', error);
+    } finally {
+      callerJoinInProgressRef.current = false;
+    }
+  };
 
   useEffect(() => {
+    const initCrypto = async () => {
+      try {
+        await keyManager.initialize();
+        console.log('crypto_initialized');
+        setE2EStatus(prev => ({ ...prev, initialized: true }));
+      } catch (error) {
+        console.log('crypto_init_failed', error);
+        setE2EStatus(prev => ({ ...prev, initialized: false }));
+      }
+    };
+
+    initCrypto();
+
     if (!socketManager.current) {
       socketManager.current = new WebRTCSocketManager();
       peerManager.current = new WebRTCPeerManager(socketManager.current);
@@ -85,6 +164,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
               callerName: callData.callerName,
               callerPhone: callData.callerPhone,
               callerId: callData.callerId,
+              callerSocketId: callData.callerSocketId,
+              callId: callData.callId,
               meetingId: callData.meetingId,
               meetingToken: callData.meetingToken
             });
@@ -98,6 +179,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
                   callerName: callData.callerName,
                   callerPhone: callData.callerPhone,
                   callerId: callData.callerId,
+                  callerSocketId: callData.callerSocketId,
+                  callId: callData.callId,
                   meetingId: callData.meetingId,
                   meetingToken: callData.meetingToken
                 });
@@ -114,9 +197,12 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
               type: 'outgoing',
               callerId: data.recipientId,
               joinCode: data.meetingId,
-              meetingToken: data.meetingToken
+              meetingToken: data.meetingToken,
+              autoJoinHandled: true
             });
           }
+
+          autoJoinCallerMeeting(data.meetingId, data.meetingToken);
         },
         onCallDeclined: (data: any) => {
           console.log('call_declined_notification', data);
@@ -177,8 +263,22 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           setParticipants(participants);
         },
         onPeerConnectionRequested: (participant: User, isInitiator: boolean) => {
-          if (peerManager.current) {
-            peerManager.current.createPeerConnection(participant, isInitiator);
+          if (!peerManager.current) {
+            return;
+          }
+          const shouldTrack = !!participant.userId;
+          if (shouldTrack) {
+            startKeyExchange();
+          }
+          const connectionPromise = peerManager.current.createPeerConnection(participant, isInitiator);
+          if (connectionPromise && typeof connectionPromise.finally === 'function') {
+            connectionPromise.finally(() => {
+              if (shouldTrack) {
+                finishKeyExchange();
+              }
+            });
+          } else if (shouldTrack) {
+            finishKeyExchange();
           }
         }
       });
@@ -279,7 +379,15 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
               peerId: io.id,
               fcmToken: undefined
             });
-            
+
+            try {
+              const keyBundle = keyManager.createKeyBundle(currentUser.uid);
+              socketManager.current.uploadKeyBundle(keyBundle);
+              console.log('key_bundle_uploaded', currentUser.uid);
+            } catch (error) {
+              console.log('key_bundle_upload_failed', error);
+            }
+
             console.log('socket_auto_connected', currentUser.uid, phoneNumber);
           } else {
             console.log('no_user_logged_in');
@@ -369,6 +477,15 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           peerId: io.id,
           fcmToken: undefined
         });
+
+        try {
+          const keyBundle = keyManager.createKeyBundle(currentUser.uid);
+          socketManager.current.uploadKeyBundle(keyBundle);
+          console.log('key_bundle_uploaded', currentUser.uid);
+        } catch (error) {
+          console.log('key_bundle_upload_failed', error);
+        }
+
         console.log('user_registered', currentUser.uid, phoneNumber);
       }
 
@@ -429,7 +546,23 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     }
 
     setRemoteUser(user);
-    peerManager.current?.createPeerConnection(user, true);
+    if (!peerManager.current) {
+      return;
+    }
+    const shouldTrack = !!user.userId;
+    if (shouldTrack) {
+      startKeyExchange();
+    }
+    const connectionPromise = peerManager.current.createPeerConnection(user, true);
+    if (connectionPromise && typeof connectionPromise.finally === 'function') {
+      connectionPromise.finally(() => {
+        if (shouldTrack) {
+          finishKeyExchange();
+        }
+      });
+    } else if (shouldTrack) {
+      finishKeyExchange();
+    }
   };
 
   const switchCamera = () => {
@@ -514,12 +647,54 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         return newMap;
       });
       await new Promise(resolve => setTimeout(resolve, 1000));
-      peerManager.current?.createPeerConnection(participant, true);
+      if (!peerManager.current) {
+        return;
+      }
+      const shouldTrack = !!participant.userId;
+      if (shouldTrack) {
+        startKeyExchange();
+      }
+      const connectionPromise = peerManager.current.createPeerConnection(participant, true);
+      if (connectionPromise && typeof connectionPromise.finally === 'function') {
+        connectionPromise.finally(() => {
+          if (shouldTrack) {
+            finishKeyExchange();
+          }
+        });
+      } else if (shouldTrack) {
+        finishKeyExchange();
+      }
     } catch (_error) {
     } finally {
       meetingManager.current?.updateParticipant(participantPeerId, { isRefreshing: false });
     }
   };
+
+  const getSecurityCode = (peerId: string): string | undefined => {
+    return sessionManager.getSecurityCode(peerId);
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const activeSessions = sessionManager.getActiveSessions();
+      const securityCodes = new Map<string, string>();
+      
+      activeSessions.forEach(peerId => {
+        const code = sessionManager.getSecurityCode(peerId);
+        if (code) {
+          securityCodes.set(peerId, code);
+        }
+      });
+
+      setE2EStatus(prev => ({
+        ...prev,
+        activeSessions,
+        securityCodes,
+      }));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const contextValue: WebRTCContextType = {
     localStream,
@@ -537,6 +712,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     isMuted,
     users,
     socketManager,
+    e2eStatus,
     initialize,
     reset,
     createMeeting,
@@ -549,6 +725,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     closeCall,
     switchCamera,
     toggleMute,
+    getSecurityCode,
   };
 
   return (
