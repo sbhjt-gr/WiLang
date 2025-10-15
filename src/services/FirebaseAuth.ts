@@ -53,13 +53,6 @@ export type UserData = {
   registrationInfo?: any;
 };
 
-type GoogleSignInResult = {
-  idToken?: string | null;
-  user?: {
-    email?: string | null;
-  };
-};
-
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   'auth/invalid-email': 'That email address looks incorrect. Please check and try again.',
   'auth/user-disabled': 'This account is disabled. Contact support for help.',
@@ -344,133 +337,179 @@ export const loginWithEmail = async (
 };
 
 export const signInWithGoogle = async (): Promise<{ success: boolean; error?: string; needsPhone?: boolean }> => {
+  let googleSignInCompleted = false;
+  
   try {
     await GoogleSignin.hasPlayServices();
 
     if (__DEV__) {
-      console.log('native_google_sign_in_start');
+      console.log('google_signin_starting');
     }
 
-    const userInfo = (await GoogleSignin.signIn()) as GoogleSignInResult;
+    const signInResult = await GoogleSignin.signIn();
+    googleSignInCompleted = true;
 
     if (__DEV__) {
-      console.log('google_signin_userInfo', {
-        hasIdToken: !!userInfo.idToken,
-        hasUser: !!userInfo.user,
-        email: userInfo.user?.email
+      console.log('google_signin_completed', {
+        hasData: !!signInResult?.data,
+        type: signInResult?.type
       });
     }
 
-    if (!userInfo) {
-      await GoogleSignin.signOut();
-      return {
-        success: false,
-        error: 'Sign-in failed'
-      };
-    }
-
-    let idToken = userInfo.idToken;
-
-    if (!idToken) {
+    if (signInResult.type !== 'success') {
       if (__DEV__) {
-        console.log('idToken_not_in_response_fetching_tokens');
+        console.log('google_signin_not_success', signInResult.type);
       }
-      try {
-        const tokens = await GoogleSignin.getTokens();
-        idToken = tokens.idToken;
-        if (__DEV__) {
-          console.log('tokens_fetched', { hasIdToken: !!idToken });
-        }
-      } catch (tokenError) {
-        if (__DEV__) {
-          console.error('token_fetch_failed', tokenError);
-        }
-        await GoogleSignin.signOut();
-        return {
-          success: false,
-          error: 'Sign-in failed'
-        };
-      }
+      throw new Error('SIGNIN_CANCELLED');
     }
 
-    if (!idToken) {
-      await GoogleSignin.signOut();
-      return {
-        success: false,
-        error: 'Sign-in failed'
-      };
+    const idToken = signInResult.data.idToken;
+    const userEmail = signInResult.data.user?.email;
+
+    if (!idToken || !userEmail) {
+      if (__DEV__) {
+        console.log('google_signin_missing_required_data');
+      }
+      throw new Error('INCOMPLETE_SIGNIN');
     }
 
-    const googleCredential = GoogleAuthProvider.credential(idToken);
-    const userCredential = await signInWithCredential(auth, googleCredential);
+    if (__DEV__) {
+      console.log('google_signin_authenticating_with_firebase');
+    }
+
+    const credential = GoogleAuthProvider.credential(idToken);
+    const userCredential = await signInWithCredential(auth, credential);
     const user = userCredential.user;
 
     if (__DEV__) {
-      console.log('Firebase auth successful, creating/checking user document...');
+      console.log('firebase_auth_success', user.uid);
     }
 
-    // Check if phone exists before creating document
     const userRef = doc(firestore, 'users', user.uid);
     const userDoc = await getDoc(userRef);
     const needsPhone = !userDoc.exists() || !userDoc.data()?.phone;
 
-    if (__DEV__) {
-      console.log('User doc exists:', userDoc.exists(), 'needsPhone:', needsPhone);
-    }
-
-    // Create or update user document
     try {
       await createUserDocument(user, { authMethod: 'google' });
     } catch (docError) {
       if (__DEV__) {
-        console.error('Failed to create user document:', docError);
+        console.error('user_document_creation_failed', docError);
       }
-      // Continue anyway - auth was successful
     }
 
     await storeAuthState(user);
     await resetAuthAttempts();
 
     if (__DEV__) {
-      console.log('native_google_sign_in_success', { uid: user.uid, needsPhone });
+      console.log('google_signin_complete', { uid: user.uid, needsPhone });
     }
 
     return { success: true, needsPhone };
   } catch (error: any) {
     if (__DEV__) {
-      console.error('native_google_sign_in_error', error);
+      console.error('google_signin_failed', {
+        code: error?.code,
+        message: error?.message,
+        googleSignInCompleted
+      });
     }
 
-    await GoogleSignin.signOut().catch(() => {});
+    try {
+      await GoogleSignin.signOut();
+      if (__DEV__) {
+        console.log('google_signout_cleanup_complete');
+      }
+    } catch (signOutError) {
+      if (__DEV__) {
+        console.error('google_signout_cleanup_failed', signOutError);
+      }
+    }
 
-    let errorMessage = 'Google sign-in failed. Please try again.';
+    if (error.message === 'SIGNIN_CANCELLED' || error.code === 'SIGN_IN_CANCELLED' || error.code === '-5' || error.code === '12501') {
+      return {
+        success: false,
+        error: 'Sign-in was cancelled'
+      };
+    }
 
-    if (error.code === 'SIGN_IN_CANCELLED' || error.code === '-5' || error.message?.includes('cancel')) {
-      errorMessage = 'Sign-in was cancelled';
-    } else if (error.code === 'IN_PROGRESS') {
-      errorMessage = 'Sign-in already in progress';
-    } else if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') {
-      errorMessage = 'Google Play Services not available';
-    } else if (error.code === 'auth/network-request-failed') {
-      errorMessage = AUTH_ERROR_MESSAGES['auth/network-request-failed'];
-    } else if (typeof error?.code === 'string' && AUTH_ERROR_MESSAGES[error.code]) {
-      errorMessage = AUTH_ERROR_MESSAGES[error.code];
+    if (error.code === 'IN_PROGRESS') {
+      return {
+        success: false,
+        error: 'Sign-in already in progress'
+      };
+    }
+
+    if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') {
+      return {
+        success: false,
+        error: 'Google Play Services not available'
+      };
+    }
+
+    if (error.message === 'INCOMPLETE_SIGNIN') {
+      return {
+        success: false,
+        error: 'Sign-in incomplete. Please try again.'
+      };
+    }
+
+    if (typeof error?.code === 'string' && AUTH_ERROR_MESSAGES[error.code]) {
+      return {
+        success: false,
+        error: AUTH_ERROR_MESSAGES[error.code]
+      };
     }
 
     return {
       success: false,
-      error: errorMessage
+      error: 'Google sign-in failed. Please try again.'
     };
   }
 };
 
 export const logoutUser = async (): Promise<{ success: boolean; error?: string }> => {
   try {
-    await GoogleSignin.signOut();
+    if (__DEV__) {
+      console.log('logout_starting');
+    }
+
+    try {
+      await GoogleSignin.revokeAccess();
+      if (__DEV__) {
+        console.log('google_access_revoked');
+      }
+    } catch (revokeError) {
+      if (__DEV__) {
+        console.log('google_revoke_skipped', revokeError);
+      }
+    }
+
+    try {
+      await GoogleSignin.signOut();
+      if (__DEV__) {
+        console.log('google_signout_complete');
+      }
+    } catch (googleSignOutError) {
+      if (__DEV__) {
+        console.log('google_signout_skipped', googleSignOutError);
+      }
+    }
+
     await signOut(auth);
+    if (__DEV__) {
+      console.log('firebase_signout_complete');
+    }
+
     await storeAuthState(null);
+    if (__DEV__) {
+      console.log('auth_state_cleared');
+    }
+
     return { success: true };
   } catch (error: any) {
+    if (__DEV__) {
+      console.error('logout_failed', error);
+    }
     return {
       success: false,
       error: mapAuthError(error, 'Logout failed.')

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { Text } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -8,7 +8,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, firestore } from '../../config/firebase';
+import { firestore } from '../../config/firebase';
+import { waitForAuthReady } from '../../services/FirebaseService';
+import { User } from 'firebase/auth';
 
 type AccountLoadingScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AccountLoadingScreen'>;
 type AccountLoadingScreenRouteProp = RouteProp<RootStackParamList, 'AccountLoadingScreen'>;
@@ -22,48 +24,65 @@ export default function AccountLoadingScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const fromScreen = route.params?.from || 'app_launch';
   const signedUp = route.params?.signedUp || 0;
+  const timeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
-    performAccountChecks();
-  }, []);
+    let active = true;
+    const init = async () => {
+      try {
+        const user = await waitForAuthReady();
+        if (!active) {
+          return;
+        }
+        await performAccountChecks(user);
+      } catch {
+        if (!active) {
+          return;
+        }
+        scheduleNavigation(() => navigation.replace('LoginScreen'), 1500);
+      }
+    };
 
-  const performAccountChecks = async (): Promise<void> => {
+    init();
+
+    return () => {
+      active = false;
+      timeouts.current.forEach(clearTimeout);
+      timeouts.current = [];
+    };
+  }, [navigation, fromScreen, signedUp]);
+
+  const scheduleNavigation = (action: () => void, delay: number) => {
+    const timeoutId = setTimeout(action, delay);
+    timeouts.current.push(timeoutId);
+  };
+
+  const performAccountChecks = async (user: User | null): Promise<void> => {
     try {
-      const user = auth.currentUser;
-      
       if (!user) {
-        setTimeout(() => {
-          navigation.replace('LoginScreen');
-        }, 1000);
+        scheduleNavigation(() => navigation.replace('LoginScreen'), 1000);
         return;
       }
-      
+
       const userRef = doc(firestore, 'users', user.uid);
       const userDoc = await getDoc(userRef);
 
       if (!userDoc.exists()) {
-        setTimeout(() => {
-          navigation.replace('PhoneNumberScreen', { from: fromScreen });
-        }, 1000);
+        scheduleNavigation(() => navigation.replace('PhoneNumberScreen', { from: fromScreen }), 1000);
         return;
       }
 
       const userData = userDoc.data();
-      const hasPhone = userData?.phone && userData.phone.trim().length > 0;
+      const hasPhone = typeof userData?.phone === 'string' && userData.phone.trim().length > 0;
 
       if (!hasPhone) {
-        setTimeout(() => {
-          navigation.replace('PhoneNumberScreen', { from: fromScreen });
-        }, 1000);
-      } else {
-        setTimeout(() => {
-          navigation.replace('HomeScreen', { signedUp });
-        }, 800);
+        scheduleNavigation(() => navigation.replace('PhoneNumberScreen', { from: fromScreen }), 1000);
+        return;
       }
-    } catch (error: any) {
-      setTimeout(() => {
-        navigation.replace('LoginScreen');
-      }, 1500);
+
+      scheduleNavigation(() => navigation.replace('HomeScreen', { signedUp }), 800);
+    } catch {
+      scheduleNavigation(() => navigation.replace('LoginScreen'), 1500);
     }
   };
 
