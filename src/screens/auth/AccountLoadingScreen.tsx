@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, ActivityIndicator, Image } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Image, Animated } from 'react-native';
 import { Text } from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -25,8 +25,40 @@ export default function AccountLoadingScreen({ navigation, route }: Props) {
   const fromScreen = route.params?.from || 'app_launch';
   const signedUp = route.params?.signedUp || 0;
   const timeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
     let active = true;
     const init = async () => {
       try {
@@ -94,26 +126,48 @@ export default function AccountLoadingScreen({ navigation, route }: Props) {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
+      
       <View style={[styles.floatingCircle, styles.circle1]} />
       <View style={[styles.floatingCircle, styles.circle2]} />
       <View style={[styles.floatingCircle, styles.circle3]} />
       
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.content}>
-          <View style={styles.logoContainer}>
+        <Animated.View 
+          style={[
+            styles.content,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          <Animated.View 
+            style={[
+              styles.logoContainer,
+              {
+                transform: [{ scale: pulseAnim }],
+              },
+            ]}
+          >
+            <View style={styles.logoGlow} />
             <Image 
               source={require('../../../assets/wilang.png')} 
               style={styles.logo}
               resizeMode="contain"
             />
+          </Animated.View>
+          
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color="#ffffff" />
           </View>
           
-          <ActivityIndicator size="large" color="#ffffff" style={styles.loader} />
-          
           <Text style={styles.statusText}>
-            Just a moment...
+            Preparing your account
           </Text>
-        </View>
+          <Text style={styles.statusSubtext}>
+            This will only take a moment
+          </Text>
+        </Animated.View>
       </SafeAreaView>
     </View>
   );
@@ -135,53 +189,78 @@ const styles = StyleSheet.create({
   },
   floatingCircle: {
     position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 1000,
   },
   circle1: {
-    width: 200,
-    height: 200,
-    top: -100,
-    right: -50,
+    width: 300,
+    height: 300,
+    top: -150,
+    right: -100,
   },
   circle2: {
-    width: 150,
-    height: 150,
-    bottom: 100,
-    left: -75,
+    width: 250,
+    height: 250,
+    bottom: -50,
+    left: -125,
   },
   circle3: {
-    width: 100,
-    height: 100,
-    top: 200,
-    left: 50,
+    width: 180,
+    height: 180,
+    top: 250,
+    left: 30,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 32,
   },
   logoContainer: {
-    width: 120,
-    height: 120,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 60,
+    width: 140,
+    height: 140,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 70,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 48,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  logoGlow: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: 90,
+    height: 90,
   },
-  loader: {
-    marginBottom: 24,
+  loaderContainer: {
+    marginBottom: 32,
+    transform: [{ scale: 1.2 }],
   },
   statusText: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#ffffff',
     textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  statusSubtext: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    letterSpacing: 0.3,
   },
 });
