@@ -585,7 +585,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         onClose={handleDenyJoinRequest}
         title="Approve Participant"
         icon="person-add"
-        height={300}
+        height={280}
       >
         {pendingJoinRequest && (
           <View style={styles.approvalModalContent}>
@@ -593,12 +593,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             >
               {pendingJoinRequest.username} is requesting access.
             </Text>
-            {pendingJoinRequest.userId && (
-              <Text style={[styles.approvalDetails, { color: colors.textSecondary }]}
-              >
-                ID: {pendingJoinRequest.userId}
-              </Text>
-            )}
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, { backgroundColor: '#dc2626' }]}

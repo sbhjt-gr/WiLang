@@ -29,8 +29,7 @@ export const auth = initializeAuth(app, {
 
 export const firestore = initializeFirestore(app, {
   cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-  experimentalForceLongPolling: true,
-  experimentalAutoDetectLongPolling: false
+  ignoreUndefinedProperties: true,
 });
 
 export default app; 

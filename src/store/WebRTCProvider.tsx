@@ -6,6 +6,7 @@ import {WebRTCSocketManager} from './WebRTCSocketManager';
 import {WebRTCPeerManager} from './WebRTCPeerManager';
 import {WebRTCMeetingManager} from './WebRTCMeetingManager';
 import { keyManager, sessionManager } from '../crypto';
+import { callHistoryService } from '../services/CallHistoryService';
 
 interface Props {
   children: React.ReactNode;
@@ -42,12 +43,36 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   const peerIdRef = useRef<string>('');
   const currentMeetingIdRef = useRef<string | null>(null);
   const isMeetingOwnerRef = useRef(false);
+  const callStartTimeRef = useRef<number | null>(null);
+  const callTypeRef = useRef<'outgoing' | 'incoming' | null>(null);
+  const callContactPhoneRef = useRef<string | null>(null);
+  const callHistoryLoggedRef = useRef(false);
 
   const socketManager = useRef<WebRTCSocketManager | null>(null);
   const peerManager = useRef<WebRTCPeerManager | null>(null);
   const meetingManager = useRef<WebRTCMeetingManager | null>(null);
   const callerJoinInProgressRef = useRef(false);
   const keyExchangeCounterRef = useRef(0);
+
+  const normalizePhoneNumber = (phone: string | undefined | null): string | null => {
+    if (!phone) return null;
+    
+    if (phone.startsWith('+')) {
+      return phone;
+    }
+    
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 10) {
+      return `+91${cleaned}`;
+    }
+    if (cleaned.length === 12 && cleaned.startsWith('91')) {
+      return `+${cleaned}`;
+    }
+    if (cleaned.length === 13 && cleaned.startsWith('091')) {
+      return `+${cleaned.substring(1)}`;
+    }
+    return phone.startsWith('+') ? phone : `+${cleaned}`;
+  };
 
   const startKeyExchange = () => {
     keyExchangeCounterRef.current += 1;
@@ -127,7 +152,17 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       }
     };
 
+    const initCallHistory = async () => {
+      try {
+        await callHistoryService.initializeDatabase();
+        console.log('call_history_db_initialized');
+      } catch (error) {
+        console.log('call_history_db_init_failed', error);
+      }
+    };
+
     initCrypto();
+    initCallHistory();
 
     if (!socketManager.current) {
       socketManager.current = new WebRTCSocketManager();
@@ -138,6 +173,12 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           meetingManager.current?.handleUserJoined(user);
         },
         onUserLeft: (user: User) => {
+          console.log('user_left_meeting', user);
+          
+          if (user.peerId !== peerIdRef.current) {
+            logCallHistory('completed', user);
+          }
+          
           meetingManager.current?.handleUserLeft(user);
           peerManager.current?.closePeerConnection(user.peerId);
           setRemoteStreams(prev => {
@@ -162,13 +203,22 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           peerManager.current?.handleIceCandidate(data);
         },
         onMeetingEnded: () => {
-          leaveMeeting();
+          const contact = remoteUser || participants.find(p => !p.isLocal);
+          leaveMeeting(false, contact);
         },
         onUsersChange: (users: User[]) => {
           setUsers(users);
         },
         onIncomingCall: (callData: any) => {
           console.log('incoming_call_received', callData);
+          
+          if (!callStartTimeRef.current) {
+            callStartTimeRef.current = Date.now();
+            callTypeRef.current = 'incoming';
+            callHistoryLoggedRef.current = false;
+          }
+          callContactPhoneRef.current = normalizePhoneNumber(callData.callerPhone);
+          
           const { navigationRef, navigate } = require('../utils/navigationRef');
           
           if (navigationRef.isReady()) {
@@ -220,6 +270,9 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         },
         onCallDeclined: (data: any) => {
           console.log('call_declined_notification', data);
+          
+          logCallHistory('declined');
+          
           const { navigationRef } = require('../utils/navigationRef');
           const { Alert } = require('react-native');
           if (navigationRef.current) {
@@ -229,6 +282,9 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         },
         onCallCancelled: (data: any) => {
           console.log('call_cancelled_notification', data);
+          
+          logCallHistory('missed');
+          
           const { navigationRef } = require('../utils/navigationRef');
           const { Alert } = require('react-native');
           if (navigationRef.current) {
@@ -295,9 +351,22 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           const user = participants.find(p => p.peerId === peerId);
           if (user) {
             setRemoteUser(user);
+            if (!callContactPhoneRef.current && user.phoneNumbers?.[0]?.number) {
+              callContactPhoneRef.current = normalizePhoneNumber(user.phoneNumbers[0].number);
+            }
           }
         },
-        onConnectionStateChanged: () => {},
+        onConnectionStateChanged: (peerId: string, state: string) => {
+          console.log('peer_connection_state_changed', { peerId, state });
+          
+          if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+            const disconnectedUser = participants.find(p => p.peerId === peerId);
+            if (disconnectedUser && disconnectedUser.peerId !== peerIdRef.current) {
+              console.log('remote_peer_disconnected_logging_history');
+              logCallHistory('completed', disconnectedUser);
+            }
+          }
+        },
         onParticipantUpdated: (peerId: string, updates: Partial<User>) => {
           setParticipants(prev =>
             prev.map(p => p.peerId === peerId ? { ...p, ...updates } : p)
@@ -310,6 +379,12 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           currentMeetingIdRef.current = meetingId;
           socketManager.current?.setMeetingId(meetingId);
           peerManager.current?.setMeetingId(meetingId);
+          
+          if (!callStartTimeRef.current) {
+            callStartTimeRef.current = Date.now();
+            callTypeRef.current = 'outgoing';
+            callHistoryLoggedRef.current = false;
+          }
         },
         onMeetingJoined: (meetingId: string, participants: User[]) => {
           setCurrentMeetingId(meetingId);
@@ -319,9 +394,23 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           const currentSocketId = socket?.id;
           const filteredParticipants = participants.filter(p => p.peerId !== currentSocketId);
           setParticipants(filteredParticipants);
+          
+          if (!callStartTimeRef.current) {
+            callStartTimeRef.current = Date.now();
+            if (!callTypeRef.current) {
+              callTypeRef.current = 'incoming';
+            }
+            callHistoryLoggedRef.current = false;
+          }
         },
         onParticipantsUpdated: (participants: User[]) => {
           setParticipants(participants);
+          if (!callContactPhoneRef.current) {
+            const remoteWithPhone = participants.find(p => !p.isLocal && p.peerId !== peerIdRef.current && p.phoneNumbers?.[0]?.number);
+            if (remoteWithPhone) {
+              callContactPhoneRef.current = normalizePhoneNumber(remoteWithPhone.phoneNumbers?.[0]?.number);
+            }
+          }
         },
         onPeerConnectionRequested: (participant: User, isInitiator: boolean) => {
           if (!peerManager.current) {
@@ -626,6 +715,13 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     isMeetingOwnerRef.current = false;
     setPendingJoinRequests([]);
     setJoinDeniedReason(null);
+    
+    if (!callStartTimeRef.current) {
+      callStartTimeRef.current = Date.now();
+      callTypeRef.current = meetingToken ? 'incoming' : 'incoming';
+      callHistoryLoggedRef.current = false;
+    }
+    
     return meetingManager.current.joinMeeting(
       meetingId, 
       activeSocket, 
@@ -643,13 +739,19 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       return result;
     }).catch(error => {
       setAwaitingHostApproval(false);
+      callStartTimeRef.current = null;
+      callTypeRef.current = null;
       throw error;
     });
   };
 
-  const leaveMeeting = () => {
+  const leaveMeeting = (skipHistory = false, contactOverride?: User) => {
     meetingManager.current?.leaveMeeting(socket);
     peerManager.current?.closeAllConnections();
+    
+    if (!skipHistory) {
+      logCallHistory('completed', contactOverride);
+    }
     
     setCurrentMeetingId(null);
     setParticipants([]);
@@ -662,6 +764,71 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     setJoinDeniedReason(null);
     setIsMeetingOwner(false);
     isMeetingOwnerRef.current = false;
+    callContactPhoneRef.current = null;
+  };
+
+  const logCallHistory = async (status: 'completed' | 'missed' | 'declined' | 'failed', contactOverride?: User) => {
+    const { getCurrentUser } = require('../services/FirebaseService');
+    const currentUser = getCurrentUser();
+    
+    if (callHistoryLoggedRef.current) {
+      console.log('log_call_history_skipped_already_logged');
+      return;
+    }
+    
+    if (!currentUser) {
+      console.log('log_call_history_skipped_no_user');
+      return;
+    }
+    
+    if (!callStartTimeRef.current) {
+      console.log('log_call_history_skipped_no_start_time');
+      return;
+    }
+
+  const duration = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
+  const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerIdRef.current);
+    const contact = contactOverride || remoteUser || remoteParticipants[0];
+    if (!contact) {
+      console.log('log_call_history_skipped_no_contact');
+      return;
+    }
+
+    try {
+      const hasEncryption = contact.peerId
+        ? e2eStatus?.activeSessions?.includes(contact.peerId) || false
+        : false;
+      
+      console.log('saving_call_history', {
+        userId: currentUser.uid,
+        contactName: contact.username || contact.name || 'Unknown',
+        type: callTypeRef.current,
+        duration,
+        status,
+      });
+      
+      await callHistoryService.addCallToHistory({
+        userId: currentUser.uid,
+        contactId: contact.userId || contact.id || contact.peerId,
+        contactName: contact.username || contact.name || 'Unknown',
+        contactPhone: callContactPhoneRef.current || normalizePhoneNumber(contact.phoneNumbers?.[0]?.number) || undefined,
+        type: callTypeRef.current || 'outgoing',
+        duration: status === 'completed' ? duration : 0,
+        timestamp: callStartTimeRef.current,
+        status,
+        meetingId: currentMeetingIdRef.current || undefined,
+        encrypted: hasEncryption,
+      });
+      
+      console.log('call_history_saved_successfully');
+      callHistoryLoggedRef.current = true;
+  callContactPhoneRef.current = null;
+    } catch (error) {
+      console.log('log_call_history_failed', error);
+    } finally {
+      callStartTimeRef.current = null;
+      callTypeRef.current = null;
+    }
   };
 
   const call = (user: User) => {
@@ -670,6 +837,14 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     }
 
     setRemoteUser(user);
+    
+    if (!callStartTimeRef.current) {
+      callStartTimeRef.current = Date.now();
+      callTypeRef.current = 'outgoing';
+      callHistoryLoggedRef.current = false;
+    }
+    callContactPhoneRef.current = normalizePhoneNumber(user.phoneNumbers?.[0]?.number);
+    
     if (!peerManager.current) {
       return;
     }
@@ -760,12 +935,15 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   const closeCall = () => {
     peerManager.current?.closeAllConnections();
     
+  const contact = remoteUser || participants.find(p => !p.isLocal);
+  logCallHistory('completed', contact);
+    
     setActiveCall(null);
     setRemoteUser(null);
     setRemoteStream(null);
     setRemoteStreams(new Map());
     
-    leaveMeeting();
+    leaveMeeting(true);
   };
 
   const reset = async () => {
@@ -775,7 +953,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     setSocket(null);
     socketRef.current = null;
     peerManager.current?.closeAllConnections();
-    leaveMeeting();
+    leaveMeeting(true);
     if (localStream) {
       localStream.getTracks().forEach(track => {
         track.stop();
