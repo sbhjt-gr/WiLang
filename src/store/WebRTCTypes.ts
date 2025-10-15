@@ -20,6 +20,13 @@ export interface E2EStatus {
   securityCodes: Map<string, string>;
 }
 
+export interface JoinRequest {
+  requestId: string;
+  peerId: string;
+  username: string;
+  userId?: string;
+}
+
 export interface WebRTCContextType {
   localStream: MediaStream | null;
   remoteStreams: Map<string, MediaStream>;
@@ -50,4 +57,11 @@ export interface WebRTCContextType {
   switchCamera: () => void;
   toggleMute: () => void;
   getSecurityCode?: (peerId: string) => string | undefined;
+  pendingJoinRequests?: JoinRequest[];
+  approveJoinRequest?: (requestId: string) => void;
+  denyJoinRequest?: (requestId: string) => void;
+  awaitingHostApproval?: boolean;
+  isMeetingOwner?: boolean;
+  joinDeniedReason?: string | null;
+  acknowledgeJoinDenied?: () => void;
 }

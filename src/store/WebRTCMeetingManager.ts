@@ -6,6 +6,7 @@ export class WebRTCMeetingManager {
   private username: string = '';
   private peerId: string = '';
   private participantManager: WebRTCParticipantManager;
+  private awaitingApproval = false;
 
   private onMeetingCreated?: (meetingId: string) => void;
   private onMeetingJoined?: (meetingId: string, participants: User[]) => void;
@@ -111,6 +112,14 @@ export class WebRTCMeetingManager {
           this.currentMeetingId = meetingId;
           const participants = Array.isArray(response.participants) ? response.participants : [];
 
+          if (response.pending) {
+            this.awaitingApproval = true;
+            this.participantManager.setParticipants([]);
+            resolve(true);
+            return;
+          }
+
+          this.awaitingApproval = false;
           this.onMeetingJoined?.(meetingId, participants);
 
           if (participants.length > 0) {
@@ -122,6 +131,7 @@ export class WebRTCMeetingManager {
           
           resolve(true);
         } else {
+          this.awaitingApproval = false;
           reject(response?.error || 'Failed to join meeting');
         }
       });
@@ -142,6 +152,7 @@ export class WebRTCMeetingManager {
     }
     
     this.currentMeetingId = null;
+    this.awaitingApproval = false;
     this.participantManager.clearParticipants();
   }
 
@@ -153,6 +164,28 @@ export class WebRTCMeetingManager {
     this.currentMeetingId = null;
     this.username = '';
     this.peerId = '';
+    this.awaitingApproval = false;
     this.participantManager.reset();
+  }
+
+  isAwaitingApproval(): boolean {
+    return this.awaitingApproval;
+  }
+
+  finalizeApprovedJoin(meetingId: string, participants: User[], socket: any) {
+    this.currentMeetingId = meetingId;
+    this.awaitingApproval = false;
+    this.onMeetingJoined?.(meetingId, participants);
+    if (participants.length > 0) {
+      this.participantManager.createPeerConnectionsWithExistingParticipants(participants, socket.id);
+    } else {
+      this.participantManager.setParticipants([]);
+    }
+  }
+
+  handleJoinDenied() {
+    this.awaitingApproval = false;
+    this.currentMeetingId = null;
+    this.participantManager.clearParticipants();
   }
 }

@@ -1,5 +1,5 @@
 import socketio from 'socket.io-client';
-import {User} from './WebRTCTypes';
+import {User, JoinRequest} from './WebRTCTypes';
 import {SERVER_URL, SERVER_URLS, WEBRTC_CONFIG} from './WebRTCConfig';
 import { KeyBundle } from '../crypto';
 
@@ -22,6 +22,9 @@ export class WebRTCSocketManager {
   private onCallDeclined?: (data: any) => void;
   private onCallCancelled?: (data: any) => void;
   private onKeyBundleReceived?: (data: { fromUserId: string; bundle: KeyBundle }) => void;
+  private onJoinRequest?: (data: JoinRequest & { meetingId: string }) => void;
+  private onJoinApproved?: (data: { meetingId: string; participants: User[]; requestId?: string }) => void;
+  private onJoinDenied?: (data: { meetingId: string; reason?: string; requestId?: string }) => void;
 
   setCallbacks(callbacks: {
     onUserJoined?: (user: User) => void;
@@ -36,6 +39,9 @@ export class WebRTCSocketManager {
     onCallDeclined?: (data: any) => void;
     onCallCancelled?: (data: any) => void;
     onKeyBundleReceived?: (data: { fromUserId: string; bundle: KeyBundle }) => void;
+    onJoinRequest?: (data: JoinRequest & { meetingId: string }) => void;
+  onJoinApproved?: (data: { meetingId: string; participants: User[]; requestId?: string }) => void;
+  onJoinDenied?: (data: { meetingId: string; reason?: string; requestId?: string }) => void;
   }) {
     this.onUserJoined = callbacks.onUserJoined;
     this.onUserLeft = callbacks.onUserLeft;
@@ -49,6 +55,9 @@ export class WebRTCSocketManager {
     this.onCallDeclined = callbacks.onCallDeclined;
     this.onCallCancelled = callbacks.onCallCancelled;
     this.onKeyBundleReceived = callbacks.onKeyBundleReceived;
+    this.onJoinRequest = callbacks.onJoinRequest;
+    this.onJoinApproved = callbacks.onJoinApproved;
+    this.onJoinDenied = callbacks.onJoinDenied;
   }
 
   private async connectWithFallback(urls: string[], username: string): Promise<SocketInstance> {
@@ -210,6 +219,18 @@ export class WebRTCSocketManager {
       console.log('key_bundle_received', data.fromUserId);
       this.onKeyBundleReceived?.(data);
     });
+
+    io.on('meeting-join-request', (data: JoinRequest & { meetingId: string }) => {
+      this.onJoinRequest?.(data);
+    });
+
+    io.on('meeting-join-approved', (data: { meetingId: string; participants: User[] }) => {
+      this.onJoinApproved?.(data);
+    });
+
+    io.on('meeting-join-denied', (data: { meetingId: string; reason?: string }) => {
+      this.onJoinDenied?.(data);
+    });
   }
 
   sendOffer(offer: any, targetPeerId: string, meetingId: string) {
@@ -363,6 +384,18 @@ export class WebRTCSocketManager {
       this.socket.once('key-bundle-response', responseHandler);
       this.socket.emit('request-key-bundle', userId);
       console.log('key_bundle_request_emitted', userId);
+    });
+  }
+
+  respondToJoinRequest(meetingId: string, requestId: string, approve: boolean) {
+    if (!this.socket) {
+      throw new Error('Socket not initialized');
+    }
+
+    this.socket.emit('respond-join-request', {
+      meetingId,
+      requestId,
+      approve,
     });
   }
 

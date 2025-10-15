@@ -28,6 +28,13 @@ export const initialValues: WebRTCContextType = {
   closeCall: () => {},
   switchCamera: () => {},
   toggleMute: () => {},
+  pendingJoinRequests: [],
+  approveJoinRequest: () => {},
+  denyJoinRequest: () => {},
+  awaitingHostApproval: false,
+  isMeetingOwner: false,
+  joinDeniedReason: null,
+  acknowledgeJoinDenied: () => {},
 };
 
 export const WebRTCContext = createContext<WebRTCContextType>({
@@ -57,4 +64,11 @@ export const WebRTCContext = createContext<WebRTCContextType>({
   closeCall: () => {},
   switchCamera: () => {},
   toggleMute: () => {},
+  pendingJoinRequests: [],
+  approveJoinRequest: () => {},
+  denyJoinRequest: () => {},
+  awaitingHostApproval: false,
+  isMeetingOwner: false,
+  joinDeniedReason: null,
+  acknowledgeJoinDenied: () => {},
 });

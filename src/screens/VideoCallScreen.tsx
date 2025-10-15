@@ -55,6 +55,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     createMeetingWithSocket,
     e2eStatus,
     getSecurityCode,
+    pendingJoinRequests,
+    approveJoinRequest,
+    denyJoinRequest,
+    awaitingHostApproval,
+    joinDeniedReason,
+    acknowledgeJoinDenied,
+    isMeetingOwner,
   } = useContext(WebRTCContext);
 
   const [isGridMode, setIsGridMode] = useState(true);
@@ -134,6 +141,27 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const toggleSecurityCodeModal = useCallback(() => {
     setShowSecurityCodeModal(prev => !prev);
   }, []);
+
+  const pendingJoinRequest = pendingJoinRequests?.[0];
+  const pendingJoinRequestId = pendingJoinRequest?.requestId;
+
+  const handleApproveJoinRequest = useCallback(() => {
+    if (pendingJoinRequestId) {
+      approveJoinRequest?.(pendingJoinRequestId);
+    }
+  }, [approveJoinRequest, pendingJoinRequestId]);
+
+  const handleDenyJoinRequest = useCallback(() => {
+    if (pendingJoinRequestId) {
+      denyJoinRequest?.(pendingJoinRequestId);
+    }
+  }, [denyJoinRequest, pendingJoinRequestId]);
+
+  const handleJoinDeniedClose = useCallback(() => {
+    acknowledgeJoinDenied?.();
+    closeCall();
+    navigation.goBack();
+  }, [acknowledgeJoinDenied, closeCall, navigation]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -543,6 +571,52 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         </View>
       </View>
 
+      {awaitingHostApproval && (
+        <View style={styles.approvalOverlay}>
+          <View style={styles.approvalBox}>
+            <ActivityIndicator size="small" color="#8b5cf6" />
+            <Text style={styles.approvalText}>Waiting for host approval...</Text>
+          </View>
+        </View>
+      )}
+
+      <GlassModal
+        isVisible={Boolean(isMeetingOwner && pendingJoinRequest)}
+        onClose={handleDenyJoinRequest}
+        title="Approve Participant"
+        icon="person-add"
+        height={300}
+      >
+        {pendingJoinRequest && (
+          <View style={styles.approvalModalContent}>
+            <Text style={[styles.modalMessage, { color: colors.text }]}
+            >
+              {pendingJoinRequest.username} is requesting access.
+            </Text>
+            {pendingJoinRequest.userId && (
+              <Text style={[styles.approvalDetails, { color: colors.textSecondary }]}
+              >
+                ID: {pendingJoinRequest.userId}
+              </Text>
+            )}
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: '#dc2626' }]}
+                onPress={handleDenyJoinRequest}
+              >
+                <Text style={styles.modalButtonText}>Deny</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: '#10b981' }]}
+                onPress={handleApproveJoinRequest}
+              >
+                <Text style={styles.modalButtonText}>Approve</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </GlassModal>
+
       <GlassModal
         isVisible={modalConfig.visible}
         onClose={closeModal}
@@ -566,6 +640,27 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               <Text style={styles.modalButtonText}>{button.text}</Text>
             </TouchableOpacity>
           ))}
+        </View>
+      </GlassModal>
+
+      <GlassModal
+        isVisible={Boolean(joinDeniedReason)}
+        onClose={handleJoinDeniedClose}
+        title="Access Denied"
+        icon="shield-outline"
+        height={260}
+      >
+        <Text style={[styles.modalMessage, { color: colors.text }]}
+        >
+          {joinDeniedReason}
+        </Text>
+        <View style={styles.modalButtons}>
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: '#dc2626' }]}
+            onPress={handleJoinDeniedClose}
+          >
+            <Text style={styles.modalButtonText}>Leave Call</Text>
+          </TouchableOpacity>
         </View>
       </GlassModal>
 
@@ -907,5 +1002,35 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     marginTop: 6,
+  },
+  approvalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(10,10,10,0.75)',
+    zIndex: 30,
+  },
+  approvalBox: {
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    alignItems: 'center',
+    gap: 12,
+  },
+  approvalText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  approvalModalContent: {
+    gap: 16,
+  },
+  approvalDetails: {
+    fontSize: 14,
   },
 });

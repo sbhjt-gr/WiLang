@@ -1,7 +1,7 @@
 import React, {useState, useRef, useEffect} from 'react';
 import {mediaDevices, MediaStream} from 'react-native-webrtc';
 import {WebRTCContext} from './WebRTCContext';
-import {User, WebRTCContextType, E2EStatus} from './WebRTCTypes';
+import {User, WebRTCContextType, E2EStatus, JoinRequest} from './WebRTCTypes';
 import {WebRTCSocketManager} from './WebRTCSocketManager';
 import {WebRTCPeerManager} from './WebRTCPeerManager';
 import {WebRTCMeetingManager} from './WebRTCMeetingManager';
@@ -32,11 +32,16 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     activeSessions: [],
     securityCodes: new Map(),
   });
+  const [pendingJoinRequests, setPendingJoinRequests] = useState<JoinRequest[]>([]);
+  const [awaitingHostApproval, setAwaitingHostApproval] = useState(false);
+  const [joinDeniedReason, setJoinDeniedReason] = useState<string | null>(null);
+  const [isMeetingOwner, setIsMeetingOwner] = useState(false);
 
   const localStreamRef = useRef<MediaStream | null>(null);
   const socketRef = useRef<any>(null);
   const peerIdRef = useRef<string>('');
   const currentMeetingIdRef = useRef<string | null>(null);
+  const isMeetingOwnerRef = useRef(false);
 
   const socketManager = useRef<WebRTCSocketManager | null>(null);
   const peerManager = useRef<WebRTCPeerManager | null>(null);
@@ -93,6 +98,15 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       }
 
       await meetingManager.current.joinMeeting(meetingId, socketToUse, meetingToken, userId);
+      const pending = meetingManager.current?.isAwaitingApproval() || false;
+      setAwaitingHostApproval(pending);
+      if (pending) {
+        setJoinDeniedReason(null);
+        setCurrentMeetingId(meetingId);
+        currentMeetingIdRef.current = meetingId;
+      }
+      setIsMeetingOwner(false);
+      isMeetingOwnerRef.current = false;
       console.log('caller_auto_join_success', { meetingId });
     } catch (error) {
       console.log('caller_auto_join_error', error);
@@ -221,6 +235,53 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
             navigationRef.current.goBack();
           }
           Alert.alert('Call Cancelled', 'The caller cancelled the call.');
+        },
+        onJoinRequest: (request) => {
+          if (!isMeetingOwnerRef.current) {
+            return;
+          }
+          setPendingJoinRequests(prev => {
+            if (prev.some(item => item.requestId === request.requestId)) {
+              return prev;
+            }
+            const next = prev.slice();
+            next.push({
+              requestId: request.requestId,
+              peerId: request.peerId,
+              username: request.username,
+              userId: request.userId,
+            });
+            return next;
+          });
+        },
+        onJoinApproved: (data) => {
+          if (!meetingManager.current || !socketRef.current) {
+            return;
+          }
+          if (data.requestId) {
+            setPendingJoinRequests(prev => prev.filter(item => item.requestId !== data.requestId));
+          }
+          if (isMeetingOwnerRef.current) {
+            return;
+          }
+          meetingManager.current.finalizeApprovedJoin(data.meetingId, data.participants, socketRef.current);
+          setAwaitingHostApproval(false);
+          setJoinDeniedReason(null);
+        },
+        onJoinDenied: (data) => {
+          if (data.requestId) {
+            setPendingJoinRequests(prev => prev.filter(item => item.requestId !== data.requestId));
+          }
+          if (isMeetingOwnerRef.current) {
+            return;
+          }
+          if (meetingManager.current) {
+            meetingManager.current.handleJoinDenied();
+          }
+          setCurrentMeetingId(null);
+          currentMeetingIdRef.current = null;
+          setAwaitingHostApproval(false);
+          setJoinDeniedReason(data.reason || 'Access denied by host');
         }
       });
       peerManager.current.setCallbacks({
@@ -527,14 +588,28 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     if (!meetingManager.current || !socket) {
       return Promise.reject('Not properly initialized');
     }
-    return meetingManager.current.createMeeting(socket);
+    return meetingManager.current.createMeeting(socket).then(meetingId => {
+      setIsMeetingOwner(true);
+      isMeetingOwnerRef.current = true;
+      setPendingJoinRequests([]);
+      setAwaitingHostApproval(false);
+      setJoinDeniedReason(null);
+      return meetingId;
+    });
   };
 
   const createMeetingWithSocket = (socketToUse: any): Promise<string> => {
     if (!meetingManager.current) {
       return Promise.reject('Meeting manager not initialized');
     }
-    return meetingManager.current.createMeeting(socketToUse);
+    return meetingManager.current.createMeeting(socketToUse).then(meetingId => {
+      setIsMeetingOwner(true);
+      isMeetingOwnerRef.current = true;
+      setPendingJoinRequests([]);
+      setAwaitingHostApproval(false);
+      setJoinDeniedReason(null);
+      return meetingId;
+    });
   };
 
   const joinMeeting = (
@@ -547,12 +622,29 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       return Promise.reject('Meeting manager not initialized');
     }
     const activeSocket = socketToUse || socket;
+    setIsMeetingOwner(false);
+    isMeetingOwnerRef.current = false;
+    setPendingJoinRequests([]);
+    setJoinDeniedReason(null);
     return meetingManager.current.joinMeeting(
       meetingId, 
       activeSocket, 
       meetingToken, 
       userId
-    );
+    ).then(result => {
+      const pending = meetingManager.current?.isAwaitingApproval() || false;
+      setAwaitingHostApproval(pending);
+      if (pending) {
+        setCurrentMeetingId(meetingId);
+        currentMeetingIdRef.current = meetingId;
+      } else {
+        setJoinDeniedReason(null);
+      }
+      return result;
+    }).catch(error => {
+      setAwaitingHostApproval(false);
+      throw error;
+    });
   };
 
   const leaveMeeting = () => {
@@ -565,6 +657,11 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     setRemoteStream(null);
     setActiveCall(null);
     setRemoteStreams(new Map());
+    setPendingJoinRequests([]);
+    setAwaitingHostApproval(false);
+    setJoinDeniedReason(null);
+    setIsMeetingOwner(false);
+    isMeetingOwnerRef.current = false;
   };
 
   const call = (user: User) => {
@@ -632,6 +729,34 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     }
   };
 
+  const approveJoinRequest = (requestId: string) => {
+    if (!socketManager.current || !currentMeetingIdRef.current) {
+      return;
+    }
+    try {
+      socketManager.current.respondToJoinRequest(currentMeetingIdRef.current, requestId, true);
+      setPendingJoinRequests(prev => prev.filter(item => item.requestId !== requestId));
+    } catch (error) {
+      console.log('approve_join_request_failed', error);
+    }
+  };
+
+  const denyJoinRequest = (requestId: string) => {
+    if (!socketManager.current || !currentMeetingIdRef.current) {
+      return;
+    }
+    try {
+      socketManager.current.respondToJoinRequest(currentMeetingIdRef.current, requestId, false);
+      setPendingJoinRequests(prev => prev.filter(item => item.requestId !== requestId));
+    } catch (error) {
+      console.log('deny_join_request_failed', error);
+    }
+  };
+
+  const acknowledgeJoinDenied = () => {
+    setJoinDeniedReason(null);
+  };
+
   const closeCall = () => {
     peerManager.current?.closeAllConnections();
     
@@ -672,6 +797,11 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     setCurrentMeetingId(null);
     currentMeetingIdRef.current = null;
     setIsMuted(false);
+    setPendingJoinRequests([]);
+    setAwaitingHostApproval(false);
+    setJoinDeniedReason(null);
+    setIsMeetingOwner(false);
+    isMeetingOwnerRef.current = false;
 
     socketManager.current = null;
     peerManager.current = null;
@@ -785,6 +915,13 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     switchCamera,
     toggleMute,
     getSecurityCode,
+    pendingJoinRequests,
+    approveJoinRequest,
+    denyJoinRequest,
+    awaitingHostApproval,
+    isMeetingOwner,
+    joinDeniedReason,
+    acknowledgeJoinDenied,
   };
 
   return (
