@@ -57,7 +57,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     getSecurityCode,
   } = useContext(WebRTCContext);
 
-  const [isGridMode, setIsGridMode] = useState(false);
+  const [isGridMode, setIsGridMode] = useState(true);
   const [isInstantCall, setIsInstantCall] = useState(false);
   const [showJoinCodeUI, setShowJoinCodeUI] = useState(false);
   const [isDirectCall, setIsDirectCall] = useState(false);
@@ -455,7 +455,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
   const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
   const totalParticipants = remoteParticipants.length + 1;
-  const shouldUseFeaturedViewForCall = totalParticipants <= 2 && !isGridMode;
+  const shouldUseFeaturedViewForCall = !isGridMode;
 
   return (
     <View style={styles.container}>
@@ -464,18 +464,16 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       {shouldUseFeaturedViewForCall ? renderFeaturedView() : renderGridView()}
 
       <View style={styles.topControls}>
-        {totalParticipants >= 2 && (
-          <TouchableOpacity style={[styles.topControlButton, { backgroundColor: 'rgba(0,0,0,0.7)' }]} onPress={toggleViewMode}>
-            <Ionicons
-              name={shouldUseFeaturedViewForCall ? "grid" : "person"}
-              size={20}
-              color="#ffffff"
-            />
-            <Text style={styles.topControlText}>
-              {shouldUseFeaturedViewForCall ? "Grid" : "Focus"}
-            </Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity style={[styles.topControlButton, { backgroundColor: 'rgba(0,0,0,0.7)' }]} onPress={toggleViewMode}>
+          <Ionicons
+            name={isGridMode ? "person" : "grid"}
+            size={20}
+            color="#ffffff"
+          />
+          <Text style={styles.topControlText}>
+            {isGridMode ? "Focus" : "Grid"}
+          </Text>
+        </TouchableOpacity>
 
         <View style={styles.topRightControls}>
           {e2eStatus?.initialized && (
@@ -492,7 +490,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               ) : e2eStatus.activeSessions.length > 0 ? (
                 <>
                   <Ionicons name="lock-closed" size={16} color="#10b981" />
-                  <Text style={[styles.e2eText, { color: '#10b981' }]}>Encrypted</Text>
+                  <Text style={[styles.e2eText, { color: '#10b981' }]}>End-to-End Encrypted</Text>
                 </>
               ) : (
                 <>
@@ -576,13 +574,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         onClose={toggleSecurityCodeModal}
         title="End-to-End Encryption"
         icon="shield-checkmark"
-        height={400}
+        height={480}
       >
         <View style={styles.securityCodeContent}>
           <View style={styles.securityBadge}>
             <Ionicons name="lock-closed" size={24} color="#10b981" />
             <Text style={[styles.securityBadgeText, { color: colors.text }]}>
-              Your call is encrypted
+              Your call is end-to-end encrypted
             </Text>
           </View>
 
@@ -618,7 +616,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           )}
 
           <Text style={[styles.securityFooter, { color: colors.textSecondary }]}>
-            Compare these codes with your participants to verify the connection is secure.
+            Verify codes with participants to ensure security.
           </Text>
         </View>
       </GlassModal>
@@ -854,60 +852,60 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   securityCodeContent: {
-    gap: 16,
+    gap: 14,
   },
   securityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     backgroundColor: 'rgba(16, 185, 129, 0.1)',
     borderRadius: 12,
   },
   securityBadgeText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   securityDescription: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
   },
   securityCodesContainer: {
-    marginTop: 8,
-    gap: 12,
+    marginTop: 6,
+    gap: 10,
   },
   securityCodesTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   securityCodeItem: {
     backgroundColor: 'rgba(139, 92, 246, 0.1)',
     borderRadius: 12,
-    padding: 12,
-    gap: 6,
+    padding: 10,
+    gap: 5,
   },
   participantName: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
   securityCodeValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     color: '#8b5cf6',
     letterSpacing: 1,
     fontFamily: 'monospace',
   },
   securityCodePending: {
-    fontSize: 12,
+    fontSize: 11,
     fontStyle: 'italic',
   },
   securityFooter: {
-    fontSize: 12,
+    fontSize: 11,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 6,
   },
 });

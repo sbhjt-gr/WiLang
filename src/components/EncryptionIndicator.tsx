@@ -29,7 +29,7 @@ export const EncryptionIndicator: React.FC<EncryptionIndicatorProps> = ({
         color="#4CAF50"
         size={16}
       />
-      <Text style={styles.text}>Encrypted</Text>
+      <Text style={styles.text}>End-to-End Encrypted</Text>
       {securityCode && (
         <View style={styles.codeContainer}>
           <Text style={styles.codeText}>{securityCode}</Text>

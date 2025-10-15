@@ -6,7 +6,8 @@ export interface KeyPair {
 export interface KeyBundle {
   identityKey: string;
   ephemeralKey: string;
-  userId: string;
+  userId?: string;
+  peerId?: string;
   timestamp: number;
 }
 

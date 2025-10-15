@@ -15,7 +15,7 @@ export async function verifyE2ESetup(): Promise<boolean> {
     }
     console.log('e2e_public_key_valid');
 
-    const bundle = keyManager.createKeyBundle('test-user');
+  const bundle = keyManager.createKeyBundle('test-user', 'test-peer');
     if (!bundle.identityKey || !bundle.ephemeralKey) {
       console.log('e2e_verification_failed', 'invalid_bundle');
       return false;

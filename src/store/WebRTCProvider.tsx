@@ -400,9 +400,9 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
             });
 
             try {
-              const keyBundle = keyManager.createKeyBundle(currentUser.uid);
+              const keyBundle = keyManager.createKeyBundle(currentUser.uid, io.id || undefined);
               socketManager.current.uploadKeyBundle(keyBundle);
-              console.log('key_bundle_uploaded', currentUser.uid);
+              console.log('key_bundle_uploaded', { userId: currentUser.uid, peerId: io.id });
             } catch (error) {
               console.log('key_bundle_upload_failed', error);
             }
@@ -498,14 +498,22 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         });
 
         try {
-          const keyBundle = keyManager.createKeyBundle(currentUser.uid);
+          const keyBundle = keyManager.createKeyBundle(currentUser.uid, io.id || undefined);
           socketManager.current.uploadKeyBundle(keyBundle);
-          console.log('key_bundle_uploaded', currentUser.uid);
+          console.log('key_bundle_uploaded', { userId: currentUser.uid, peerId: io.id });
         } catch (error) {
           console.log('key_bundle_upload_failed', error);
         }
 
         console.log('user_registered', currentUser.uid, phoneNumber);
+      } else if (socketManager.current) {
+        try {
+          const keyBundle = keyManager.createKeyBundle(undefined, io.id || undefined);
+          socketManager.current.uploadKeyBundle(keyBundle);
+          console.log('key_bundle_uploaded', { userId: null, peerId: io.id });
+        } catch (error) {
+          console.log('key_bundle_upload_failed', error);
+        }
       }
 
       setIsInitialized(true);

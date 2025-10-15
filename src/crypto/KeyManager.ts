@@ -1,9 +1,9 @@
 import './cryptoPolyfill';
-import { x25519 } from '@noble/curves/ed25519';
+import { x25519 } from '@noble/curves/ed25519.js';
 import * as SecureStore from 'expo-secure-store';
 import { KeyPair, KeyBundle } from './CryptoTypes';
 import { bytesToHex, hexToBytes } from './CryptoUtils';
-import { randomBytes } from '@noble/hashes/utils';
+import { randomBytes } from '@noble/hashes/utils.js';
 
 const IDENTITY_KEY_STORAGE_KEY = 'whisperlang_identity_key';
 const EPHEMERAL_KEY_TTL = 24 * 60 * 60 * 1000;
@@ -89,17 +89,30 @@ export class KeyManager {
     return this.ephemeralKeyPair.publicKey;
   }
 
-  createKeyBundle(userId: string): KeyBundle {
+  createKeyBundle(userId?: string, peerId?: string): KeyBundle {
     if (!this.identityKeyPair || !this.ephemeralKeyPair) {
       throw new Error('keys_not_initialized');
     }
 
-    return {
+    if (!userId && !peerId) {
+      throw new Error('key_bundle_missing_identifier');
+    }
+
+    const bundle: KeyBundle = {
       identityKey: bytesToHex(this.identityKeyPair.publicKey),
       ephemeralKey: bytesToHex(this.ephemeralKeyPair.publicKey),
-      userId,
       timestamp: Date.now(),
     };
+
+    if (userId) {
+      bundle.userId = userId;
+    }
+
+    if (peerId) {
+      bundle.peerId = peerId;
+    }
+
+    return bundle;
   }
 
   computeSharedSecret(peerPublicKey: Uint8Array): Uint8Array {
