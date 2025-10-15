@@ -1,6 +1,6 @@
 import { KeyBundle, SessionState } from './CryptoTypes';
 import { keyManager } from './KeyManager';
-import { deriveKey, importKeyForAES, generateSecurityCode, hexToBytes } from './CryptoUtils';
+import { deriveKey, generateSecurityCode, hexToBytes } from './CryptoUtils';
 
 export class SessionManager {
   private sessions = new Map<string, SessionState>();
@@ -12,18 +12,23 @@ export class SessionManager {
   ): Promise<SessionState> {
     const existingSession = this.sessions.get(peerId);
     if (existingSession) {
+      console.log('session_already_exists', peerId);
       return existingSession;
     }
 
-    const peerIdentityKey = hexToBytes(peerBundle.identityKey);
-    const sharedSecret = keyManager.computeSharedSecret(peerIdentityKey);
+    console.log('establishing_session', { peerId, bundleKeys: { identityKey: typeof peerBundle.identityKey, ephemeralKey: typeof peerBundle.ephemeralKey } });
 
-    const derivedKey = deriveKey(sharedSecret);
-    const sessionKey = await importKeyForAES(derivedKey);
+    const peerIdentityKey = hexToBytes(peerBundle.identityKey);
+    console.log('peer_identity_key_converted', { length: peerIdentityKey.length });
+
+    const sharedSecret = keyManager.computeSharedSecret(peerIdentityKey);
+    console.log('shared_secret_computed', { length: sharedSecret.length });
+
+  const sessionKey = deriveKey(sharedSecret);
 
     const session: SessionState = {
       peerId,
-      sessionKey,
+  sessionKey,
       counter: 0,
       established: Date.now(),
     };

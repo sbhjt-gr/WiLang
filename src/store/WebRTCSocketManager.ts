@@ -331,29 +331,38 @@ export class WebRTCSocketManager {
 
   uploadKeyBundle(bundle: KeyBundle) {
     if (!this.socket) {
+      console.log('upload_key_bundle_no_socket');
       throw new Error('Socket not initialized');
     }
 
+    console.log('uploading_key_bundle', { userId: bundle.userId, hasIdentityKey: !!bundle.identityKey, hasEphemeralKey: !!bundle.ephemeralKey });
     this.socket.emit('upload-key-bundle', bundle);
   }
 
   requestKeyBundle(userId: string): Promise<KeyBundle | null> {
     return new Promise((resolve) => {
       if (!this.socket) {
+        console.log('request_key_bundle_no_socket', userId);
         resolve(null);
         return;
       }
 
+      console.log('requesting_key_bundle_socket', userId);
+
       const timeout = setTimeout(() => {
+        console.log('request_key_bundle_timeout', userId);
         resolve(null);
       }, 5000);
 
-      this.socket.once('key-bundle-response', (data: { success: boolean; bundle?: KeyBundle }) => {
+      const responseHandler = (data: { success: boolean; bundle?: KeyBundle }) => {
         clearTimeout(timeout);
+        console.log('key_bundle_response_received', { userId, success: data.success, hasBundle: !!data.bundle });
         resolve(data.success && data.bundle ? data.bundle : null);
-      });
+      };
 
+      this.socket.once('key-bundle-response', responseHandler);
       this.socket.emit('request-key-bundle', userId);
+      console.log('key_bundle_request_emitted', userId);
     });
   }
 

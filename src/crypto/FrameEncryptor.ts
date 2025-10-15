@@ -1,3 +1,4 @@
+import { gcm } from '@noble/ciphers/aes.js';
 import { sessionManager } from './SessionManager';
 import { createDeterministicIV } from './CryptoUtils';
 import { DEFAULT_E2E_CONFIG } from './CryptoTypes';
@@ -39,17 +40,10 @@ export class FrameEncryptor {
       const ssrc = frame.synchronizationSource || 0;
       const iv = createDeterministicIV(timestamp, ssrc, counter);
 
-      const encryptedData = await crypto.subtle.encrypt(
-        {
-          name: DEFAULT_E2E_CONFIG.algorithm,
-          iv,
-          tagLength: DEFAULT_E2E_CONFIG.tagSize,
-        },
-        session.sessionKey,
-        frameData
-      );
-
-      frame.data = encryptedData;
+  const cipher = gcm(session.sessionKey, iv);
+  const encrypted = cipher.encrypt(frameData);
+      const encryptedCopy = encrypted.slice();
+      frame.data = encryptedCopy.buffer;
       return frame;
     } catch (error) {
       console.log('frame_encryption_failed', error);
@@ -83,17 +77,10 @@ export class FrameEncryptor {
 
       const iv = createDeterministicIV(timestamp, ssrc, counter);
 
-      const decryptedData = await crypto.subtle.decrypt(
-        {
-          name: DEFAULT_E2E_CONFIG.algorithm,
-          iv,
-          tagLength: DEFAULT_E2E_CONFIG.tagSize,
-        },
-        session.sessionKey,
-        encryptedData
-      );
-
-      frame.data = decryptedData;
+  const cipher = gcm(session.sessionKey, iv);
+  const decrypted = cipher.decrypt(encryptedData);
+      const decryptedCopy = decrypted.slice();
+      frame.data = decryptedCopy.buffer;
       return frame;
     } catch (error) {
       console.log('frame_decryption_failed', error);

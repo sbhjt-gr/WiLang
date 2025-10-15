@@ -1,12 +1,18 @@
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha2';
 
+function stringToBytes(value: string): Uint8Array {
+  return new TextEncoder().encode(value);
+}
+
 export function deriveKey(
   sharedSecret: Uint8Array,
   salt: string = 'WhisperLang-E2E-v1',
   info: string = 'session-key'
 ): Uint8Array {
-  return hkdf(sha256, sharedSecret, salt, info, 32);
+  const saltBytes = stringToBytes(salt);
+  const infoBytes = stringToBytes(info);
+  return hkdf(sha256, sharedSecret, saltBytes, infoBytes, 32);
 }
 
 export function createDeterministicIV(
@@ -47,16 +53,6 @@ export function generateSecurityCode(
   }
 
   return code.substring(0, 14);
-}
-
-export async function importKeyForAES(keyData: Uint8Array): Promise<CryptoKey> {
-  return await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'AES-GCM' },
-    false,
-    ['encrypt', 'decrypt']
-  );
 }
 
 export function bytesToHex(bytes: Uint8Array): string {

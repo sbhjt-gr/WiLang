@@ -272,11 +272,30 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           }
           const connectionPromise = peerManager.current.createPeerConnection(participant, isInitiator);
           if (connectionPromise && typeof connectionPromise.finally === 'function') {
-            connectionPromise.finally(() => {
-              if (shouldTrack) {
-                finishKeyExchange();
-              }
-            });
+            connectionPromise
+              .catch((error) => {
+                console.log('peer_connection_failed', { participant: participant.username, error: error.message });
+                if (error.message === 'encryption_required_but_failed') {
+                  const { Alert } = require('react-native');
+                  Alert.alert(
+                    'Encryption Failed',
+                    `Unable to establish secure connection with ${participant.username}. The call cannot proceed without encryption.`,
+                    [{ text: 'OK' }]
+                  );
+                } else if (error.message === 'encryption_required_but_no_userid') {
+                  const { Alert } = require('react-native');
+                  Alert.alert(
+                    'Encryption Required',
+                    `Cannot connect to ${participant.username}. Encryption is required but user is not authenticated.`,
+                    [{ text: 'OK' }]
+                  );
+                }
+              })
+              .finally(() => {
+                if (shouldTrack) {
+                  finishKeyExchange();
+                }
+              });
           } else if (shouldTrack) {
             finishKeyExchange();
           }
@@ -555,11 +574,31 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     }
     const connectionPromise = peerManager.current.createPeerConnection(user, true);
     if (connectionPromise && typeof connectionPromise.finally === 'function') {
-      connectionPromise.finally(() => {
-        if (shouldTrack) {
-          finishKeyExchange();
-        }
-      });
+      connectionPromise
+        .catch((error) => {
+          console.log('direct_call_failed', { user: user.username, error: error.message });
+          if (error.message === 'encryption_required_but_failed') {
+            const { Alert } = require('react-native');
+            Alert.alert(
+              'Encryption Failed',
+              `Unable to establish secure connection with ${user.username}. The call cannot proceed without encryption.`,
+              [{ text: 'OK' }]
+            );
+          } else if (error.message === 'encryption_required_but_no_userid') {
+            const { Alert } = require('react-native');
+            Alert.alert(
+              'Encryption Required',
+              `Cannot connect to ${user.username}. Encryption is required but user is not authenticated.`,
+              [{ text: 'OK' }]
+            );
+          }
+          setRemoteUser(null);
+        })
+        .finally(() => {
+          if (shouldTrack) {
+            finishKeyExchange();
+          }
+        });
     } else if (shouldTrack) {
       finishKeyExchange();
     }
@@ -656,11 +695,23 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       }
       const connectionPromise = peerManager.current.createPeerConnection(participant, true);
       if (connectionPromise && typeof connectionPromise.finally === 'function') {
-        connectionPromise.finally(() => {
-          if (shouldTrack) {
-            finishKeyExchange();
-          }
-        });
+        connectionPromise
+          .catch((error) => {
+            console.log('refresh_participant_failed', { participant: participant.username, error: error.message });
+            if (error.message === 'encryption_required_but_failed' || error.message === 'encryption_required_but_no_userid') {
+              const { Alert } = require('react-native');
+              Alert.alert(
+                'Reconnection Failed',
+                `Unable to re-establish secure connection with ${participant.username}. Encryption is required.`,
+                [{ text: 'OK' }]
+              );
+            }
+          })
+          .finally(() => {
+            if (shouldTrack) {
+              finishKeyExchange();
+            }
+          });
       } else if (shouldTrack) {
         finishKeyExchange();
       }

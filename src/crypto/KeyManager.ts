@@ -107,6 +107,13 @@ export class KeyManager {
       throw new Error('identity_key_not_initialized');
     }
 
+    console.log('computing_shared_secret', { 
+      privateKeyType: typeof this.identityKeyPair.privateKey,
+      privateKeyLength: this.identityKeyPair.privateKey.length,
+      publicKeyType: typeof peerPublicKey,
+      publicKeyLength: peerPublicKey.length 
+    });
+
     return x25519.getSharedSecret(this.identityKeyPair.privateKey, peerPublicKey);
   }
 

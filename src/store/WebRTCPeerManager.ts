@@ -14,6 +14,7 @@ export class WebRTCPeerManager {
   private peerId: string = '';
   private currentMeetingId: string | null = null;
   private e2eEnabled: boolean = true;
+  private e2eRequired: boolean = true;
 
   private onRemoteStreamAdded?: (peerId: string, stream: MediaStream) => void;
   private onConnectionStateChanged?: (peerId: string, state: string) => void;
@@ -66,7 +67,16 @@ export class WebRTCPeerManager {
     }
 
     if (this.e2eEnabled && user.userId) {
-      await this.establishE2ESession(user.peerId, user.userId);
+      const sessionEstablished = await this.establishE2ESession(user.peerId, user.userId);
+      if (!sessionEstablished && this.e2eRequired) {
+        console.log('peer_connection_blocked_no_encryption', { peerId: user.peerId, userId: user.userId });
+        throw new Error('encryption_required_but_failed');
+      } else if (!sessionEstablished) {
+        console.log('peer_connection_continuing_without_encryption', { peerId: user.peerId, userId: user.userId });
+      }
+    } else if (this.e2eEnabled && !user.userId && this.e2eRequired) {
+      console.log('peer_connection_blocked_no_userid', { peerId: user.peerId });
+      throw new Error('encryption_required_but_no_userid');
     }
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
@@ -82,21 +92,28 @@ export class WebRTCPeerManager {
     return pc;
   }
 
-  private async establishE2ESession(peerId: string, userId: string): Promise<void> {
+  private async establishE2ESession(peerId: string, userId: string): Promise<boolean> {
     try {
       if (sessionManager.hasSession(peerId)) {
-        return;
+        console.log('e2e_session_already_exists', peerId);
+        return true;
       }
 
+      console.log('requesting_key_bundle', { peerId, userId });
       const bundle = await this.socketManager.requestKeyBundle(userId);
+      console.log('key_bundle_response', { peerId, userId, hasBundle: !!bundle, bundle: bundle ? { identityKey: typeof bundle.identityKey, userId: bundle.userId } : null });
+      
       if (bundle) {
         await sessionManager.establishSession(peerId, bundle);
         console.log('e2e_session_established', peerId);
+        return true;
       } else {
-        console.log('e2e_key_bundle_unavailable', peerId);
+        console.log('e2e_key_bundle_unavailable', { peerId, userId });
+        return false;
       }
     } catch (error) {
-      console.log('e2e_session_failed', error);
+      console.log('e2e_session_failed', { peerId, userId, error });
+      return false;
     }
   }
 
@@ -267,8 +284,17 @@ export class WebRTCPeerManager {
     frameEncryptor.setEnabled(enabled);
   }
 
+  setE2ERequired(required: boolean): void {
+    this.e2eRequired = required;
+    console.log('e2e_requirement_changed', required);
+  }
+
   isE2EEnabled(): boolean {
     return this.e2eEnabled;
+  }
+
+  isE2ERequired(): boolean {
+    return this.e2eRequired;
   }
 
   getSecurityCode(peerId: string): string | undefined {

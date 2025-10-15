@@ -19,7 +19,7 @@ export interface KeyBundleRaw {
 
 export interface SessionState {
   peerId: string;
-  sessionKey: CryptoKey;
+  sessionKey: Uint8Array;
   counter: number;
   established: number;
 }
