@@ -12,7 +12,9 @@
     "build:ios": "eas build --platform ios",
     "lint": "eslint .",
     "test": "jest",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "resize-icons": "node scripts/resize-icons.js",
+    "generate-android-splash": "node scripts/generate-android-splash.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.0",
