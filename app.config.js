@@ -22,7 +22,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.gorai.WiLang",
-      googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
+      // googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
       infoPlist: {
         NSContactsUsageDescription: "WiLang needs access to your contacts to help you connect with friends and family for video calls.",
         NSCameraUsageDescription: "WiLang needs access to your camera for video calls.",
@@ -61,7 +61,7 @@ export default {
     },
     extra: {
       eas: {
-        projectId: "#"
+        projectId: "146b3cbc-1d82-4c4b-9f27-746b6274af08"
       },
       FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
       FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
@@ -74,6 +74,16 @@ export default {
       GOOGLE_SIGN_IN_IOS_CLIENT_ID: process.env.GOOGLE_SIGN_IN_IOS_CLIENT_ID
     },
     plugins: [
+      "expo-font",
+      "expo-router",
+      "expo-web-browser",
+      [
+        "react-native-vosk",
+        {
+          models: ["assets/vosk-model-en-us"],
+          iOSMicrophonePermission: "WiLang needs access to your microphone for voice and video calls."
+        }
+      ],
       "expo-sqlite",
       "expo-secure-store",
       [
