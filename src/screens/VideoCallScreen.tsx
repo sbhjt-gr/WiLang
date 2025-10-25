@@ -21,13 +21,8 @@ import { User } from '../store/WebRTCTypes';
 import ParticipantGrid from '../components/ParticipantGrid';
 import GlassModal from '../components/GlassModal';
 import { useTheme } from '../theme';
-import { SubtitleOverlay } from '../components/SubtitleOverlay';
-import type { SubtitleEntry } from '../components/SubtitleOverlay';
-import { useVoskTranscription, type Transcription } from '../hooks/useVoskTranscription';
 
 const {width, height} = Dimensions.get('window');
-
-const CAPTIONS_MODEL = 'vosk-model-en-us';
 
 type VideoCallScreenNavigationProp = StackNavigationProp<RootStackParamList, 'VideoCallScreen'>;
 type VideoCallScreenRouteProp = RouteProp<RootStackParamList, 'VideoCallScreen'>;
@@ -74,8 +69,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [showJoinCodeUI, setShowJoinCodeUI] = useState(false);
   const [isDirectCall, setIsDirectCall] = useState(false);
   const [showSecurityCodeModal, setShowSecurityCodeModal] = useState(false);
-  const [captionsEnabled, setCaptionsEnabled] = useState(false);
-  const [subtitles, setSubtitles] = useState<SubtitleEntry[]>([]);
   const [modalConfig, setModalConfig] = useState<{
     visible: boolean;
     title: string;
@@ -109,10 +102,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
   const toggleViewMode = useCallback(() => {
     setIsGridMode(prev => !prev);
-  }, []);
-
-  const toggleCaptions = useCallback(() => {
-    setCaptionsEnabled(prev => !prev);
   }, []);
 
   const shareJoinCode = useCallback(async () => {
@@ -495,82 +484,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
   const totalParticipants = remoteParticipants.length + 1;
   const shouldUseFeaturedViewForCall = !isGridMode;
-  const captionsButtonLabel = captionsEnabled ? 'Captions On' : 'Captions';
-
-  const handleLocalTranscription = useCallback((result: Transcription) => {
-    const text = result.text.trim();
-    if (!text) return;
-    const now = Date.now();
-    setSubtitles(prev => {
-      const entry: SubtitleEntry = {
-        text,
-        isFinal: result.isFinal,
-        timestamp: result.timestamp,
-        peerId: peerId ?? undefined,
-        username: 'You',
-      };
-      const filtered = prev.filter(item => {
-        if (now - item.timestamp > 8000 && item.isFinal) return false;
-        if (!entry.isFinal && item.peerId === peerId && !item.isFinal) return false;
-        if (entry.isFinal && item.peerId === peerId) return false;
-        return true;
-      });
-      const next = [...filtered, entry];
-      return next.slice(-6);
-    });
-  }, [peerId]);
-
-  const {
-    start: startCaptions,
-    stop: stopCaptions,
-    isActive: captionsActive,
-    isLoading: captionsLoading,
-    error: captionsError,
-  } = useVoskTranscription({
-    model: CAPTIONS_MODEL,
-    enabled: captionsEnabled,
-    onTranscription: handleLocalTranscription,
-  });
-
-  useEffect(() => {
-    if (!captionsEnabled) return;
-    if (isMuted) {
-      stopCaptions();
-      return;
-    }
-    if (captionsActive) return;
-    if (captionsLoading) return;
-    startCaptions();
-  }, [captionsActive, captionsEnabled, captionsLoading, isMuted, startCaptions, stopCaptions]);
-
-  useEffect(() => {
-    if (captionsEnabled) return;
-    if (captionsActive) {
-      stopCaptions();
-    }
-    setSubtitles([]);
-  }, [captionsActive, captionsEnabled, stopCaptions]);
-
-  useEffect(() => {
-    if (!captionsEnabled) return;
-    const interval = setInterval(() => {
-      setSubtitles(prev => {
-        const now = Date.now();
-        return prev.filter(item => {
-          if (!item.isFinal) return true;
-          return now - item.timestamp < 6000;
-        });
-      });
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [captionsEnabled]);
-
-  useEffect(() => {
-    if (!captionsError) return;
-    showModal('Speech Error', captionsError, 'alert-circle');
-    stopCaptions();
-    setCaptionsEnabled(false);
-  }, [captionsError, showModal, stopCaptions]);
 
   return (
     <View style={styles.container}>
@@ -579,36 +492,16 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       {shouldUseFeaturedViewForCall ? renderFeaturedView() : renderGridView()}
 
       <View style={styles.topControls}>
-        <View style={styles.topLeftControls}>
-          <TouchableOpacity style={[styles.topControlButton, styles.focusButton]} onPress={toggleViewMode}>
-            <Ionicons
-              name={isGridMode ? "person" : "grid"}
-              size={20}
-              color="#ffffff"
-            />
-            <Text style={styles.topControlText}>
-              {isGridMode ? "Focus" : "Grid"}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.topControlButton,
-              captionsEnabled ? styles.captionsButtonActive : styles.captionsButtonInactive,
-              captionsLoading ? styles.topControlButtonDisabled : null,
-            ]}
-            onPress={toggleCaptions}
-            disabled={captionsLoading}
-          >
-            <Ionicons
-              name={captionsEnabled ? "chatbox" : "chatbox-outline"}
-              size={20}
-              color="#ffffff"
-            />
-            <Text style={styles.topControlText}>
-              {captionsLoading ? "Loading" : captionsButtonLabel}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={[styles.topControlButton, { backgroundColor: 'rgba(0,0,0,0.7)' }]} onPress={toggleViewMode}>
+          <Ionicons
+            name={isGridMode ? "person" : "grid"}
+            size={20}
+            color="#ffffff"
+          />
+          <Text style={styles.topControlText}>
+            {isGridMode ? "Focus" : "Grid"}
+          </Text>
+        </TouchableOpacity>
 
         <View style={styles.topRightControls}>
           {e2eStatus?.initialized && (
@@ -646,8 +539,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           </View>
         </View>
       </View>
-
-  <SubtitleOverlay subtitles={subtitles} position="bottom" />
 
       <View style={styles.bottomControls}>
         <View style={styles.controlsBackground}>
@@ -950,11 +841,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     zIndex: 10,
   },
-  topLeftControls: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
   topRightControls: {
     flexDirection: 'column',
     alignItems: 'flex-end',
@@ -967,18 +853,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-  focusButton: {
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  captionsButtonActive: {
-    backgroundColor: '#8b5cf6',
-  },
-  captionsButtonInactive: {
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  topControlButtonDisabled: {
-    opacity: 0.5,
   },
   topControlText: {
     color: '#ffffff',
