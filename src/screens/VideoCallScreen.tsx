@@ -95,8 +95,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     confidence: sttConfidence,
     isActive: sttActive,
     isInitializing: sttInitializing,
-    isDownloading: sttDownloading,
-    downloadProgress: sttProgress,
     error: sttError,
     start: startStt,
     stop: stopStt,
@@ -472,8 +470,30 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return;
     }
     subtitleErrorRef.current = sttError;
-    showModal('Transcription Error', sttError, 'alert-circle');
-  }, [sttError, showModal]);
+
+    const isModelMissing = sttError.includes('not found') || sttError.includes('incomplete');
+
+    if (isModelMissing) {
+      setSubtitlesEnabled(false);
+      showModal(
+        'Models Required',
+        sttError,
+        'download-outline',
+        [
+          { text: 'Cancel', onPress: closeModal },
+          {
+            text: 'Download Models',
+            onPress: () => {
+              closeModal();
+              navigation.navigate('ModelsDownloadScreen');
+            }
+          }
+        ]
+      );
+    } else {
+      showModal('Transcription Error', sttError, 'alert-circle');
+    }
+  }, [sttError, showModal, closeModal, navigation]);
 
   useEffect(() => {
     const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
@@ -577,9 +597,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     if (!subtitlesEnabled) {
       return null;
     }
-    if (sttDownloading) {
-      const percent = Math.max(0, Math.min(100, Math.round(sttProgress * 100)));
-      return `Downloading ${percent}%`;
+    if (sttError) {
+      return 'Error';
     }
     if (sttInitializing) {
       return 'Starting';
@@ -591,9 +610,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return 'Listening';
     }
     return null;
-  }, [sttActive, sttDownloading, sttInitializing, sttProgress, subtitleVisible, subtitlesEnabled]);
+  }, [sttActive, sttError, sttInitializing, subtitleVisible, subtitlesEnabled]);
 
-  const subtitleButtonColor = sttError ? '#dc2626' : sttDownloading ? '#fbbf24' : sttInitializing ? '#f59e0b' : subtitlesEnabled ? '#8b5cf6' : '#9ca3af';
+  const subtitleButtonColor = sttError ? '#dc2626' : sttInitializing ? '#f59e0b' : subtitlesEnabled ? '#8b5cf6' : '#9ca3af';
   const subtitleButtonBackground = subtitlesEnabled ? 'rgba(255,255,255,0.15)' : 'rgba(31,41,55,0.7)';
 
   const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);

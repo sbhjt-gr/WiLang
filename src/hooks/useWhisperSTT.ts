@@ -42,8 +42,6 @@ type UseWhisperSTTReturn = {
   subtitle: SubtitleState | null;
   isActive: boolean;
   isInitializing: boolean;
-  isDownloading: boolean;
-  downloadProgress: number;
   error: string | null;
   lastUpdatedAt: number | null;
   start: () => Promise<void>;
@@ -138,53 +136,21 @@ const ensureDirectory = async (path: string) => {
   }
 };
 
-const downloadModel = async (
-  key: WhisperModelKey,
-  url: string,
-  targetPath: string,
-  setProgress: (value: number) => void,
-  setDownloading: (value: boolean) => void,
-) => {
-  if (!url) {
-    throw new Error(`Missing download URL for ${key} model`);
-  }
-  setDownloading(true);
-  setProgress(0);
-  const resumable = FileSystem.createDownloadResumable(
-    url,
-    targetPath,
-    {},
-    (progress) => {
-      if (progress.totalBytesExpectedToWrite > 0) {
-        setProgress(progress.totalBytesWritten / progress.totalBytesExpectedToWrite);
-      }
-    },
-  );
-  try {
-    await resumable.downloadAsync();
-    setProgress(1);
-  } catch (error) {
-    throw new Error(`Failed to download ${key} model`);
-  } finally {
-    setDownloading(false);
-  }
-};
-
-const ensureModel = async (
-  key: WhisperModelKey,
-  overrides: Partial<Record<WhisperModelKey, string>> | undefined,
-  setProgress: (value: number) => void,
-  setDownloading: (value: boolean) => void,
-) => {
+const checkModel = async (key: WhisperModelKey): Promise<string> => {
   const root = getWritableRoot();
   await ensureDirectory(root);
   const metadata = MODEL_METADATA[key];
   const path = `${root}/${metadata.fileName}`;
   const info = await FileSystem.getInfoAsync(path);
-  if (!info.exists || (metadata.minBytes > 0 && (info.size || 0) < metadata.minBytes)) {
-    const url = resolveModelUrl(key, overrides);
-    await downloadModel(key, url, path, setProgress, setDownloading);
+
+  if (!info.exists) {
+    throw new Error(`Model ${key} not found. Please download it from the Models screen.`);
   }
+
+  if (metadata.minBytes > 0 && (info.size || 0) < metadata.minBytes) {
+    throw new Error(`Model ${key} is incomplete. Please re-download it from the Models screen.`);
+  }
+
   return path;
 };
 
@@ -195,8 +161,6 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
   const [subtitle, setSubtitle] = useState<SubtitleState | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
@@ -299,8 +263,8 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
     setIsInitializing(true);
     setErrorSafe(null);
     try {
-      const modelPath = await ensureModel(modelVariant, options.modelUrls, setDownloadProgress, setIsDownloading);
-      const vadPath = await ensureModel('vad', options.modelUrls, setDownloadProgress, setIsDownloading);
+      const modelPath = await checkModel(modelVariant);
+      const vadPath = await checkModel('vad');
       const context = await initWhisper({
         filePath: modelPath,
         isBundleAsset: false,
@@ -441,15 +405,13 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
       subtitle,
       isActive,
       isInitializing,
-      isDownloading,
-      downloadProgress,
       error,
       lastUpdatedAt,
       start,
       stop,
       reset,
     }),
-    [confidence, detectedLanguage, downloadProgress, error, isActive, isDownloading, isInitializing, lastUpdatedAt, reset, start, stop, subtitle, transcript],
+    [confidence, detectedLanguage, error, isActive, isInitializing, lastUpdatedAt, reset, start, stop, subtitle, transcript],
   );
 };
 
