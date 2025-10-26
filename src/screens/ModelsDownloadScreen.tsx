@@ -62,104 +62,86 @@ const ModelCard: React.FC<ModelCardProps> = ({
 
   return (
     <View style={[styles.modelCard, { backgroundColor: colors.surface }]}>
-      <View style={styles.modelHeader}>
-        <View style={styles.modelInfo}>
-          <View style={styles.modelTitleRow}>
-            <Text style={[styles.modelName, { color: colors.text }]}>
-              {model.name.charAt(0).toUpperCase() + model.name.slice(1)} Model
+      <TouchableOpacity
+        style={styles.modelItem}
+        onPress={isWhisperModel && isDownloaded && !isSelected ? onSelect : undefined}
+        disabled={!isWhisperModel || !isDownloaded || isSelected || isDownloading}
+        activeOpacity={isWhisperModel && isDownloaded && !isSelected ? 0.7 : 1}
+      >
+        <View style={styles.modelLeft}>
+          <View style={[styles.modelIconContainer, { backgroundColor: isDownloaded ? 'rgba(139, 92, 246, 0.1)' : 'rgba(156, 163, 175, 0.1)' }]}>
+            <Ionicons 
+              name={isDownloaded ? "checkmark-circle" : "cloud-download-outline"} 
+              size={24} 
+              color={isDownloaded ? "#8b5cf6" : "#9ca3af"} 
+            />
+          </View>
+          <View style={styles.modelTextContainer}>
+            <View style={styles.modelTitleRow}>
+              <Text style={[styles.modelName, { color: colors.text }]}>
+                {model.name.charAt(0).toUpperCase() + model.name.slice(1)}
+              </Text>
+              {isSelected && isWhisperModel && (
+                <View style={styles.activeBadge}>
+                  <Text style={styles.activeText}>Active</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.modelDescription, { color: colors.textSecondary }]}>
+              {model.description}
             </Text>
-            {isSelected && isWhisperModel && (
-              <View style={styles.selectedBadge}>
-                <Ionicons name="checkmark-circle" size={16} color="#8b5cf6" />
-                <Text style={styles.selectedText}>Active</Text>
+            {isDownloading && downloadProgress && (
+              <View style={styles.progressSection}>
+                <View style={styles.progressTextRow}>
+                  <Text style={[styles.progressPercent, { color: colors.text }]}>
+                    {`${Math.floor(downloadProgress.progress)}%`}
+                  </Text>
+                  <Text style={[styles.progressSpeed, { color: colors.textSecondary }]}>
+                    {downloadProgress.speed}
+                  </Text>
+                </View>
+                <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${downloadProgress.progress}%`, backgroundColor: '#8b5cf6' }
+                    ]}
+                  />
+                </View>
               </View>
             )}
           </View>
-          <Text style={[styles.modelDescription, { color: colors.textSecondary }]}>
-            {model.description}
-          </Text>
         </View>
-        <View style={styles.modelActions}>
+        <View style={styles.modelRight}>
           {isDownloading && downloadProgress ? (
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#dc2626' }]}
+              style={styles.iconButton}
               onPress={onCancel}
             >
-              <Ionicons name="close" size={20} color="#ffffff" />
+              <Ionicons name="close-circle" size={28} color="#dc2626" />
             </TouchableOpacity>
           ) : isDownloaded ? (
-            <View style={styles.actionRow}>
-              {isWhisperModel && !isSelected && (
-                <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: '#8b5cf6', marginRight: 8 }]}
-                  onPress={onSelect}
-                >
-                  <Ionicons name="checkmark" size={20} color="#ffffff" />
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: '#dc2626' }]}
-                onPress={onDelete}
-              >
-                <Ionicons name="trash-outline" size={20} color="#ffffff" />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={onDelete}
+            >
+              <Ionicons name="trash-outline" size={22} color="#dc2626" />
+            </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#8b5cf6' }]}
+              style={styles.iconButton}
               onPress={onDownload}
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color="#8b5cf6" />
               ) : (
-                <Ionicons name="download-outline" size={20} color="#ffffff" />
+                <Ionicons name="download-outline" size={22} color="#8b5cf6" />
               )}
             </TouchableOpacity>
           )}
         </View>
-      </View>
-
-      {isDownloading && downloadProgress ? (
-        <View style={styles.progressContainer}>
-          <View style={styles.progressInfo}>
-            <Text style={[styles.progressText, { color: colors.text }]}>
-              {`${Math.floor(downloadProgress.progress)}%`}
-            </Text>
-            <Text style={[styles.progressDetails, { color: colors.textSecondary }]}>
-              {`${formatBytes(downloadProgress.bytesDownloaded)} / ${formatBytes(downloadProgress.bytesTotal)}`}
-            </Text>
-          </View>
-          <View style={styles.speedInfo}>
-            <Text style={[styles.speedText, { color: colors.textSecondary }]}>
-              {downloadProgress.speed}
-            </Text>
-            <Text style={[styles.etaText, { color: colors.textSecondary }]}>
-              {downloadProgress.eta}
-            </Text>
-          </View>
-          <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${downloadProgress.progress}%`, backgroundColor: '#8b5cf6' }
-              ]}
-            />
-          </View>
-        </View>
-      ) : isDownloaded ? (
-        <View style={[styles.statusBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-          <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-          <Text style={[styles.statusText, { color: '#10b981' }]}>Downloaded</Text>
-        </View>
-      ) : (
-        <View style={[styles.statusBadge, { backgroundColor: 'rgba(156, 163, 175, 0.1)' }]}>
-          <Ionicons name="cloud-download-outline" size={16} color="#9ca3af" />
-          <Text style={[styles.statusText, { color: '#9ca3af' }]}>
-            {formatBytes(model.size)}
-          </Text>
-        </View>
-      )}
+      </TouchableOpacity>
     </View>
   );
 };
@@ -313,31 +295,41 @@ export default function ModelsDownloadScreen() {
         <Text style={[styles.headerTitle, { color: colors.text }]}>Subtitle Models</Text>
         <View style={styles.placeholder} />
       </View>
-
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={24} color="#8b5cf6" />
-          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-            Download models to enable real-time subtitle transcription during video calls.
-            The VAD model is required for all subtitle features.
-          </Text>
+      
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.infoSection}>
+          <View style={styles.infoCard}>
+            <Ionicons name="information-circle" size={24} color="#8b5cf6" />
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+              Download models to enable real-time subtitle transcription during video calls.
+              The VAD model is required for all subtitle features. Tap a downloaded model to set it as active.
+            </Text>
+          </View>
         </View>
 
-        {Object.keys(WHISPER_MODELS).map((modelName) => (
-          <ModelCard
-            key={modelName}
-            modelName={modelName}
-            isDownloaded={modelStates[modelName]?.isDownloaded || false}
-            isDownloading={modelStates[modelName]?.isDownloading || false}
-            isLoading={modelStates[modelName]?.isLoading || false}
-            isSelected={modelName === preferredModel}
-            downloadProgress={modelStates[modelName]?.progress}
-            onDownload={() => handleDownload(modelName)}
-            onCancel={() => handleCancel(modelName)}
-            onDelete={() => handleDelete(modelName)}
-            onSelect={() => handleSelectModel(modelName)}
-          />
-        ))}
+        <View style={styles.modelsSection}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Available Models</Text>
+          
+          {Object.keys(WHISPER_MODELS).map((modelName) => (
+            <ModelCard
+              key={modelName}
+              modelName={modelName}
+              isDownloaded={modelStates[modelName]?.isDownloaded || false}
+              isDownloading={modelStates[modelName]?.isDownloading || false}
+              isLoading={modelStates[modelName]?.isLoading || false}
+              isSelected={modelName === preferredModel}
+              downloadProgress={modelStates[modelName]?.progress}
+              onDownload={() => handleDownload(modelName)}
+              onCancel={() => handleCancel(modelName)}
+              onDelete={() => handleDelete(modelName)}
+              onSelect={() => handleSelectModel(modelName)}
+            />
+          ))}
+        </View>
       </ScrollView>
     </View>
   );
@@ -358,6 +350,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   backButton: {
     padding: 8,
@@ -373,14 +367,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    flexGrow: 1,
+    padding: 24,
+  },
+  infoSection: {
+    marginBottom: 24,
   },
   infoCard: {
     flexDirection: 'row',
     padding: 16,
     backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    borderRadius: 12,
-    marginBottom: 16,
+    borderRadius: 16,
     gap: 12,
   },
   infoText: {
@@ -388,86 +385,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  modelsSection: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
   modelCard: {
-    padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 12,
   },
-  modelHeader: {
+  modelItem: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    padding: 16,
   },
-  modelInfo: {
+  modelLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
-  modelName: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  modelDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  modelActions: {
-    marginLeft: 12,
-  },
-  actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  modelIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
+    marginRight: 12,
   },
-  progressContainer: {
-    gap: 8,
-  },
-  progressInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  progressText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  progressDetails: {
-    fontSize: 14,
-  },
-  speedInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  speedText: {
-    fontSize: 12,
-  },
-  etaText: {
-    fontSize: 12,
-  },
-  progressBar: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-    gap: 6,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '500',
+  modelTextContainer: {
+    flex: 1,
   },
   modelTitleRow: {
     flexDirection: 'row',
@@ -475,22 +425,55 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 4,
   },
-  selectedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  selectedText: {
-    fontSize: 11,
+  modelName: {
+    fontSize: 16,
     fontWeight: '600',
-    color: '#8b5cf6',
   },
-  actionRow: {
+  activeBadge: {
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  activeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8b5cf6',
+    letterSpacing: 0.5,
+  },
+  modelDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  progressSection: {
+    marginTop: 12,
+  },
+  progressTextRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 6,
+  },
+  progressPercent: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  progressSpeed: {
+    fontSize: 12,
+  },
+  progressBar: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  modelRight: {
+    marginLeft: 12,
+  },
+  iconButton: {
+    padding: 4,
   },
 });
