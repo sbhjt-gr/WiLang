@@ -5,6 +5,11 @@ const config = getDefaultConfig(__dirname);
 
 config.resolver.sourceExts.push('cjs');
 
+config.resolver.assetExts.push(
+  'bin',
+  'mil'
+);
+
 config.resolver.unstable_enablePackageExports = false;
 
 const originalGetModulesRunBeforeMainModule = config.serializer.getModulesRunBeforeMainModule;

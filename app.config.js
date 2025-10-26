@@ -8,6 +8,7 @@ export default {
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
+    newArchEnabled: true,
     permissions: [
       "CONTACTS"
     ],
@@ -21,8 +22,9 @@ export default {
     ],
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.gorai.WiLang",
-      googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
+      bundleIdentifier: "com.gorai.wilanger",
+      // googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
+      deploymentTarget: "17.0",
       infoPlist: {
         NSContactsUsageDescription: "WiLang needs access to your contacts to help you connect with friends and family for video calls.",
         NSCameraUsageDescription: "WiLang needs access to your camera for video calls.",
@@ -36,15 +38,15 @@ export default {
           }
         ]
       },
-      scheme: "com.gorai.WiLang"
+      scheme: "com.gorai.wilanger"
     },
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#3754AB"
       },
-      package: "com.gorai.WiLang",
-      googleServicesFile: "./android/app/google-services.json",
+      package: "com.gorai.wilanger",
+      // googleServicesFile: "./android/app/google-services.json",
       permissions: [
         "android.permission.READ_CONTACTS",
         "android.permission.CAMERA",
@@ -71,16 +73,27 @@ export default {
       FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
       FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
       GOOGLE_SIGN_IN_WEB_CLIENT_ID: process.env.GOOGLE_SIGN_IN_WEB_CLIENT_ID,
-      GOOGLE_SIGN_IN_IOS_CLIENT_ID: process.env.GOOGLE_SIGN_IN_IOS_CLIENT_ID
+      GOOGLE_SIGN_IN_IOS_CLIENT_ID: process.env.GOOGLE_SIGN_IN_IOS_CLIENT_ID,
+      WHISPER_SMALL_MODEL_URL: process.env.WHISPER_SMALL_MODEL_URL,
+      WHISPER_MEDIUM_MODEL_URL: process.env.WHISPER_MEDIUM_MODEL_URL,
+      WHISPER_VAD_MODEL_URL: process.env.WHISPER_VAD_MODEL_URL
+    },
+    experiments: {
+      typedRoutes: true
     },
     plugins: [
+      "expo-font",
+      "expo-router",
       "expo-sqlite",
       "expo-secure-store",
       [
         "expo-build-properties",
         {
-          ios: {
-            useFrameworks: "static"
+          "android": {
+            "minSdkVersion": 28
+          },
+          "ios": {
+            "deploymentTarget": "17.0"
           }
         }
       ],

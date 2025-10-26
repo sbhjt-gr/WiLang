@@ -16,6 +16,14 @@
       "react-native"
     ],
     "baseUrl": ".",
+    "paths": {
+      "whisper.rn": [
+        "./node_modules/whisper.rn/src/index"
+      ],
+      "whisper.rn/*": [
+        "./node_modules/whisper.rn/src/*"
+      ]
+    },
     "noEmit": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
@@ -32,7 +40,9 @@
     "**/*.tsx",
     "**/*.js",
     "**/*.jsx",
-    "**/*.d.ts"
+    "**/*.d.ts",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
   ],
   "exclude": [
     "node_modules",

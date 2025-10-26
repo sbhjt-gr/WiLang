@@ -1,4 +1,4 @@
-import React, {useContext, useLayoutEffect, useRef, useEffect, useState, useCallback} from 'react';
+import React, {useContext, useLayoutEffect, useRef, useEffect, useState, useCallback, useMemo} from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -20,6 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { User } from '../store/WebRTCTypes';
 import ParticipantGrid from '../components/ParticipantGrid';
 import GlassModal from '../components/GlassModal';
+import SubtitleOverlay from '../components/SubtitleOverlay';
+import useWhisperSTT from '../hooks/useWhisperSTT';
 import { useTheme } from '../theme';
 
 const {width, height} = Dimensions.get('window');
@@ -69,6 +71,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [showJoinCodeUI, setShowJoinCodeUI] = useState(false);
   const [isDirectCall, setIsDirectCall] = useState(false);
   const [showSecurityCodeModal, setShowSecurityCodeModal] = useState(false);
+  const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
+  const [subtitleVisible, setSubtitleVisible] = useState(false);
   const [modalConfig, setModalConfig] = useState<{
     visible: boolean;
     title: string;
@@ -83,8 +87,28 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     buttons: [],
   });
 
+  const sttEnabled = Boolean(localStream) && subtitlesEnabled;
+  const {
+    subtitle: subtitleState,
+    detectedLanguage: sttLanguage,
+    confidence: sttConfidence,
+    isActive: sttActive,
+    isInitializing: sttInitializing,
+    isDownloading: sttDownloading,
+    downloadProgress: sttProgress,
+    error: sttError,
+    reset: resetStt,
+  } = useWhisperSTT({
+    enabled: sttEnabled,
+    modelVariant: 'small',
+    vadPreset: 'meeting',
+    language: 'auto',
+    allowedLanguages: ['en', 'es', 'fr', 'hi', 'de', 'pt', 'bn', 'sv', 'ja', 'ko'],
+  });
+
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
+  const subtitleErrorRef = useRef<string | null>(null);
 
   const showModal = useCallback((title: string, message: string, icon: string = 'information-circle', buttons: Array<{text: string; onPress?: () => void}> = [{text: 'OK'}]) => {
     setModalConfig({
@@ -102,6 +126,10 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
   const toggleViewMode = useCallback(() => {
     setIsGridMode(prev => !prev);
+  }, []);
+
+  const toggleSubtitles = useCallback(() => {
+    setSubtitlesEnabled(prev => !prev);
   }, []);
 
   const shareJoinCode = useCallback(async () => {
@@ -375,6 +403,40 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, [route.params.type, route.params.joinCode, route.params.autoJoinHandled, localStream, currentMeetingId, showModal, closeModal, navigation]);
 
   useEffect(() => {
+    if (!subtitlesEnabled) {
+      setSubtitleVisible(false);
+    }
+  }, [subtitlesEnabled]);
+
+  useEffect(() => {
+    if (!subtitleState) {
+      setSubtitleVisible(false);
+      return;
+    }
+    setSubtitleVisible(true);
+    const timeout = setTimeout(() => setSubtitleVisible(false), 2600);
+    return () => clearTimeout(timeout);
+  }, [subtitleState]);
+
+  useEffect(() => {
+    if (!subtitlesEnabled || !sttEnabled) {
+      resetStt().catch(() => {});
+    }
+  }, [resetStt, sttEnabled, subtitlesEnabled]);
+
+  useEffect(() => {
+    if (!sttError) {
+      subtitleErrorRef.current = null;
+      return;
+    }
+    if (subtitleErrorRef.current === sttError) {
+      return;
+    }
+    subtitleErrorRef.current = sttError;
+    showModal('Transcription Error', sttError, 'alert-circle');
+  }, [sttError, showModal]);
+
+  useEffect(() => {
     const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
     if (remoteParticipants.length > 0) {
       setShowJoinCodeUI(false);
@@ -403,7 +465,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     return (
       <View style={styles.featuredContainer}>
         {remoteStream && remoteParticipant ? (
-          <View 
+          <View
             key={`featured-remote-${remoteParticipant.peerId}`}
             style={styles.remoteVideoContainer}
           >
@@ -481,6 +543,32 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     );
   }
 
+  const overlayLanguage = subtitleState?.language ?? sttLanguage;
+  const overlayConfidence = subtitleState?.confidence ?? sttConfidence;
+  const overlayText = subtitleVisible && subtitleState ? subtitleState.text : '';
+  const subtitleStatus = useMemo(() => {
+    if (!subtitlesEnabled) {
+      return null;
+    }
+    if (sttDownloading) {
+      const percent = Math.max(0, Math.min(100, Math.round(sttProgress * 100)));
+      return `Downloading ${percent}%`;
+    }
+    if (sttInitializing) {
+      return 'Starting';
+    }
+    if (sttEnabled && !sttActive) {
+      return 'Standby';
+    }
+    if (sttActive && !subtitleVisible) {
+      return 'Listening';
+    }
+    return null;
+  }, [sttActive, sttDownloading, sttEnabled, sttInitializing, sttProgress, subtitleVisible, subtitlesEnabled]);
+
+  const subtitleButtonColor = sttError ? '#dc2626' : sttDownloading ? '#fbbf24' : sttInitializing ? '#f59e0b' : subtitlesEnabled ? '#8b5cf6' : '#9ca3af';
+  const subtitleButtonBackground = subtitlesEnabled ? 'rgba(255,255,255,0.15)' : 'rgba(31,41,55,0.7)';
+
   const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
   const totalParticipants = remoteParticipants.length + 1;
   const shouldUseFeaturedViewForCall = !isGridMode;
@@ -540,9 +628,25 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         </View>
       </View>
 
+      <View style={styles.subtitleWrapper} pointerEvents="none">
+        <SubtitleOverlay
+          text={overlayText}
+          language={overlayLanguage}
+          confidence={overlayConfidence ?? null}
+          visible={subtitleVisible || Boolean(subtitleStatus)}
+          status={subtitleStatus}
+        />
+      </View>
+
       <View style={styles.bottomControls}>
         <View style={styles.controlsBackground}>
           <View style={styles.controlButtonsRow}>
+            <TouchableOpacity
+              style={[styles.controlButton, { backgroundColor: subtitleButtonBackground }]}
+              onPress={toggleSubtitles}
+            >
+              <Ionicons name="chatbubble-ellipses" size={24} color={subtitleButtonColor} />
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.controlButton, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
               onPress={switchCamera}
@@ -893,6 +997,14 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+  },
+  subtitleWrapper: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 230,
+    alignItems: 'center',
+    zIndex: 20,
   },
   controlsBackground: {
     paddingTop: 40,
