@@ -8,7 +8,6 @@ export default {
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
-    newArchEnabled: true,
     permissions: [
       "CONTACTS"
     ],
@@ -23,7 +22,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.gorai.wilanger",
-      // googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
+      googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
       deploymentTarget: "17.0",
       infoPlist: {
         NSContactsUsageDescription: "WiLang needs access to your contacts to help you connect with friends and family for video calls.",
@@ -46,7 +45,7 @@ export default {
         backgroundColor: "#3754AB"
       },
       package: "com.gorai.wilanger",
-      // googleServicesFile: "./android/app/google-services.json",
+      googleServicesFile: "./android/app/google-services.json",
       permissions: [
         "android.permission.READ_CONTACTS",
         "android.permission.CAMERA",
@@ -78,11 +77,13 @@ export default {
       WHISPER_MEDIUM_MODEL_URL: process.env.WHISPER_MEDIUM_MODEL_URL,
       WHISPER_VAD_MODEL_URL: process.env.WHISPER_VAD_MODEL_URL
     },
+    newArchEnabled: false,
     experiments: {
       typedRoutes: true
     },
     plugins: [
       "expo-font",
+      "expo-web-browser",
       "expo-router",
       "expo-sqlite",
       "expo-secure-store",

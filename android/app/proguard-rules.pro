@@ -11,7 +11,4 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
-# whisper.rn
--keep class com.rnwhisper.** { *; }
-
 # Add any project specific keep options here:
