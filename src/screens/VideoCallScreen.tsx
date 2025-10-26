@@ -531,18 +531,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     );
   };
 
-  if (!localStream) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: '#0a0a0a' }]}>
-        <StatusBar backgroundColor="black" style="light" />
-        <View style={styles.loadingContent}>
-          <ActivityIndicator size="large" color="#8b5cf6" />
-          <Text style={styles.loadingText}>Setting up camera...</Text>
-        </View>
-      </View>
-    );
-  }
-
   const overlayLanguage = subtitleState?.language ?? sttLanguage;
   const overlayConfidence = subtitleState?.confidence ?? sttConfidence;
   const overlayText = subtitleVisible && subtitleState ? subtitleState.text : '';
@@ -572,6 +560,18 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
   const totalParticipants = remoteParticipants.length + 1;
   const shouldUseFeaturedViewForCall = !isGridMode;
+
+  if (!localStream) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: '#0a0a0a' }]}>
+        <StatusBar backgroundColor="black" style="light" />
+        <View style={styles.loadingContent}>
+          <ActivityIndicator size="large" color="#8b5cf6" />
+          <Text style={styles.loadingText}>Setting up camera...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

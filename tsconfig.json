@@ -40,9 +40,7 @@
     "**/*.tsx",
     "**/*.js",
     "**/*.jsx",
-    "**/*.d.ts",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "**/*.d.ts"
   ],
   "exclude": [
     "node_modules",
