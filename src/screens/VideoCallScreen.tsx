@@ -442,14 +442,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, [subtitlesEnabled]);
 
   useEffect(() => {
-    if (!subtitleState) {
+    if (!subtitleState || !subtitleState.text) {
       setSubtitleVisible(false);
       return;
     }
     setSubtitleVisible(true);
     const timeout = setTimeout(() => setSubtitleVisible(false), 2600);
     return () => clearTimeout(timeout);
-  }, [subtitleState]);
+  }, [subtitleState?.timestamp]);
 
   useEffect(() => {
     const shouldBeActive = Boolean(localStream) && subtitlesEnabled;
@@ -592,7 +592,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
   const overlayLanguage = subtitleState?.language ?? sttLanguage;
   const overlayConfidence = subtitleState?.confidence ?? sttConfidence;
-  const overlayText = subtitleVisible && subtitleState ? subtitleState.text : '';
+  const overlayText = subtitleState?.text || '';
   const subtitleStatus = useMemo(() => {
     if (!subtitlesEnabled) {
       return null;

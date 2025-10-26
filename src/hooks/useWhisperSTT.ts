@@ -52,17 +52,17 @@ type UseWhisperSTTReturn = {
 const MODEL_METADATA: Record<WhisperModelKey, { fileName: string; minBytes: number; downloadUrl: string }> = {
   small: {
     fileName: 'ggml-small-q5_1.bin',
-    minBytes: 190 * 1024 * 1024,
+    minBytes: Math.floor(190 * 1024 * 1024 * 0.95),
     downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin'
   },
   medium: {
     fileName: 'ggml-medium-q5_0.bin',
-    minBytes: 539 * 1024 * 1024,
+    minBytes: Math.floor(539 * 1024 * 1024 * 0.95),
     downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium-q5_0.bin'
   },
   vad: {
     fileName: 'ggml-silero-v5.1.2.bin',
-    minBytes: 885 * 1024,
+    minBytes: Math.floor(885 * 1024 * 0.95),
     downloadUrl: 'https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin'
   },
 };
