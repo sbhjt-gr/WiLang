@@ -78,9 +78,6 @@ export default {
       WHISPER_VAD_MODEL_URL: process.env.WHISPER_VAD_MODEL_URL
     },
     newArchEnabled: false,
-    experiments: {
-      typedRoutes: true
-    },
     plugins: [
       "expo-font",
       "expo-web-browser",
