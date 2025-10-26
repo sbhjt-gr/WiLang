@@ -110,6 +110,10 @@ export default function App() {
                 <Stack.Screen
                   name="ModelsDownloadScreen"
                   component={ModelsDownloadScreen}
+                  options={{
+                    gestureEnabled: true,
+                    fullScreenGestureEnabled: true,
+                  }}
                 />
               </Stack.Navigator>
             </NavigationContainer>
