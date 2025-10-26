@@ -24,6 +24,7 @@ import SubtitleOverlay from '../components/SubtitleOverlay';
 import useWhisperSTT from '../hooks/useWhisperSTT';
 import { useTheme } from '../theme';
 import { whisperModelDownloader } from '../services/whisper/WhisperModelDownloader';
+import { ModelPreferences, WhisperModelVariant } from '../services/whisper/ModelPreferences';
 
 const {width, height} = Dimensions.get('window');
 
@@ -75,6 +76,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [subtitleVisible, setSubtitleVisible] = useState(false);
   const [modelsDownloaded, setModelsDownloaded] = useState(false);
+  const [preferredModel, setPreferredModel] = useState<WhisperModelVariant>('small');
   const [modalConfig, setModalConfig] = useState<{
     visible: boolean;
     title: string;
@@ -100,7 +102,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     stop: stopStt,
     reset: resetStt,
   } = useWhisperSTT({
-    modelVariant: 'small',
+    modelVariant: preferredModel,
     vadPreset: 'meeting',
     language: 'auto',
     allowedLanguages: ['en', 'es', 'fr', 'hi', 'de', 'pt', 'bn', 'sv', 'ja', 'ko'],
@@ -129,9 +131,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, []);
 
   const checkModelsDownloaded = useCallback(async () => {
-    const smallExists = await whisperModelDownloader.checkModelExists('small');
+    const preferredModelName = await ModelPreferences.getPreferredModel();
+    setPreferredModel(preferredModelName);
+    
+    const modelExists = await whisperModelDownloader.checkModelExists(preferredModelName);
     const vadExists = await whisperModelDownloader.checkModelExists('vad');
-    const downloaded = smallExists && vadExists;
+    const downloaded = modelExists && vadExists;
     setModelsDownloaded(downloaded);
     return downloaded;
   }, []);

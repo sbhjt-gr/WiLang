@@ -18,6 +18,7 @@ import {
   WHISPER_MODELS,
 } from '../services/whisper/WhisperModelDownloader';
 import { ModelDownloadProgress } from '../services/whisper/types';
+import { ModelPreferences, WhisperModelVariant } from '../services/whisper/ModelPreferences';
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B';
@@ -32,10 +33,12 @@ interface ModelCardProps {
   isDownloaded: boolean;
   isDownloading: boolean;
   isLoading: boolean;
+  isSelected: boolean;
   downloadProgress?: ModelDownloadProgress;
   onDownload: () => void;
   onCancel: () => void;
   onDelete: () => void;
+  onSelect: () => void;
 }
 
 const ModelCard: React.FC<ModelCardProps> = ({
@@ -43,23 +46,35 @@ const ModelCard: React.FC<ModelCardProps> = ({
   isDownloaded,
   isDownloading,
   isLoading,
+  isSelected,
   downloadProgress,
   onDownload,
   onCancel,
   onDelete,
+  onSelect,
 }) => {
   const { colors } = useTheme();
   const model = WHISPER_MODELS[modelName];
 
   if (!model) return null;
 
+  const isWhisperModel = modelName !== 'vad';
+
   return (
     <View style={[styles.modelCard, { backgroundColor: colors.surface }]}>
       <View style={styles.modelHeader}>
         <View style={styles.modelInfo}>
-          <Text style={[styles.modelName, { color: colors.text }]}>
-            {model.name.charAt(0).toUpperCase() + model.name.slice(1)} Model
-          </Text>
+          <View style={styles.modelTitleRow}>
+            <Text style={[styles.modelName, { color: colors.text }]}>
+              {model.name.charAt(0).toUpperCase() + model.name.slice(1)} Model
+            </Text>
+            {isSelected && isWhisperModel && (
+              <View style={styles.selectedBadge}>
+                <Ionicons name="checkmark-circle" size={16} color="#8b5cf6" />
+                <Text style={styles.selectedText}>Active</Text>
+              </View>
+            )}
+          </View>
           <Text style={[styles.modelDescription, { color: colors.textSecondary }]}>
             {model.description}
           </Text>
@@ -73,12 +88,22 @@ const ModelCard: React.FC<ModelCardProps> = ({
               <Ionicons name="close" size={20} color="#ffffff" />
             </TouchableOpacity>
           ) : isDownloaded ? (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#dc2626' }]}
-              onPress={onDelete}
-            >
-              <Ionicons name="trash-outline" size={20} color="#ffffff" />
-            </TouchableOpacity>
+            <View style={styles.actionRow}>
+              {isWhisperModel && !isSelected && (
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: '#8b5cf6', marginRight: 8 }]}
+                  onPress={onSelect}
+                >
+                  <Ionicons name="checkmark" size={20} color="#ffffff" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: '#dc2626' }]}
+                onPress={onDelete}
+              >
+                <Ionicons name="trash-outline" size={20} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
           ) : (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: '#8b5cf6' }]}
@@ -151,6 +176,7 @@ export default function ModelsDownloadScreen() {
     progress?: ModelDownloadProgress;
   }>>({});
   const [loading, setLoading] = useState(true);
+  const [preferredModel, setPreferredModel] = useState<WhisperModelVariant>('small');
 
   const checkModels = async () => {
     const states: Record<string, any> = {};
@@ -168,6 +194,8 @@ export default function ModelsDownloadScreen() {
 
   useEffect(() => {
     checkModels();
+    
+    ModelPreferences.getPreferredModel().then(setPreferredModel);
 
     whisperModelDownloader.setEventCallbacks({
       onStart: (modelName) => {
@@ -196,6 +224,7 @@ export default function ModelsDownloadScreen() {
           [modelName]: {
             isDownloaded: true,
             isDownloading: false,
+            isLoading: false,
           },
         }));
       },
@@ -260,6 +289,13 @@ export default function ModelsDownloadScreen() {
     }
   };
 
+  const handleSelectModel = async (modelName: string) => {
+    if (['tiny', 'base', 'small', 'medium', 'large-v3'].includes(modelName)) {
+      await ModelPreferences.setPreferredModel(modelName as WhisperModelVariant);
+      setPreferredModel(modelName as WhisperModelVariant);
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -294,10 +330,12 @@ export default function ModelsDownloadScreen() {
             isDownloaded={modelStates[modelName]?.isDownloaded || false}
             isDownloading={modelStates[modelName]?.isDownloading || false}
             isLoading={modelStates[modelName]?.isLoading || false}
+            isSelected={modelName === preferredModel}
             downloadProgress={modelStates[modelName]?.progress}
             onDownload={() => handleDownload(modelName)}
             onCancel={() => handleCancel(modelName)}
             onDelete={() => handleDelete(modelName)}
+            onSelect={() => handleSelectModel(modelName)}
           />
         ))}
       </ScrollView>
@@ -430,5 +468,29 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  modelTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  selectedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  selectedText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8b5cf6',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

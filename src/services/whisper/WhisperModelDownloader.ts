@@ -10,6 +10,27 @@ import {
 const LOG_TAG = 'WhisperModelDownloader';
 
 export const WHISPER_MODELS: Record<string, WhisperModel> = {
+  vad: {
+    name: 'vad',
+    fileName: 'ggml-silero-v5.1.2.bin',
+    url: 'https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin',
+    size: 885 * 1024,
+    description: 'Voice Activity Detection (885 KB) - Required for all models'
+  },
+  tiny: {
+    name: 'tiny',
+    fileName: 'ggml-tiny-q5_1.bin',
+    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin',
+    size: 31 * 1024 * 1024,
+    description: 'Tiny model (31 MB) - Fastest, lower accuracy'
+  },
+  base: {
+    name: 'base',
+    fileName: 'ggml-base-q5_1.bin',
+    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin',
+    size: 58 * 1024 * 1024,
+    description: 'Base model (58 MB) - Fast with decent accuracy'
+  },
   small: {
     name: 'small',
     fileName: 'ggml-small-q5_1.bin',
@@ -24,12 +45,12 @@ export const WHISPER_MODELS: Record<string, WhisperModel> = {
     size: 539 * 1024 * 1024,
     description: 'Medium model (539 MB) - Higher accuracy, slower'
   },
-  vad: {
-    name: 'vad',
-    fileName: 'ggml-silero-v5.1.2.bin',
-    url: 'https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin',
-    size: 885 * 1024,
-    description: 'Voice Activity Detection (885 KB) - Required for all models'
+  'large-v3': {
+    name: 'large-v3',
+    fileName: 'ggml-large-v3-q5_0.bin',
+    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin',
+    size: 1080 * 1024 * 1024,
+    description: 'Large V3 model (1.08 GB) - Highest accuracy, requires powerful device'
   },
 };
 

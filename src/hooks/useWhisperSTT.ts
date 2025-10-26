@@ -6,7 +6,7 @@ import { initWhisper, initWhisperVad, type WhisperContext, type WhisperVadContex
 import { RealtimeTranscriber, VAD_PRESETS, type RealtimeTranscribeEvent, type RealtimeVadEvent } from 'whisper.rn/realtime-transcription';
 import { AudioPcmStreamAdapter } from 'whisper.rn/realtime-transcription/adapters/AudioPcmStreamAdapter';
 
-type WhisperModelVariant = 'small' | 'medium';
+type WhisperModelVariant = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3';
 
 type WhisperModelKey = WhisperModelVariant | 'vad';
 
@@ -50,6 +50,21 @@ type UseWhisperSTTReturn = {
 };
 
 const MODEL_METADATA: Record<WhisperModelKey, { fileName: string; minBytes: number; downloadUrl: string }> = {
+  vad: {
+    fileName: 'ggml-silero-v5.1.2.bin',
+    minBytes: Math.floor(885 * 1024 * 0.95),
+    downloadUrl: 'https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin'
+  },
+  tiny: {
+    fileName: 'ggml-tiny-q5_1.bin',
+    minBytes: Math.floor(31 * 1024 * 1024 * 0.95),
+    downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin'
+  },
+  base: {
+    fileName: 'ggml-base-q5_1.bin',
+    minBytes: Math.floor(58 * 1024 * 1024 * 0.95),
+    downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin'
+  },
   small: {
     fileName: 'ggml-small-q5_1.bin',
     minBytes: Math.floor(190 * 1024 * 1024 * 0.95),
@@ -60,10 +75,10 @@ const MODEL_METADATA: Record<WhisperModelKey, { fileName: string; minBytes: numb
     minBytes: Math.floor(539 * 1024 * 1024 * 0.95),
     downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium-q5_0.bin'
   },
-  vad: {
-    fileName: 'ggml-silero-v5.1.2.bin',
-    minBytes: Math.floor(885 * 1024 * 0.95),
-    downloadUrl: 'https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin'
+  'large-v3': {
+    fileName: 'ggml-large-v3-q5_0.bin',
+    minBytes: Math.floor(1080 * 1024 * 1024 * 0.95),
+    downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin'
   },
 };
 
