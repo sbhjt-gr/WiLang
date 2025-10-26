@@ -13,18 +13,6 @@ const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ text, language, confi
   const opacity = useRef(new Animated.Value(0)).current;
   const hasContent = Boolean(text) || Boolean(status);
 
-  useEffect(() => {
-    Animated.timing(opacity, {
-      toValue: visible && hasContent ? 1 : 0,
-      duration: 180,
-      useNativeDriver: true,
-    }).start();
-  }, [hasContent, opacity, visible]);
-
-  if (!hasContent) {
-    return null;
-  }
-
   const meta = useMemo(() => {
     const parts: string[] = [];
     if (language) {
@@ -39,8 +27,20 @@ const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ text, language, confi
     return parts.join(' • ');
   }, [confidence, language, status]);
 
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: visible && hasContent ? 1 : 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [hasContent, opacity, visible]);
+
+  if (!hasContent) {
+    return null;
+  }
+
   return (
-  <Animated.View style={[styles.container, { opacity }]}> 
+  <Animated.View style={[styles.container, { opacity }]}>
       {text ? <Text style={styles.text}>{text}</Text> : null}
       {meta ? <Text style={styles.meta}>{meta}</Text> : null}
     </Animated.View>

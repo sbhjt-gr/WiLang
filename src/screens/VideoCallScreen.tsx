@@ -89,7 +89,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     buttons: [],
   });
 
-  const sttEnabled = Boolean(localStream) && subtitlesEnabled;
   const {
     subtitle: subtitleState,
     detectedLanguage: sttLanguage,
@@ -99,9 +98,10 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     isDownloading: sttDownloading,
     downloadProgress: sttProgress,
     error: sttError,
+    start: startStt,
+    stop: stopStt,
     reset: resetStt,
   } = useWhisperSTT({
-    enabled: sttEnabled,
     modelVariant: 'small',
     vadPreset: 'meeting',
     language: 'auto',
@@ -454,10 +454,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, [subtitleState]);
 
   useEffect(() => {
-    if (!subtitlesEnabled || !sttEnabled) {
-      resetStt().catch(() => {});
+    const shouldBeActive = Boolean(localStream) && subtitlesEnabled;
+
+    if (shouldBeActive && !sttActive && !sttInitializing) {
+      startStt().catch(() => {});
+    } else if (!shouldBeActive && sttActive) {
+      stopStt().catch(() => {});
     }
-  }, [resetStt, sttEnabled, subtitlesEnabled]);
+  }, [localStream, subtitlesEnabled, sttActive, sttInitializing, startStt, stopStt]);
 
   useEffect(() => {
     if (!sttError) {
@@ -580,14 +584,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     if (sttInitializing) {
       return 'Starting';
     }
-    if (sttEnabled && !sttActive) {
+    if (subtitlesEnabled && !sttActive) {
       return 'Standby';
     }
     if (sttActive && !subtitleVisible) {
       return 'Listening';
     }
     return null;
-  }, [sttActive, sttDownloading, sttEnabled, sttInitializing, sttProgress, subtitleVisible, subtitlesEnabled]);
+  }, [sttActive, sttDownloading, sttInitializing, sttProgress, subtitleVisible, subtitlesEnabled]);
 
   const subtitleButtonColor = sttError ? '#dc2626' : sttDownloading ? '#fbbf24' : sttInitializing ? '#f59e0b' : subtitlesEnabled ? '#8b5cf6' : '#9ca3af';
   const subtitleButtonBackground = subtitlesEnabled ? 'rgba(255,255,255,0.15)' : 'rgba(31,41,55,0.7)';
@@ -596,16 +600,18 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const totalParticipants = remoteParticipants.length + 1;
   const shouldUseFeaturedViewForCall = !isGridMode;
 
-  if (!localStream) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: '#0a0a0a' }]}>
-        <StatusBar backgroundColor="black" style="light" />
-        <View style={styles.loadingContent}>
-          <ActivityIndicator size="large" color="#8b5cf6" />
-          <Text style={styles.loadingText}>Setting up camera...</Text>
-        </View>
+  const loadingView = (
+    <View style={[styles.loadingContainer, { backgroundColor: '#0a0a0a' }]}>
+      <StatusBar backgroundColor="black" style="light" />
+      <View style={styles.loadingContent}>
+        <ActivityIndicator size="large" color="#8b5cf6" />
+        <Text style={styles.loadingText}>Setting up camera...</Text>
       </View>
-    );
+    </View>
+  );
+
+  if (!localStream) {
+    return loadingView;
   }
 
   return (
