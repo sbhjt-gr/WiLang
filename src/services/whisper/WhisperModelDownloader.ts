@@ -14,22 +14,22 @@ export const WHISPER_MODELS: Record<string, WhisperModel> = {
     name: 'small',
     fileName: 'ggml-small-q5_1.bin',
     url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin',
-    size: 120 * 1024 * 1024,
-    description: 'Small model (120 MB) - Good balance of speed and accuracy'
+    size: 190 * 1024 * 1024,
+    description: 'Small model (190 MB) - Good balance of speed and accuracy'
   },
   medium: {
     name: 'medium',
-    fileName: 'ggml-medium-q4_0.bin',
-    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium-q4_0.bin',
-    size: 350 * 1024 * 1024,
-    description: 'Medium model (350 MB) - Higher accuracy, slower'
+    fileName: 'ggml-medium-q5_0.bin',
+    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium-q5_0.bin',
+    size: 539 * 1024 * 1024,
+    description: 'Medium model (539 MB) - Higher accuracy, slower'
   },
   vad: {
     name: 'vad',
     fileName: 'ggml-silero-v5.1.2.bin',
-    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-silero-v5.1.2.bin',
-    size: 1 * 1024 * 1024,
-    description: 'Voice Activity Detection (1 MB) - Required for all models'
+    url: 'https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin',
+    size: 885 * 1024,
+    description: 'Voice Activity Detection (885 KB) - Required for all models'
   },
 };
 
