@@ -17,6 +17,7 @@ import VideoCallScreen from './src/screens/VideoCallScreen';
 import CallingScreen from './src/screens/CallingScreen';
 import EnvironmentConfig from './src/screens/EnvironmentConfig';
 import ThemeSettingsScreen from './src/screens/ThemeSettingsScreen';
+import ModelsDownloadScreen from './src/screens/ModelsDownloadScreen';
 import { RootStackParamList } from './src/types/navigation';
 import WebRTCProvider from './src/store/WebRTCProvider';
 import WebRTCInitializer from './src/components/WebRTCInitializer';
@@ -105,6 +106,10 @@ export default function App() {
                 <Stack.Screen
                   name="ThemeSettingsScreen"
                   component={ThemeSettingsScreen}
+                />
+                <Stack.Screen
+                  name="ModelsDownloadScreen"
+                  component={ModelsDownloadScreen}
                 />
               </Stack.Navigator>
             </NavigationContainer>

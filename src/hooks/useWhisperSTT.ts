@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
-import Constants from 'expo-constants';
 import DeviceInfo from 'react-native-device-info';
 import { initWhisper, initWhisperVad, type WhisperContext, type WhisperVadContext } from 'whisper.rn';
 import { RealtimeTranscriber, VAD_PRESETS, type RealtimeTranscribeEvent, type RealtimeVadEvent } from 'whisper.rn/realtime-transcription';
@@ -52,10 +51,22 @@ type UseWhisperSTTReturn = {
   reset: () => Promise<void>;
 };
 
-const MODEL_METADATA: Record<WhisperModelKey, { fileName: string; minBytes: number }> = {
-  small: { fileName: 'ggml-small-q5_1.gguf', minBytes: 120 * 1024 * 1024 },
-  medium: { fileName: 'ggml-medium-q4_0.gguf', minBytes: 350 * 1024 * 1024 },
-  vad: { fileName: 'ggml-silero-v5.1.2.bin', minBytes: 1 * 1024 * 1024 },
+const MODEL_METADATA: Record<WhisperModelKey, { fileName: string; minBytes: number; downloadUrl: string }> = {
+  small: {
+    fileName: 'ggml-small-q5_1.bin',
+    minBytes: 120 * 1024 * 1024,
+    downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin'
+  },
+  medium: {
+    fileName: 'ggml-medium-q4_0.bin',
+    minBytes: 350 * 1024 * 1024,
+    downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium-q4_0.bin'
+  },
+  vad: {
+    fileName: 'ggml-silero-v5.1.2.bin',
+    minBytes: 1 * 1024 * 1024,
+    downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-silero-v5.1.2.bin'
+  },
 };
 
 const DEFAULT_THREADS_LOW = 2;
@@ -70,11 +81,6 @@ const getWritableRoot = () => {
   return `${base.replace(/\/$/, '')}/whisper`;
 };
 
-const getExtraConfig = () => {
-  const extra = (Constants.expoConfig?.extra ?? (Constants.manifest as any)?.extra) || {};
-  return extra as Record<string, any>;
-};
-
 const resolveModelUrl = (
   key: WhisperModelKey,
   overrides?: Partial<Record<WhisperModelKey, string>>,
@@ -82,14 +88,7 @@ const resolveModelUrl = (
   if (overrides?.[key]) {
     return overrides[key];
   }
-  const extra = getExtraConfig();
-  if (key === 'small') {
-    return extra.WHISPER_SMALL_MODEL_URL || extra.whisperSmallModelUrl || extra.whisperSmallModelUri || '';
-  }
-  if (key === 'medium') {
-    return extra.WHISPER_MEDIUM_MODEL_URL || extra.whisperMediumModelUrl || extra.whisperMediumModelUri || '';
-  }
-  return extra.WHISPER_VAD_MODEL_URL || extra.whisperVadModelUrl || extra.whisperVadModelUri || '';
+  return MODEL_METADATA[key].downloadUrl;
 };
 
 const estimateThreadCount = () => {

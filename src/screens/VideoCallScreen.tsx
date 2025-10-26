@@ -23,6 +23,7 @@ import GlassModal from '../components/GlassModal';
 import SubtitleOverlay from '../components/SubtitleOverlay';
 import useWhisperSTT from '../hooks/useWhisperSTT';
 import { useTheme } from '../theme';
+import { whisperModelDownloader } from '../services/whisper/WhisperModelDownloader';
 
 const {width, height} = Dimensions.get('window');
 
@@ -71,8 +72,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [showJoinCodeUI, setShowJoinCodeUI] = useState(false);
   const [isDirectCall, setIsDirectCall] = useState(false);
   const [showSecurityCodeModal, setShowSecurityCodeModal] = useState(false);
-  const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
+  const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [subtitleVisible, setSubtitleVisible] = useState(false);
+  const [modelsDownloaded, setModelsDownloaded] = useState(false);
   const [modalConfig, setModalConfig] = useState<{
     visible: boolean;
     title: string;
@@ -128,9 +130,38 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     setIsGridMode(prev => !prev);
   }, []);
 
-  const toggleSubtitles = useCallback(() => {
-    setSubtitlesEnabled(prev => !prev);
+  const checkModelsDownloaded = useCallback(async () => {
+    const smallExists = await whisperModelDownloader.checkModelExists('small');
+    const vadExists = await whisperModelDownloader.checkModelExists('vad');
+    const downloaded = smallExists && vadExists;
+    setModelsDownloaded(downloaded);
+    return downloaded;
   }, []);
+
+  const toggleSubtitles = useCallback(async () => {
+    if (!subtitlesEnabled) {
+      const downloaded = await checkModelsDownloaded();
+      if (!downloaded) {
+        showModal(
+          'Download Required',
+          'Subtitle models need to be downloaded before you can enable real-time transcription.',
+          'download-outline',
+          [
+            { text: 'Cancel', onPress: closeModal },
+            {
+              text: 'Download Models',
+              onPress: () => {
+                closeModal();
+                navigation.navigate('ModelsDownloadScreen');
+              }
+            }
+          ]
+        );
+        return;
+      }
+    }
+    setSubtitlesEnabled(prev => !prev);
+  }, [subtitlesEnabled, checkModelsDownloaded, showModal, closeModal, navigation]);
 
   const shareJoinCode = useCallback(async () => {
     if (!currentMeetingId) {
@@ -196,6 +227,10 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       headerShown: false,
     });
   }, [navigation]);
+
+  useEffect(() => {
+    checkModelsDownloaded();
+  }, [checkModelsDownloaded]);
 
   useEffect(() => {
     if (route.params.type === 'join' && route.params.joinCode && !joinAttempted.current) {
