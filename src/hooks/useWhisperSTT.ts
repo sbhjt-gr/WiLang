@@ -184,6 +184,7 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
   const transcriptBufferRef = useRef('');
   const languageRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
+  const confidenceClearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const modelVariant = options.modelVariant || 'small';
   const vadPreset = options.vadPreset || 'meeting';
@@ -246,8 +247,19 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
   );
 
   const handleVadEvent = useCallback((event: RealtimeVadEvent) => {
+    if (confidenceClearTimeoutRef.current) {
+      clearTimeout(confidenceClearTimeoutRef.current);
+      confidenceClearTimeoutRef.current = null;
+    }
+    
     if (event.confidence !== undefined && event.confidence !== null) {
       setConfidence(event.confidence);
+      
+      if (event.type === 'silence' || event.type === 'speech_end') {
+        confidenceClearTimeoutRef.current = setTimeout(() => {
+          setConfidence(null);
+        }, 500);
+      }
     }
   }, []);
 
@@ -379,6 +391,10 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
   const reset = useCallback(async () => {
     await stop();
     await releaseRuntime();
+    if (confidenceClearTimeoutRef.current) {
+      clearTimeout(confidenceClearTimeoutRef.current);
+      confidenceClearTimeoutRef.current = null;
+    }
     transcriptBufferRef.current = '';
     languageRef.current = null;
     setTranscript('');
@@ -393,6 +409,9 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      if (confidenceClearTimeoutRef.current) {
+        clearTimeout(confidenceClearTimeoutRef.current);
+      }
       stop().catch(() => {});
       releaseRuntime().catch(() => {});
     };
