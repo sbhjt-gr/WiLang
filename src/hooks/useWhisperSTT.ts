@@ -187,7 +187,7 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
 
   const modelVariant = options.modelVariant || 'small';
   const vadPreset = options.vadPreset || 'meeting';
-  const language = options.language || 'auto';
+  const language = options.language === 'auto' ? undefined : options.language;
   const translate = options.translate || false;
   const allowedLanguages = options.allowedLanguages;
 

@@ -18,7 +18,7 @@ import {
   WHISPER_MODELS,
 } from '../services/whisper/WhisperModelDownloader';
 import { ModelDownloadProgress } from '../services/whisper/types';
-import { ModelPreferences, WhisperModelVariant } from '../services/whisper/ModelPreferences';
+import { ModelPreferences, WhisperModelVariant, WhisperLanguage, SUPPORTED_LANGUAGES } from '../services/whisper/ModelPreferences';
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B';
@@ -159,6 +159,7 @@ export default function ModelsDownloadScreen() {
   }>>({});
   const [loading, setLoading] = useState(true);
   const [preferredModel, setPreferredModel] = useState<WhisperModelVariant>('small');
+  const [preferredLanguage, setPreferredLanguage] = useState<WhisperLanguage>('auto');
 
   const checkModels = async () => {
     const states: Record<string, any> = {};
@@ -178,6 +179,7 @@ export default function ModelsDownloadScreen() {
     checkModels();
     
     ModelPreferences.getPreferredModel().then(setPreferredModel);
+    ModelPreferences.getPreferredLanguage().then(setPreferredLanguage);
 
     whisperModelDownloader.setEventCallbacks({
       onStart: (modelName) => {
@@ -278,6 +280,11 @@ export default function ModelsDownloadScreen() {
     }
   };
 
+  const handleSelectLanguage = async (languageCode: WhisperLanguage) => {
+    await ModelPreferences.setPreferredLanguage(languageCode);
+    setPreferredLanguage(languageCode);
+  };
+
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -353,6 +360,41 @@ export default function ModelsDownloadScreen() {
               onSelect={() => handleSelectModel(modelName)}
             />
           ))}
+        </View>
+
+        <View style={styles.modelsSection}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Detection Language</Text>
+          <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
+            Select the language for speech recognition. Auto-detect works for all supported languages.
+          </Text>
+          
+          <View style={styles.languageGrid}>
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <TouchableOpacity
+                key={lang.code}
+                style={[
+                  styles.languageCard,
+                  { backgroundColor: colors.surface },
+                  preferredLanguage === lang.code && styles.languageCardActive
+                ]}
+                onPress={() => handleSelectLanguage(lang.code)}
+              >
+                <Text style={styles.languageFlag}>{lang.flag}</Text>
+                <Text style={[
+                  styles.languageName,
+                  { color: colors.text },
+                  preferredLanguage === lang.code && styles.languageNameActive
+                ]}>
+                  {lang.name}
+                </Text>
+                {preferredLanguage === lang.code && (
+                  <View style={styles.languageCheck}>
+                    <Ionicons name="checkmark-circle" size={20} color="#8b5cf6" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -504,5 +546,40 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 4,
+  },
+  languageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  languageCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    minWidth: '47%',
+    gap: 8,
+  },
+  languageCardActive: {
+    borderColor: '#8b5cf6',
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+  },
+  languageFlag: {
+    fontSize: 24,
+  },
+  languageName: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  languageNameActive: {
+    fontWeight: '600',
+    color: '#8b5cf6',
+  },
+  languageCheck: {
+    marginLeft: 'auto',
   },
 });
