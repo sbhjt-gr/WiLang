@@ -18,7 +18,7 @@ import {
   WHISPER_MODELS,
 } from '../services/whisper/WhisperModelDownloader';
 import { ModelDownloadProgress } from '../services/whisper/types';
-import { ModelPreferences, WhisperModelVariant, WhisperLanguage, SUPPORTED_LANGUAGES } from '../services/whisper/ModelPreferences';
+import { ModelPreferences, WhisperModelVariant, WhisperLanguage, SUPPORTED_LANGUAGES, SUPPORTED_ENGINES, SttEngine } from '../services/whisper/ModelPreferences';
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B';
@@ -158,6 +158,7 @@ export default function ModelsDownloadScreen() {
     progress?: ModelDownloadProgress;
   }>>({});
   const [loading, setLoading] = useState(true);
+  const [preferredEngine, setPreferredEngine] = useState<SttEngine>('whisper');
   const [preferredModel, setPreferredModel] = useState<WhisperModelVariant>('small');
   const [preferredLanguage, setPreferredLanguage] = useState<WhisperLanguage>('auto');
 
@@ -178,6 +179,7 @@ export default function ModelsDownloadScreen() {
   useEffect(() => {
     checkModels();
     
+  ModelPreferences.getPreferredEngine().then(setPreferredEngine);
     ModelPreferences.getPreferredModel().then(setPreferredModel);
     ModelPreferences.getPreferredLanguage().then(setPreferredLanguage);
 
@@ -280,6 +282,11 @@ export default function ModelsDownloadScreen() {
     }
   };
 
+  const handleSelectEngine = async (engineKey: SttEngine) => {
+    await ModelPreferences.setPreferredEngine(engineKey);
+    setPreferredEngine(engineKey);
+  };
+
   const handleSelectLanguage = async (languageCode: WhisperLanguage) => {
     await ModelPreferences.setPreferredLanguage(languageCode);
     setPreferredLanguage(languageCode);
@@ -319,6 +326,43 @@ export default function ModelsDownloadScreen() {
         </View>
 
         <View style={styles.modelsSection}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Transcription Engine</Text>
+          <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>Choose how subtitles are generated during calls.</Text>
+
+          <View style={styles.engineList}>
+            {SUPPORTED_ENGINES.map(engine => (
+              <TouchableOpacity
+                key={engine.key}
+                style={[
+                  styles.engineCard,
+                  { backgroundColor: colors.surface },
+                  preferredEngine === engine.key && styles.engineCardActive,
+                ]}
+                onPress={() => handleSelectEngine(engine.key)}
+              >
+                <View style={styles.engineHeader}>
+                  <Text
+                    style={[
+                      styles.engineTitle,
+                      { color: colors.text },
+                      preferredEngine === engine.key && styles.engineTitleActive,
+                    ]}
+                  >
+                    {engine.title}
+                  </Text>
+                  {preferredEngine === engine.key && (
+                    <Ionicons name="checkmark-circle" size={20} color="#8b5cf6" />
+                  )}
+                </View>
+                <Text style={[styles.engineDescription, { color: colors.textSecondary }]}>
+                  {engine.description}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.modelsSection}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>VAD Model</Text>
           <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
             Required for voice activity detection
@@ -352,7 +396,7 @@ export default function ModelsDownloadScreen() {
               isDownloaded={modelStates[modelName]?.isDownloaded || false}
               isDownloading={modelStates[modelName]?.isDownloading || false}
               isLoading={modelStates[modelName]?.isLoading || false}
-              isSelected={modelName === preferredModel}
+              isSelected={preferredEngine === 'whisper' && modelName === preferredModel}
               downloadProgress={modelStates[modelName]?.progress}
               onDownload={() => handleDownload(modelName)}
               onCancel={() => handleCancel(modelName)}
@@ -379,7 +423,14 @@ export default function ModelsDownloadScreen() {
                 ]}
                 onPress={() => handleSelectLanguage(lang.code)}
               >
-                <Text style={styles.languageFlag}>{lang.flag}</Text>
+                <Text
+                  style={[
+                    styles.languageCode,
+                    preferredLanguage === lang.code && styles.languageCodeActive,
+                  ]}
+                >
+                  {lang.code.toUpperCase()}
+                </Text>
                 <Text style={[
                   styles.languageName,
                   { color: colors.text },
@@ -453,6 +504,36 @@ const styles = StyleSheet.create({
   },
   modelsSection: {
     marginBottom: 32,
+  },
+  engineList: {
+    gap: 12,
+  },
+  engineCard: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  engineCardActive: {
+    borderColor: '#8b5cf6',
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+  },
+  engineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  engineTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  engineTitleActive: {
+    color: '#8b5cf6',
+  },
+  engineDescription: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   sectionTitle: {
     fontSize: 20,
@@ -567,8 +648,13 @@ const styles = StyleSheet.create({
     borderColor: '#8b5cf6',
     backgroundColor: 'rgba(139, 92, 246, 0.1)',
   },
-  languageFlag: {
-    fontSize: 24,
+  languageCode: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  languageCodeActive: {
+    color: '#8b5cf6',
   },
   languageName: {
     fontSize: 14,

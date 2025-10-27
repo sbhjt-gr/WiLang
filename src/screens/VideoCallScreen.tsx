@@ -9,10 +9,11 @@ import {
   Share,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import {RTCView} from 'react-native-webrtc';
 import { StatusBar } from 'expo-status-bar';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp, useFocusEffect } from '@react-navigation/native';
 import { auth } from "../config/firebase";
 import { RootStackParamList } from '../types/navigation';
 import {WebRTCContext} from '../store/WebRTCContext';
@@ -22,9 +23,10 @@ import ParticipantGrid from '../components/ParticipantGrid';
 import GlassModal from '../components/GlassModal';
 import SubtitleOverlay from '../components/SubtitleOverlay';
 import useWhisperSTT from '../hooks/useWhisperSTT';
+import useSystemSpeechRecognition from '../hooks/useSystemSpeechRecognition';
 import { useTheme } from '../theme';
 import { whisperModelDownloader } from '../services/whisper/WhisperModelDownloader';
-import { ModelPreferences, WhisperModelVariant, WhisperLanguage } from '../services/whisper/ModelPreferences';
+import { ModelPreferences, WhisperModelVariant, WhisperLanguage, SttEngine } from '../services/whisper/ModelPreferences';
 
 const {width, height} = Dimensions.get('window');
 
@@ -76,6 +78,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [subtitleVisible, setSubtitleVisible] = useState(false);
   const [modelsDownloaded, setModelsDownloaded] = useState(false);
+  const [preferredEngine, setPreferredEngine] = useState<SttEngine>('whisper');
   const [preferredModel, setPreferredModel] = useState<WhisperModelVariant>('small');
   const [preferredLanguage, setPreferredLanguage] = useState<WhisperLanguage>('auto');
   const [modalConfig, setModalConfig] = useState<{
@@ -92,6 +95,20 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     buttons: [],
   });
 
+  const whisperStt = useWhisperSTT({
+    modelVariant: preferredModel,
+    vadPreset: 'meeting',
+    language: preferredLanguage,
+    allowedLanguages: ['en', 'es', 'fr', 'hi', 'de', 'pt', 'bn', 'sv', 'ja', 'ko'],
+  });
+
+  const systemStt = useSystemSpeechRecognition({
+    language: preferredLanguage,
+    allowedLanguages: ['en', 'es', 'fr', 'hi', 'de', 'pt', 'bn', 'sv', 'ja', 'ko'],
+  });
+
+  const activeStt = preferredEngine === 'whisper' ? whisperStt : systemStt;
+
   const {
     subtitle: subtitleState,
     detectedLanguage: sttLanguage,
@@ -102,12 +119,10 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     start: startStt,
     stop: stopStt,
     reset: resetStt,
-  } = useWhisperSTT({
-    modelVariant: preferredModel,
-    vadPreset: 'meeting',
-    language: preferredLanguage,
-    allowedLanguages: ['en', 'es', 'fr', 'hi', 'de', 'pt', 'bn', 'sv', 'ja', 'ko'],
-  });
+  } = activeStt;
+
+  const resetWhisper = whisperStt.reset;
+  const resetSystem = systemStt.reset;
 
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
@@ -132,23 +147,44 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, []);
 
   const checkModelsDownloaded = useCallback(async () => {
+    const engine = await ModelPreferences.getPreferredEngine();
+    setPreferredEngine(engine);
+
     const preferredModelName = await ModelPreferences.getPreferredModel();
     setPreferredModel(preferredModelName);
-    
+
     const preferredLang = await ModelPreferences.getPreferredLanguage();
     setPreferredLanguage(preferredLang);
-    
-    const modelExists = await whisperModelDownloader.checkModelExists(preferredModelName);
-    const vadExists = await whisperModelDownloader.checkModelExists('vad');
-    const downloaded = modelExists && vadExists;
-    setModelsDownloaded(downloaded);
-    return downloaded;
+
+    if (engine === 'whisper') {
+      const modelExists = await whisperModelDownloader.checkModelExists(preferredModelName);
+      const vadExists = await whisperModelDownloader.checkModelExists('vad');
+      const downloaded = modelExists && vadExists;
+      setModelsDownloaded(downloaded);
+      return { downloaded, engine };
+    }
+
+    setModelsDownloaded(true);
+    return { downloaded: true, engine };
+  }, []);
+
+  const ensureSystemSpeechReady = useCallback(async () => {
+    try {
+      const status = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+      if (status.granted) {
+        return true;
+      }
+      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      return Boolean(result.granted);
+    } catch {
+      return false;
+    }
   }, []);
 
   const toggleSubtitles = useCallback(async () => {
     if (!subtitlesEnabled) {
-      const downloaded = await checkModelsDownloaded();
-      if (!downloaded) {
+      const { downloaded, engine } = await checkModelsDownloaded();
+      if (engine === 'whisper' && !downloaded) {
         showModal(
           'Download Required',
           'Subtitle models need to be downloaded before you can enable real-time transcription.',
@@ -166,9 +202,21 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         );
         return;
       }
+      if (engine === 'speech-recognition') {
+        const granted = await ensureSystemSpeechReady();
+        if (!granted) {
+          showModal(
+            'Permission Needed',
+            'Speech recognition access is required to enable subtitles.',
+            'alert-circle',
+            [{ text: 'OK', onPress: closeModal }]
+          );
+          return;
+        }
+      }
     }
     setSubtitlesEnabled(prev => !prev);
-  }, [subtitlesEnabled, checkModelsDownloaded, showModal, closeModal, navigation]);
+  }, [subtitlesEnabled, checkModelsDownloaded, ensureSystemSpeechReady, showModal, closeModal, navigation]);
 
   const shareJoinCode = useCallback(async () => {
     if (!currentMeetingId) {
@@ -235,9 +283,23 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     });
   }, [navigation]);
 
+  useFocusEffect(
+    useCallback(() => {
+      checkModelsDownloaded();
+    }, [checkModelsDownloaded]),
+  );
+
   useEffect(() => {
     checkModelsDownloaded();
   }, [checkModelsDownloaded]);
+
+  useEffect(() => {
+    if (preferredEngine === 'whisper') {
+      resetSystem().catch(() => {});
+    } else {
+      resetWhisper().catch(() => {});
+    }
+  }, [preferredEngine, resetSystem, resetWhisper]);
 
   useEffect(() => {
     if (route.params.type === 'join' && route.params.joinCode && !joinAttempted.current) {
@@ -451,6 +513,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, [subtitlesEnabled]);
 
   useEffect(() => {
+    if (!subtitlesEnabled) {
+      resetStt().catch(() => {});
+    }
+  }, [subtitlesEnabled, resetStt]);
+
+  useEffect(() => {
     if (!subtitleState || !subtitleState.text) {
       setSubtitleVisible(false);
       return;
@@ -463,12 +531,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   useEffect(() => {
     const shouldBeActive = Boolean(localStream) && subtitlesEnabled;
 
-    if (shouldBeActive && !sttActive && !sttInitializing) {
+    if (shouldBeActive && !sttActive && !sttInitializing && !sttError) {
       startStt().catch(() => {});
     } else if (!shouldBeActive && sttActive) {
       stopStt().catch(() => {});
     }
-  }, [localStream, subtitlesEnabled, sttActive, sttInitializing, startStt, stopStt]);
+  }, [localStream, subtitlesEnabled, sttActive, sttInitializing, sttError, startStt, stopStt]);
 
   useEffect(() => {
     if (!sttError) {
@@ -479,11 +547,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return;
     }
     subtitleErrorRef.current = sttError;
+    setSubtitlesEnabled(false);
+    resetStt().catch(() => {});
 
     const isModelMissing = sttError.includes('not found') || sttError.includes('incomplete');
 
     if (isModelMissing) {
-      setSubtitlesEnabled(false);
       showModal(
         'Models Required',
         sttError,
@@ -502,7 +571,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     } else {
       showModal('Transcription Error', sttError, 'alert-circle');
     }
-  }, [sttError, showModal, closeModal, navigation]);
+  }, [sttError, showModal, closeModal, navigation, resetStt]);
 
   useEffect(() => {
     const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);
