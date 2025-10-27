@@ -306,15 +306,39 @@ export default function ModelsDownloadScreen() {
             <Ionicons name="information-circle" size={24} color="#8b5cf6" />
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
               Download models to enable real-time subtitle transcription during video calls.
-              The VAD model is required for all subtitle features. Tap a downloaded model to set it as active.
+              The VAD model detects speech activity, while Whisper models perform the transcription.
             </Text>
           </View>
         </View>
 
         <View style={styles.modelsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Available Models</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>VAD Model</Text>
+          <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
+            Required for voice activity detection
+          </Text>
           
-          {Object.keys(WHISPER_MODELS).map((modelName) => (
+          <ModelCard
+            key="vad"
+            modelName="vad"
+            isDownloaded={modelStates['vad']?.isDownloaded || false}
+            isDownloading={modelStates['vad']?.isDownloading || false}
+            isLoading={modelStates['vad']?.isLoading || false}
+            isSelected={false}
+            downloadProgress={modelStates['vad']?.progress}
+            onDownload={() => handleDownload('vad')}
+            onCancel={() => handleCancel('vad')}
+            onDelete={() => handleDelete('vad')}
+            onSelect={() => {}}
+          />
+        </View>
+
+        <View style={styles.modelsSection}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Whisper Models</Text>
+          <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
+            Choose and download a transcription model. Tap to set as active.
+          </Text>
+          
+          {Object.keys(WHISPER_MODELS).filter(name => name !== 'vad').map((modelName) => (
             <ModelCard
               key={modelName}
               modelName={modelName}
@@ -392,6 +416,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 16,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
   },
   modelCard: {
     borderRadius: 16,

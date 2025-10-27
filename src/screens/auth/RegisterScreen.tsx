@@ -237,7 +237,7 @@ export default function RegisterScreen({ navigation }: Props) {
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
               <Image 
-                source={require('../../../assets/video-call-blue.png')} 
+                source={require('../../../assets/adaptive-icon.png')} 
                 style={styles.logo}
                 resizeMode="contain"
               />

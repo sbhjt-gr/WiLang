@@ -183,7 +183,6 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
   const statusRef = useRef<'idle' | 'starting' | 'active' | 'stopping'>('idle');
   const transcriptBufferRef = useRef('');
   const languageRef = useRef<string | null>(null);
-  const lastForcedSliceIndexRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
 
   const modelVariant = options.modelVariant || 'small';
@@ -250,36 +249,11 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
     if (event.confidence !== undefined && event.confidence !== null) {
       setConfidence(event.confidence);
     }
-    const runtime = runtimeRef.current;
-    if (!runtime) {
-      return;
-    }
-    if (event.type !== 'speech_end' && event.type !== 'silence') {
-      return;
-    }
-    if (typeof event.sliceIndex !== 'number') {
-      return;
-    }
-    if (lastForcedSliceIndexRef.current === event.sliceIndex) {
-      return;
-    }
-    const stats = runtime.transcriber.getStatistics();
-    if (!stats.isActive) {
-      return;
-    }
-    const targetIndex = event.sliceIndex;
-    lastForcedSliceIndexRef.current = targetIndex;
-    runtime.transcriber.nextSlice().catch(() => {
-      if (lastForcedSliceIndexRef.current === targetIndex) {
-        lastForcedSliceIndexRef.current = null;
-      }
-    });
   }, []);
 
   const releaseRuntime = useCallback(async () => {
     const runtime = runtimeRef.current;
-    runtimeRef.current = null;
-    lastForcedSliceIndexRef.current = null;
+  runtimeRef.current = null;
     if (!runtime) {
       return;
     }
@@ -332,7 +306,7 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
           maxSlicesInMemory: 2,
           vadPreset,
           vadOptions: VAD_PRESETS[vadPreset],
-          autoSliceOnSpeechEnd: false,
+          autoSliceOnSpeechEnd: true,
           autoSliceThreshold: 0.35,
           promptPreviousSlices: false,
           transcribeOptions: {
@@ -356,7 +330,6 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
           },
         },
       );
-      lastForcedSliceIndexRef.current = null;
       runtimeRef.current = {
         whisperContext: context,
         vadContext,
@@ -377,7 +350,6 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
     if (statusRef.current === 'starting' || statusRef.current === 'active') {
       return;
     }
-    lastForcedSliceIndexRef.current = null;
     statusRef.current = 'starting';
     try {
       const transcriber = await createRuntime();
@@ -401,7 +373,6 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
     } finally {
       statusRef.current = 'idle';
       setIsActive(false);
-      lastForcedSliceIndexRef.current = null;
     }
   }, []);
 
@@ -415,7 +386,6 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
     setConfidence(null);
     setSubtitle(null);
     setLastUpdatedAt(null);
-    lastForcedSliceIndexRef.current = null;
     setErrorSafe(null);
   }, [releaseRuntime, setErrorSafe, stop]);
 

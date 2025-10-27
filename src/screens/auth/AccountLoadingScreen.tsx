@@ -151,7 +151,7 @@ export default function AccountLoadingScreen({ navigation, route }: Props) {
           >
             <View style={styles.logoGlow} />
             <Image 
-              source={require('../../../assets/wilang.png')} 
+              source={require('../../../assets/adaptive-icon.png')} 
               style={styles.logo}
               resizeMode="contain"
             />
