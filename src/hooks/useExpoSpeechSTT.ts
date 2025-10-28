@@ -88,10 +88,6 @@ export const useExpoSpeechSTT = (options: UseExpoSpeechSTTOptions): UseExpoSpeec
         await ExpoSpeechRecognitionModule.stop();
       } catch (error) {
       }
-      try {
-        await ExpoSpeechRecognitionModule.abort();
-      } catch (error) {
-      }
       setIsActive(false);
       setIsInitializing(false);
       return;
@@ -102,10 +98,10 @@ export const useExpoSpeechSTT = (options: UseExpoSpeechSTTOptions): UseExpoSpeec
     try {
       await ExpoSpeechRecognitionModule.stop();
     } catch (error) {
-    }
-    try {
-      await ExpoSpeechRecognitionModule.abort();
-    } catch (error) {
+      try {
+        await ExpoSpeechRecognitionModule.abort();
+      } catch (nestedError) {
+      }
     }
   }, []);
 
@@ -221,6 +217,13 @@ export const useExpoSpeechSTT = (options: UseExpoSpeechSTTOptions): UseExpoSpeec
 
   const handleError = useCallback((event: ExpoSpeechRecognitionErrorEvent) => {
     const message = event.message || event.error || 'Unknown error';
+    const lowered = typeof message === 'string' ? message.toLowerCase() : '';
+    if (lowered.includes('abort')) {
+      runRef.current = false;
+      setIsActive(false);
+      setIsInitializing(false);
+      return;
+    }
     setError(message);
     runRef.current = false;
     setIsActive(false);
