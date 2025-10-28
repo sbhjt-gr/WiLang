@@ -25,7 +25,6 @@ export type RootStackParamList = {
   UsersScreen: undefined;
   EnvironmentConfig: undefined;
   ThemeSettingsScreen: undefined;
-  ModelsDownloadScreen: undefined;
 };
 
 export type TabParamList = {

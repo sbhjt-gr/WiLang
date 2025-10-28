@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
 
 type SubtitleOverlayProps = {
@@ -9,9 +9,9 @@ type SubtitleOverlayProps = {
   status?: string | null;
 };
 
-const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ text, language, confidence, visible, status }) => {
+const SubtitleOverlay = ({ text, language, confidence, visible, status }: SubtitleOverlayProps) => {
   const opacity = useRef(new Animated.Value(0)).current;
-  const hasContent = Boolean(text) || Boolean(status);
+  const hasText = Boolean(text) || Boolean(status);
 
   const meta = useMemo(() => {
     const parts: string[] = [];
@@ -29,18 +29,18 @@ const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ text, language, confi
 
   useEffect(() => {
     Animated.timing(opacity, {
-      toValue: visible && hasContent ? 1 : 0,
-      duration: 180,
+      toValue: visible && hasText ? 1 : 0,
+      duration: 160,
       useNativeDriver: true,
     }).start();
-  }, [hasContent, opacity, visible]);
+  }, [hasText, opacity, visible]);
 
-  if (!hasContent) {
+  if (!hasText) {
     return null;
   }
 
   return (
-  <Animated.View style={[styles.container, { opacity }]}>
+    <Animated.View style={[styles.container, { opacity }]}>
       {text ? <Text style={styles.text}>{text}</Text> : null}
       {meta ? <Text style={styles.meta}>{meta}</Text> : null}
     </Animated.View>

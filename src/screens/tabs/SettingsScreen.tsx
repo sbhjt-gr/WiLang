@@ -40,14 +40,6 @@ export default function SettingsScreen({ navigation }: Props) {
 
   const settingsOptions = useMemo(() => ([
     {
-      id: 'models',
-      title: 'Subtitle Models',
-      subtitle: 'Download and manage speech recognition models',
-      icon: 'cloud-download-outline' as const,
-      color: '#8b5cf6',
-      onPress: () => navigation.navigate('ModelsDownloadScreen'),
-    },
-    {
       id: 'theme',
       title: 'Theme',
       subtitle: 'Appearance and display settings',
