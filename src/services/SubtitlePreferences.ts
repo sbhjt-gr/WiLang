@@ -1,14 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { WhisperLanguage } from './whisper/ModelPreferences';
 
-export type SubtitleEngine = 'whisper' | 'expo';
 export type ExpoSpeechMode = 'cloud' | 'device' | 'auto';
 
-const ENGINE_KEY = '@wilang:subtitle_engine';
 const MODE_KEY = '@wilang:subtitle_expo_mode';
 const LANG_KEY = '@wilang:subtitle_expo_lang';
 
-const DEFAULT_ENGINE: SubtitleEngine = 'whisper';
 const DEFAULT_MODE: ExpoSpeechMode = 'cloud';
 const DEFAULT_LANG: WhisperLanguage = 'auto';
 
@@ -29,22 +26,6 @@ const LANG_MAP: Record<WhisperLanguage, string> = {
 export const EXPO_ON_DEVICE_SERVICE = 'com.google.android.as';
 
 export const SubtitlePreferences = {
-  async getEngine(): Promise<SubtitleEngine> {
-    try {
-      const value = await AsyncStorage.getItem(ENGINE_KEY);
-      if (value === 'whisper' || value === 'expo') {
-        return value;
-      }
-    } catch (error) {
-    }
-    return DEFAULT_ENGINE;
-  },
-  async setEngine(value: SubtitleEngine): Promise<void> {
-    try {
-      await AsyncStorage.setItem(ENGINE_KEY, value);
-    } catch (error) {
-    }
-  },
   async getExpoMode(): Promise<ExpoSpeechMode> {
     try {
       const value = await AsyncStorage.getItem(MODE_KEY);

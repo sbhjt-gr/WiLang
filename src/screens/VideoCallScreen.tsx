@@ -1,4 +1,4 @@
- import React, {useContext, useLayoutEffect, useRef, useEffect, useState, useCallback, useMemo} from 'react';
+import React, {useContext, useLayoutEffect, useRef, useEffect, useState, useCallback, useMemo} from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -21,10 +21,10 @@ import { User } from '../store/WebRTCTypes';
 import ParticipantGrid from '../components/ParticipantGrid';
 import GlassModal from '../components/GlassModal';
 import SubtitleOverlay from '../components/SubtitleOverlay';
-import useWhisperSTT from '../hooks/useWhisperSTT';
+import useSubtitleEngine from '../hooks/useSubtitleEngine';
 import { useTheme } from '../theme';
-import { whisperModelDownloader } from '../services/whisper/WhisperModelDownloader';
-import { ModelPreferences, WhisperModelVariant, WhisperLanguage } from '../services/whisper/ModelPreferences';
+import { SubtitlePreferences, type ExpoSpeechMode } from '../services/SubtitlePreferences';
+import type { WhisperLanguage } from '../services/whisper/ModelPreferences';
 
 const {width, height} = Dimensions.get('window');
 
@@ -75,9 +75,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [showSecurityCodeModal, setShowSecurityCodeModal] = useState(false);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [subtitleVisible, setSubtitleVisible] = useState(false);
-  const [modelsDownloaded, setModelsDownloaded] = useState(false);
-  const [preferredModel, setPreferredModel] = useState<WhisperModelVariant>('small');
-  const [preferredLanguage, setPreferredLanguage] = useState<WhisperLanguage>('auto');
+  const [expoMode, setExpoMode] = useState<ExpoSpeechMode>('cloud');
+  const [expoLanguage, setExpoLanguage] = useState<WhisperLanguage>('auto');
   const [modalConfig, setModalConfig] = useState<{
     visible: boolean;
     title: string;
@@ -92,6 +91,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     buttons: [],
   });
 
+  const expoLocale = useMemo(() => SubtitlePreferences.getLocale(expoLanguage), [expoLanguage]);
+  const sttAutoEnabled = subtitlesEnabled && Boolean(localStream);
+
   const {
     subtitle: subtitleState,
     detectedLanguage: sttLanguage,
@@ -102,11 +104,11 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     start: startStt,
     stop: stopStt,
     reset: resetStt,
-  } = useWhisperSTT({
-    modelVariant: preferredModel,
-    vadPreset: 'meeting',
-    language: preferredLanguage,
-    allowedLanguages: ['en', 'es', 'fr', 'hi', 'de', 'pt', 'bn', 'sv', 'ja', 'ko'],
+  } = useSubtitleEngine({
+    enabled: sttAutoEnabled,
+    locale: expoLocale,
+    mode: expoMode,
+    detect: expoLanguage === 'auto',
   });
 
   const initializationAttempted = useRef(false);
@@ -131,44 +133,18 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     setIsGridMode(prev => !prev);
   }, []);
 
-  const checkModelsDownloaded = useCallback(async () => {
-    const preferredModelName = await ModelPreferences.getPreferredModel();
-    setPreferredModel(preferredModelName);
-    
-    const preferredLang = await ModelPreferences.getPreferredLanguage();
-    setPreferredLanguage(preferredLang);
-    
-    const modelExists = await whisperModelDownloader.checkModelExists(preferredModelName);
-    const vadExists = await whisperModelDownloader.checkModelExists('vad');
-    const downloaded = modelExists && vadExists;
-    setModelsDownloaded(downloaded);
-    return downloaded;
+  const loadPreferences = useCallback(async () => {
+    const [modeValue, langValue] = await Promise.all([
+      SubtitlePreferences.getExpoMode(),
+      SubtitlePreferences.getExpoLanguage(),
+    ]);
+    setExpoMode(modeValue);
+    setExpoLanguage(langValue);
   }, []);
 
   const toggleSubtitles = useCallback(async () => {
-    if (!subtitlesEnabled) {
-      const downloaded = await checkModelsDownloaded();
-      if (!downloaded) {
-        showModal(
-          'Download Required',
-          'Subtitle models need to be downloaded before you can enable real-time transcription.',
-          'download-outline',
-          [
-            { text: 'Cancel', onPress: closeModal },
-            {
-              text: 'Download Models',
-              onPress: () => {
-                closeModal();
-                navigation.navigate('ModelsDownloadScreen');
-              }
-            }
-          ]
-        );
-        return;
-      }
-    }
     setSubtitlesEnabled(prev => !prev);
-  }, [subtitlesEnabled, checkModelsDownloaded, showModal, closeModal, navigation]);
+  }, []);
 
   const shareJoinCode = useCallback(async () => {
     if (!currentMeetingId) {
@@ -236,8 +212,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, [navigation]);
 
   useEffect(() => {
-    checkModelsDownloaded();
-  }, [checkModelsDownloaded]);
+    loadPreferences().catch(() => undefined);
+  }, [loadPreferences]);
 
   useEffect(() => {
     if (route.params.type === 'join' && route.params.joinCode && !joinAttempted.current) {
@@ -480,29 +456,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     }
     subtitleErrorRef.current = sttError;
 
-    const isModelMissing = sttError.includes('not found') || sttError.includes('incomplete');
-
-    if (isModelMissing) {
-      setSubtitlesEnabled(false);
-      showModal(
-        'Models Required',
-        sttError,
-        'download-outline',
-        [
-          { text: 'Cancel', onPress: closeModal },
-          {
-            text: 'Download Models',
-            onPress: () => {
-              closeModal();
-              navigation.navigate('ModelsDownloadScreen');
-            }
-          }
-        ]
-      );
-    } else {
-      showModal('Transcription Error', sttError, 'alert-circle');
-    }
-  }, [sttError, showModal, closeModal, navigation]);
+    setSubtitlesEnabled(false);
+    showModal('Transcription Error', sttError, 'alert-circle');
+  }, [sttError, showModal]);
 
   useEffect(() => {
     const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== peerId);

@@ -74,7 +74,6 @@ export default {
       GOOGLE_SIGN_IN_WEB_CLIENT_ID: process.env.GOOGLE_SIGN_IN_WEB_CLIENT_ID,
       GOOGLE_SIGN_IN_IOS_CLIENT_ID: process.env.GOOGLE_SIGN_IN_IOS_CLIENT_ID
     },
-    newArchEnabled: false,
     plugins: [
       "expo-font",
       "expo-web-browser",
