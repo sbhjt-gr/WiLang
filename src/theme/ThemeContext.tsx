@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Appearance, ColorSchemeName } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeMode, ThemePreference, ThemeColors, getColors } from './colors';
@@ -88,48 +88,34 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         updateColors('system', isPitchBlack);
       }
     } catch (error) {
+      console.error('theme_load_error', error);
       updateColors('system', false);
     }
   };
 
-  const setTheme = useCallback(async (newTheme: ThemePreference) => {
+  const setTheme = async (newTheme: ThemePreference) => {
     try {
       await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
       setThemePreferenceState(newTheme);
       updateColors(newTheme, usePitchBlack);
     } catch (error) {
+      console.error('theme_save_error', error);
     }
-  }, [usePitchBlack]);
+  };
 
-  const setUsePitchBlack = useCallback(async (value: boolean) => {
-    try {
-      await AsyncStorage.setItem(PITCH_BLACK_KEY, value.toString());
-      setUsePitchBlackState(value);
-    } catch (error) {
-    }
-  }, []);
+  const setUsePitchBlack = (value: boolean) => {
+    setUsePitchBlackState(value);
+  };
 
-  const toggleTheme = useCallback(async () => {
+  const toggleTheme = async () => {
     const themeOrder: ThemePreference[] = ['system', 'light', 'dark'];
     const currentIndex = themeOrder.indexOf(themePreference);
     const nextIndex = (currentIndex + 1) % themeOrder.length;
     await setTheme(themeOrder[nextIndex]);
-  }, [themePreference, setTheme]);
-
-  const contextValue = useMemo(
-    () => ({ 
-      theme: themePreference, 
-      colors, 
-      setTheme, 
-      toggleTheme, 
-      usePitchBlack, 
-      setUsePitchBlack 
-    }),
-    [themePreference, colors, setTheme, toggleTheme, usePitchBlack, setUsePitchBlack]
-  );
+  };
 
   return (
-    <ThemeContext.Provider value={contextValue}>
+    <ThemeContext.Provider value={{ theme: themePreference, colors, setTheme, toggleTheme, usePitchBlack, setUsePitchBlack }}>
       {children}
     </ThemeContext.Provider>
   );

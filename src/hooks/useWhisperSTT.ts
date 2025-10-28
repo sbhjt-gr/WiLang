@@ -10,7 +10,7 @@ type WhisperModelVariant = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3';
 
 type WhisperModelKey = WhisperModelVariant | 'vad';
 
-export type UseWhisperSTTOptions = {
+type UseWhisperSTTOptions = {
   enabled?: boolean;
   modelVariant?: WhisperModelVariant;
   vadPreset?: keyof typeof VAD_PRESETS;
@@ -20,7 +20,7 @@ export type UseWhisperSTTOptions = {
   modelUrls?: Partial<Record<WhisperModelKey, string>>;
 };
 
-export type WhisperSubtitleState = {
+type SubtitleState = {
   text: string;
   timestamp: number;
   isFinal: boolean;
@@ -35,11 +35,11 @@ type WhisperRuntime = {
   transcriber: RealtimeTranscriber;
 };
 
-export type UseWhisperSTTReturn = {
+type UseWhisperSTTReturn = {
   transcript: string;
   detectedLanguage: string | null;
   confidence: number | null;
-  subtitle: WhisperSubtitleState | null;
+  subtitle: SubtitleState | null;
   isActive: boolean;
   isInitializing: boolean;
   error: string | null;
@@ -173,7 +173,7 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
   const [transcript, setTranscript] = useState('');
   const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
   const [confidence, setConfidence] = useState<number | null>(null);
-  const [subtitle, setSubtitle] = useState<WhisperSubtitleState | null>(null);
+  const [subtitle, setSubtitle] = useState<SubtitleState | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -216,7 +216,7 @@ export const useWhisperSTT = (options: UseWhisperSTTOptions = {}): UseWhisperSTT
       if (!shouldAppend(updated)) {
         return;
       }
-  const state: WhisperSubtitleState = {
+      const state: SubtitleState = {
         text: updated,
         timestamp: Date.now(),
         isFinal,

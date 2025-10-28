@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,8 @@ import {
   WHISPER_MODELS,
 } from '../services/whisper/WhisperModelDownloader';
 import { ModelDownloadProgress } from '../services/whisper/types';
-import { ModelPreferences, WhisperModelVariant, WhisperLanguage, SUPPORTED_LANGUAGES, SUPPORTED_ENGINES, SttEngine } from '../services/whisper/ModelPreferences';
+import { ModelPreferences, WhisperModelVariant, WhisperLanguage, SUPPORTED_LANGUAGES } from '../services/whisper/ModelPreferences';
+import { SubtitlePreferences, type SubtitleEngine, type ExpoSpeechMode } from '../services/SubtitlePreferences';
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B';
@@ -34,6 +35,7 @@ interface ModelCardProps {
   isDownloading: boolean;
   isLoading: boolean;
   isSelected: boolean;
+  selectable: boolean;
   downloadProgress?: ModelDownloadProgress;
   onDownload: () => void;
   onCancel: () => void;
@@ -47,6 +49,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
   isDownloading,
   isLoading,
   isSelected,
+  selectable,
   downloadProgress,
   onDownload,
   onCancel,
@@ -64,9 +67,9 @@ const ModelCard: React.FC<ModelCardProps> = ({
     <View style={[styles.modelCard, { backgroundColor: colors.surface }]}>
       <TouchableOpacity
         style={styles.modelItem}
-        onPress={isWhisperModel && isDownloaded && !isSelected ? onSelect : undefined}
-        disabled={!isWhisperModel || !isDownloaded || isSelected || isDownloading}
-        activeOpacity={isWhisperModel && isDownloaded && !isSelected ? 0.7 : 1}
+  onPress={isWhisperModel && selectable && isDownloaded && !isSelected ? onSelect : undefined}
+  disabled={!isWhisperModel || !selectable || !isDownloaded || isSelected || isDownloading}
+  activeOpacity={isWhisperModel && selectable && isDownloaded && !isSelected ? 0.7 : 1}
       >
         <View style={styles.modelLeft}>
           <View style={[styles.modelIconContainer, { backgroundColor: isDownloaded ? 'rgba(139, 92, 246, 0.1)' : 'rgba(156, 163, 175, 0.1)' }]}>
@@ -158,9 +161,11 @@ export default function ModelsDownloadScreen() {
     progress?: ModelDownloadProgress;
   }>>({});
   const [loading, setLoading] = useState(true);
-  const [preferredEngine, setPreferredEngine] = useState<SttEngine>('whisper');
   const [preferredModel, setPreferredModel] = useState<WhisperModelVariant>('small');
-  const [preferredLanguage, setPreferredLanguage] = useState<WhisperLanguage>('auto');
+  const [whisperLanguage, setWhisperLanguage] = useState<WhisperLanguage>('auto');
+  const [expoLanguage, setExpoLanguage] = useState<WhisperLanguage>('auto');
+  const [engine, setEngine] = useState<SubtitleEngine>('whisper');
+  const [expoMode, setExpoMode] = useState<ExpoSpeechMode>('cloud');
 
   const checkModels = async () => {
     const states: Record<string, any> = {};
@@ -179,9 +184,11 @@ export default function ModelsDownloadScreen() {
   useEffect(() => {
     checkModels();
     
-  ModelPreferences.getPreferredEngine().then(setPreferredEngine);
     ModelPreferences.getPreferredModel().then(setPreferredModel);
-    ModelPreferences.getPreferredLanguage().then(setPreferredLanguage);
+    ModelPreferences.getPreferredLanguage().then(setWhisperLanguage);
+    SubtitlePreferences.getEngine().then(setEngine);
+    SubtitlePreferences.getExpoMode().then(setExpoMode);
+    SubtitlePreferences.getExpoLanguage().then(setExpoLanguage);
 
     whisperModelDownloader.setEventCallbacks({
       onStart: (modelName) => {
@@ -236,6 +243,16 @@ export default function ModelsDownloadScreen() {
     });
   }, []);
 
+  const handleSelectEngine = async (value: SubtitleEngine) => {
+    setEngine(value);
+    await SubtitlePreferences.setEngine(value);
+  };
+
+  const handleSelectExpoMode = async (value: ExpoSpeechMode) => {
+    setExpoMode(value);
+    await SubtitlePreferences.setExpoMode(value);
+  };
+
   const handleDownload = async (modelName: string) => {
     setModelStates(prev => ({
       ...prev,
@@ -282,15 +299,20 @@ export default function ModelsDownloadScreen() {
     }
   };
 
-  const handleSelectEngine = async (engineKey: SttEngine) => {
-    await ModelPreferences.setPreferredEngine(engineKey);
-    setPreferredEngine(engineKey);
+  const handleSelectLanguage = async (languageCode: WhisperLanguage) => {
+    if (engine === 'whisper') {
+      await ModelPreferences.setPreferredLanguage(languageCode);
+      setWhisperLanguage(languageCode);
+    } else {
+      await SubtitlePreferences.setExpoLanguage(languageCode);
+      setExpoLanguage(languageCode);
+    }
   };
 
-  const handleSelectLanguage = async (languageCode: WhisperLanguage) => {
-    await ModelPreferences.setPreferredLanguage(languageCode);
-    setPreferredLanguage(languageCode);
-  };
+  const selectedLanguage = useMemo(
+    () => (engine === 'whisper' ? whisperLanguage : expoLanguage),
+    [engine, expoLanguage, whisperLanguage],
+  );
 
   if (loading) {
     return (
@@ -315,6 +337,54 @@ export default function ModelsDownloadScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.engineSection}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Subtitle Engine</Text>
+          <View style={styles.engineRow}>
+            <TouchableOpacity
+              style={[styles.engineOption, engine === 'expo' && styles.engineOptionActive, { backgroundColor: colors.surface }]}
+              onPress={() => handleSelectEngine('expo')}
+            >
+              <Ionicons name="cloud-outline" size={20} color={engine === 'expo' ? '#8b5cf6' : colors.textSecondary} />
+              <Text style={[styles.engineOptionText, { color: colors.text }]}>Expo Speech</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.engineOption, engine === 'whisper' && styles.engineOptionActive, { backgroundColor: colors.surface }]}
+              onPress={() => handleSelectEngine('whisper')}
+            >
+              <Ionicons name="hardware-chip-outline" size={20} color={engine === 'whisper' ? '#8b5cf6' : colors.textSecondary} />
+              <Text style={[styles.engineOptionText, { color: colors.text }]}>Whisper Offline</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={[styles.engineDescription, { color: colors.textSecondary }]}>Expo Speech uses platform services. Whisper runs fully on-device after download.</Text>
+        </View>
+
+        {engine === 'expo' && (
+          <View style={styles.modeSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Processing Mode</Text>
+            <View style={styles.modeRow}>
+              <TouchableOpacity
+                style={[styles.modeOption, expoMode === 'cloud' && styles.modeOptionActive, { backgroundColor: colors.surface }]}
+                onPress={() => handleSelectExpoMode('cloud')}
+              >
+                <Text style={[styles.modeOptionText, { color: colors.text }]}>Cloud</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeOption, expoMode === 'device' && styles.modeOptionActive, { backgroundColor: colors.surface }]}
+                onPress={() => handleSelectExpoMode('device')}
+              >
+                <Text style={[styles.modeOptionText, { color: colors.text }]}>On Device</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeOption, expoMode === 'auto' && styles.modeOptionActive, { backgroundColor: colors.surface }]}
+                onPress={() => handleSelectExpoMode('auto')}
+              >
+                <Text style={[styles.modeOptionText, { color: colors.text }]}>Auto</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.modeDescription, { color: colors.textSecondary }]}>Cloud sends audio to Apple or Google. On Device stays local when supported. Auto chooses automatically.</Text>
+          </View>
+        )}
+
         <View style={styles.infoSection}>
           <View style={styles.infoCard}>
             <Ionicons name="information-circle" size={24} color="#8b5cf6" />
@@ -322,43 +392,6 @@ export default function ModelsDownloadScreen() {
               Download models to enable real-time subtitle transcription during video calls.
               The VAD model detects speech activity, while Whisper models perform the transcription.
             </Text>
-          </View>
-        </View>
-
-        <View style={styles.modelsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Transcription Engine</Text>
-          <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>Choose how subtitles are generated during calls.</Text>
-
-          <View style={styles.engineList}>
-            {SUPPORTED_ENGINES.map(engine => (
-              <TouchableOpacity
-                key={engine.key}
-                style={[
-                  styles.engineCard,
-                  { backgroundColor: colors.surface },
-                  preferredEngine === engine.key && styles.engineCardActive,
-                ]}
-                onPress={() => handleSelectEngine(engine.key)}
-              >
-                <View style={styles.engineHeader}>
-                  <Text
-                    style={[
-                      styles.engineTitle,
-                      { color: colors.text },
-                      preferredEngine === engine.key && styles.engineTitleActive,
-                    ]}
-                  >
-                    {engine.title}
-                  </Text>
-                  {preferredEngine === engine.key && (
-                    <Ionicons name="checkmark-circle" size={20} color="#8b5cf6" />
-                  )}
-                </View>
-                <Text style={[styles.engineDescription, { color: colors.textSecondary }]}>
-                  {engine.description}
-                </Text>
-              </TouchableOpacity>
-            ))}
           </View>
         </View>
 
@@ -375,6 +408,7 @@ export default function ModelsDownloadScreen() {
             isDownloading={modelStates['vad']?.isDownloading || false}
             isLoading={modelStates['vad']?.isLoading || false}
             isSelected={false}
+            selectable={false}
             downloadProgress={modelStates['vad']?.progress}
             onDownload={() => handleDownload('vad')}
             onCancel={() => handleCancel('vad')}
@@ -396,7 +430,8 @@ export default function ModelsDownloadScreen() {
               isDownloaded={modelStates[modelName]?.isDownloaded || false}
               isDownloading={modelStates[modelName]?.isDownloading || false}
               isLoading={modelStates[modelName]?.isLoading || false}
-              isSelected={preferredEngine === 'whisper' && modelName === preferredModel}
+              isSelected={engine === 'whisper' && modelName === preferredModel}
+              selectable={engine === 'whisper'}
               downloadProgress={modelStates[modelName]?.progress}
               onDownload={() => handleDownload(modelName)}
               onCancel={() => handleCancel(modelName)}
@@ -419,26 +454,19 @@ export default function ModelsDownloadScreen() {
                 style={[
                   styles.languageCard,
                   { backgroundColor: colors.surface },
-                  preferredLanguage === lang.code && styles.languageCardActive
+                  selectedLanguage === lang.code && styles.languageCardActive
                 ]}
                 onPress={() => handleSelectLanguage(lang.code)}
               >
-                <Text
-                  style={[
-                    styles.languageCode,
-                    preferredLanguage === lang.code && styles.languageCodeActive,
-                  ]}
-                >
-                  {lang.code.toUpperCase()}
-                </Text>
+                <Text style={styles.languageFlag}>{lang.flag}</Text>
                 <Text style={[
                   styles.languageName,
                   { color: colors.text },
-                  preferredLanguage === lang.code && styles.languageNameActive
+                  selectedLanguage === lang.code && styles.languageNameActive
                 ]}>
                   {lang.name}
                 </Text>
-                {preferredLanguage === lang.code && (
+                {selectedLanguage === lang.code && (
                   <View style={styles.languageCheck}>
                     <Ionicons name="checkmark-circle" size={20} color="#8b5cf6" />
                   </View>
@@ -487,6 +515,61 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
   },
+  engineSection: {
+    marginBottom: 32,
+  },
+  engineRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  engineOption: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  engineOptionActive: {
+    borderColor: '#8b5cf6',
+  },
+  engineOptionText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  engineDescription: {
+    marginTop: 12,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  modeSection: {
+    marginBottom: 32,
+  },
+  modeRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modeOption: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  modeOptionActive: {
+    borderColor: '#8b5cf6',
+  },
+  modeOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modeDescription: {
+    marginTop: 12,
+    fontSize: 13,
+    lineHeight: 18,
+  },
   infoSection: {
     marginBottom: 24,
   },
@@ -504,36 +587,6 @@ const styles = StyleSheet.create({
   },
   modelsSection: {
     marginBottom: 32,
-  },
-  engineList: {
-    gap: 12,
-  },
-  engineCard: {
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  engineCardActive: {
-    borderColor: '#8b5cf6',
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-  },
-  engineHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  engineTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  engineTitleActive: {
-    color: '#8b5cf6',
-  },
-  engineDescription: {
-    fontSize: 13,
-    lineHeight: 18,
   },
   sectionTitle: {
     fontSize: 20,
@@ -648,13 +701,8 @@ const styles = StyleSheet.create({
     borderColor: '#8b5cf6',
     backgroundColor: 'rgba(139, 92, 246, 0.1)',
   },
-  languageCode: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  languageCodeActive: {
-    color: '#8b5cf6',
+  languageFlag: {
+    fontSize: 24,
   },
   languageName: {
     fontSize: 14,
