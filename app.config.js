@@ -62,7 +62,7 @@ export default {
     },
     extra: {
       eas: {
-        projectId: "#"
+        projectId: "146b3cbc-1d82-4c4b-9f27-746b6274af08"
       },
       FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
       FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,

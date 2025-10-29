@@ -7,6 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../config/firebase';
 import { useTheme } from '../../theme';
 import { SubtitlePreferences, type SubtitleLang } from '../../services/SubtitlePreferences';
+import { TranslationPreferences } from '../../services/TranslationPreferences';
+import { getTranslationOptionLabel } from '../../constants/translation';
+import { useFocusEffect } from '@react-navigation/native';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -18,6 +21,8 @@ export default function SettingsScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const [lang, setLang] = useState<SubtitleLang>('auto');
   const [langOpen, setLangOpen] = useState(false);
+  const [translationEnabled, setTranslationEnabled] = useState(false);
+  const [translationTarget, setTranslationTarget] = useState('en');
 
   const langOpts = useMemo<Array<{ id: SubtitleLang; label: string }>>(
     () => [
@@ -41,6 +46,13 @@ export default function SettingsScreen({ navigation }: Props) {
     return match ? match.label : 'Automatic';
   }, [lang, langOpts]);
 
+  const translationLabel = useMemo(() => {
+    if (!translationEnabled) {
+      return 'Off';
+    }
+    return `To ${getTranslationOptionLabel(translationTarget)}`;
+  }, [translationEnabled, translationTarget]);
+
   useEffect(() => {
     let active = true;
     SubtitlePreferences.getExpoLanguage().then(value => {
@@ -52,6 +64,28 @@ export default function SettingsScreen({ navigation }: Props) {
       active = false;
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      const load = async () => {
+        try {
+          const [isEnabled, target] = await Promise.all([
+            TranslationPreferences.isEnabled(),
+            TranslationPreferences.getTarget(),
+          ]);
+          if (active) {
+            setTranslationEnabled(isEnabled);
+            setTranslationTarget(target);
+          }
+        } catch (error) {}
+      };
+      load();
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   const onLang = useCallback(async (value: SubtitleLang) => {
     setLang(value);
@@ -97,6 +131,14 @@ export default function SettingsScreen({ navigation }: Props) {
       icon: 'color-palette-outline' as const,
       color: '#8b5cf6',
       onPress: () => navigation.navigate('ThemeSettingsScreen'),
+    },
+    {
+      id: 'translation',
+      title: 'Translation',
+      subtitle: translationLabel,
+      icon: 'globe-outline' as const,
+      color: '#8b5cf6',
+      onPress: () => navigation.navigate('TranslationSettingsScreen'),
     },
     {
       id: 'notifications',

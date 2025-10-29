@@ -12,7 +12,7 @@ import * as Clipboard from 'expo-clipboard';
 import {RTCView} from 'react-native-webrtc';
 import { StatusBar } from 'expo-status-bar';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp, useFocusEffect } from '@react-navigation/native';
 import { auth } from "../config/firebase";
 import { RootStackParamList } from '../types/navigation';
 import {WebRTCContext} from '../store/WebRTCContext';
@@ -26,6 +26,8 @@ import useSubtitleEngine from '../hooks/useSubtitleEngine';
 import { SubtitlePreferences } from '../services/SubtitlePreferences';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import type { ExpoSpeechMode } from '../services/SubtitlePreferences';
+import { TranslationPreferences } from '../services/TranslationPreferences';
+import { useTranslation } from '../hooks/useTranslation';
 
 const {width, height} = Dimensions.get('window');
 
@@ -90,6 +92,10 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [subtitleLocale, setSubtitleLocale] = useState('en-US');
   const [subtitleMode, setSubtitleMode] = useState<ExpoSpeechMode>('cloud');
+  const [translationEnabled, setTranslationEnabled] = useState(false);
+  const [translationAuto, setTranslationAuto] = useState(true);
+  const [translationSource, setTranslationSource] = useState('auto');
+  const [translationTarget, setTranslationTarget] = useState('en');
 
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
@@ -200,6 +206,40 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     detect: false,
   });
 
+  const detectedLanguageCode = useMemo(() => {
+    if (!subtitleDetectedLanguage) {
+      return null;
+    }
+    const base = subtitleDetectedLanguage.split('-')[0];
+    if (!base) {
+      return null;
+    }
+    return base.toLowerCase();
+  }, [subtitleDetectedLanguage]);
+
+  const translationSourceLang = useMemo(() => {
+    if (!translationEnabled) {
+      return 'auto';
+    }
+    if (translationAuto) {
+      return detectedLanguageCode || 'auto';
+    }
+    return translationSource;
+  }, [detectedLanguageCode, translationAuto, translationEnabled, translationSource]);
+
+  const {
+    translate: translateSubtitle,
+    translatedText,
+    isTranslating: translationLoading,
+    error: translationError,
+    isLanguagePackDownloaded: translationPackReady,
+    setTranslatedText,
+  } = useTranslation({
+    enabled: translationEnabled,
+    sourceLang: translationSourceLang,
+    targetLang: translationTarget || 'en',
+  });
+
   const subtitleStatus = useMemo(() => {
     if (!subtitlesEnabled) {
       return null;
@@ -215,6 +255,67 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     }
     return null;
   }, [subtitlesEnabled, subtitleActive, subtitleError, subtitleLoading]);
+
+  const translationStatus = useMemo(() => {
+    if (!translationEnabled) {
+      return null;
+    }
+    if (translationError) {
+      return 'Translation error';
+    }
+    if (!translationPackReady) {
+      return 'Pack needed';
+    }
+    if (translationLoading) {
+      return 'Translating';
+    }
+    return null;
+  }, [translationEnabled, translationError, translationLoading, translationPackReady]);
+
+  const overlayStatus = useMemo(() => {
+    const parts: string[] = [];
+    if (subtitleStatus) {
+      parts.push(subtitleStatus);
+    }
+    if (translationStatus) {
+      parts.push(translationStatus);
+    }
+    if (!parts.length) {
+      return null;
+    }
+    return parts.join(' • ');
+  }, [subtitleStatus, translationStatus]);
+
+  useEffect(() => {
+    if (!translationEnabled) {
+      return;
+    }
+    if (!subtitleData) {
+      setTranslatedText(null);
+      return;
+    }
+    if (!subtitleData.isFinal) {
+      setTranslatedText(null);
+    }
+  }, [setTranslatedText, subtitleData, translationEnabled]);
+
+  useEffect(() => {
+    if (!translationEnabled) {
+      return;
+    }
+    if (!subtitleData) {
+      return;
+    }
+    if (!subtitleData.isFinal) {
+      return;
+    }
+    const text = subtitleData.text.trim();
+    if (!text) {
+      setTranslatedText('');
+      return;
+    }
+    translateSubtitle(text).catch(() => {});
+  }, [setTranslatedText, subtitleData, translationEnabled, translateSubtitle]);
 
   useEffect(() => {
     let active = true;
@@ -235,6 +336,33 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       active = false;
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      const load = async () => {
+        try {
+          const [isEnabled, isAuto, src, tgt] = await Promise.all([
+            TranslationPreferences.isEnabled(),
+            TranslationPreferences.isAutoDetect(),
+            TranslationPreferences.getSource(),
+            TranslationPreferences.getTarget(),
+          ]);
+          if (active) {
+            setTranslationEnabled(isEnabled);
+            setTranslationAuto(isAuto);
+            setTranslationSource(src);
+            setTranslationTarget(tgt);
+          }
+        } catch (error) {
+        }
+      };
+      load();
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   useEffect(() => {
     if (!subtitlesEnabled) {
@@ -696,10 +824,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         <View style={styles.subtitleContainer}>
           <SubtitleOverlay
             text={subtitleData?.text ?? ''}
+            translatedText={translationEnabled ? translatedText : null}
             language={subtitleDetectedLanguage}
+            targetLanguage={translationEnabled ? translationTarget : null}
             confidence={subtitleData?.confidence ?? subtitleConfidence}
             visible={subtitlesEnabled}
-            status={subtitleStatus}
+            status={overlayStatus}
+            showBothLanguages
           />
         </View>
       )}
