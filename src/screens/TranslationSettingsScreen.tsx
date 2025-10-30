@@ -23,6 +23,14 @@ const listForSource = TRANSLATION_LANGUAGE_OPTIONS;
 const listForTarget = TRANSLATION_LANGUAGE_OPTIONS.filter(item => item.id !== 'auto');
 type PackStatus = 'unknown' | 'available' | 'missing';
 
+const labelForLanguage = (code: string) => {
+	const match = TRANSLATION_LANGUAGE_OPTIONS.find(item => item.id === code);
+	if (match) {
+		return match.label;
+	}
+	return code.toUpperCase();
+};
+
 const TranslationSettingsScreen = ({ navigation }: Props) => {
 	const { colors } = useTheme();
 	const [enabled, setEnabled] = useState(false);
@@ -41,6 +49,30 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 	const [isCheckingPack, setIsCheckingPack] = useState(false);
 	const [isDownloadingPack, setIsDownloadingPack] = useState(false);
 	const [downloadError, setDownloadError] = useState<string | null>(null);
+	const [downloadedModels, setDownloadedModels] = useState<string[]>([]);
+	const [isLoadingModels, setIsLoadingModels] = useState(false);
+	const [activeDelete, setActiveDelete] = useState<string | null>(null);
+	const [modelError, setModelError] = useState<string | null>(null);
+
+	const loadModels = useCallback(async () => {
+		setIsLoadingModels(true);
+		try {
+			if (!TranslationService.isTranslationAvailable()) {
+				setDownloadedModels([]);
+				setModelError(null);
+				return;
+			}
+			const models = await TranslationService.getDownloadedLanguages();
+			models.sort();
+			setDownloadedModels(models);
+			setModelError(null);
+		} catch (error) {
+			console.error('models_list_error', error);
+			setModelError('Unable to load models.');
+		} finally {
+			setIsLoadingModels(false);
+		}
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -76,6 +108,13 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 			cancelled = true;
 		};
 	}, []);
+
+	useEffect(() => {
+		if (loading) {
+			return;
+		}
+		loadModels();
+	}, [loading, loadModels]);
 
 	useEffect(() => {
 		if (loading) {
@@ -216,12 +255,14 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 			if (already) {
 				setPackStatus('available');
 				setDownloadError(null);
+				await loadModels();
 				return;
 			}
 			await TranslationService.downloadLanguagePack(source, target);
 			console.log('manual_pack_download_success');
 			setPackStatus('available');
 			setDownloadError(null);
+			await loadModels();
 		} catch (error) {
 			console.error('manual_pack_download_error', error);
 			setPackStatus('missing');
@@ -229,7 +270,7 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 		} finally {
 			setIsDownloadingPack(false);
 		}
-	}, [canDownload, source, target]);
+	}, [canDownload, source, target, loadModels]);
 
 	const handleTestTranslation = useCallback(async () => {
 		console.log('test_start');
@@ -283,6 +324,7 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 					console.log('test_pack_download_success');
 					readyPack = true;
 					setPackStatus('available');
+					await loadModels();
 				} catch (downloadErr) {
 					console.error('test_pack_download_error', downloadErr);
 					setDownloadError('Model download unavailable for this language pair.');
@@ -302,6 +344,7 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 			console.log('test_translate_success', result);
 			setTranslatedText(result);
 			console.log('test_success');
+			await loadModels();
 		} catch (error) {
 			console.error('translation_test_error', error);
 			console.log('translation_error_details', {
@@ -319,7 +362,22 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 		} finally {
 			setIsTranslating(false);
 		}
-	}, [available, autoDetect, source, target, testText, packStatus]);
+	}, [available, autoDetect, source, target, testText, packStatus, loadModels]);
+
+	const handleDeleteModel = useCallback(async (code: string) => {
+		console.log('model_delete_start', code);
+		setActiveDelete(code);
+		setModelError(null);
+		try {
+			await TranslationService.deleteLanguage(code);
+			await loadModels();
+		} catch (error) {
+			console.error('model_delete_error', error);
+			setModelError('Failed to delete model.');
+		} finally {
+			setActiveDelete(null);
+		}
+	}, [loadModels]);
 
 
 	return (
@@ -443,6 +501,48 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 								Translation is performed on-device for privacy. Some language pairs may require additional downloads.
 							</Text>
 						</View>
+
+						{available && (
+							<View style={styles.section}>
+								<Text style={[styles.sectionTitle, { color: colors.text }]}>Downloaded Models</Text>
+								<Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>Manage downloaded language models</Text>
+								<View style={[styles.card, { backgroundColor: colors.surface }]}>
+									{isLoadingModels ? (
+										<View style={styles.modelsLoadingRow}>
+											<ActivityIndicator size="small" color={colors.primary} />
+											<Text style={[styles.modelsLoadingText, { color: colors.textSecondary }]}>Loading models...</Text>
+										</View>
+									) : downloadedModels.length === 0 ? (
+										<Text style={[styles.modelEmptyText, { color: colors.textSecondary }]}>No models downloaded.</Text>
+									) : (
+										<View style={styles.modelsList}>
+											{downloadedModels.map(item => (
+												<View key={item} style={[styles.modelRow, { borderColor: colors.border }]}>
+													<View style={styles.modelInfo}>
+														<Text style={[styles.modelName, { color: colors.text }]}>{labelForLanguage(item)}</Text>
+														<Text style={[styles.modelCode, { color: colors.textSecondary }]}>{item}</Text>
+													</View>
+													<TouchableOpacity
+														style={[styles.modelDeleteButton, { borderColor: colors.error }]}
+														onPress={() => handleDeleteModel(item)}
+														disabled={activeDelete === item}
+													>
+														{activeDelete === item ? (
+															<ActivityIndicator size="small" color={colors.error} />
+														) : (
+															<Text style={[styles.modelDeleteText, { color: colors.error }]}>Delete</Text>
+														)}
+													</TouchableOpacity>
+												</View>
+											))}
+										</View>
+									)}
+									{modelError && (
+										<Text style={[styles.modelError, { color: colors.error }]}>{modelError}</Text>
+									)}
+								</View>
+							</View>
+						)}
 
 						{available && (
 							<View style={styles.section}>
@@ -651,9 +751,24 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 					</View>
 				</Pressable>
 			</Modal>
+			<Modal
+				transparent
+				visible={isDownloadingPack}
+				animationType="fade"
+				onRequestClose={() => {}}
+			>
+				<View style={styles.progressOverlay}>
+					<View style={[styles.progressContent, { backgroundColor: colors.surface }]}>
+						<ActivityIndicator size="large" color={colors.primary} />
+						<Text style={[styles.progressText, { color: colors.text }]}>Downloading model...</Text>
+					</View>
+				</View>
+			</Modal>
+
 		</>
 	);
 };
+
 
 const styles = StyleSheet.create({
 	safeArea: {
@@ -957,6 +1072,73 @@ const styles = StyleSheet.create({
 	resultText: {
 		fontSize: 15,
 		lineHeight: 22,
+	},
+	modelsList: {
+		gap: 12,
+	},
+	modelRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		borderWidth: 1,
+		borderRadius: 12,
+		paddingVertical: 12,
+		paddingHorizontal: 16,
+	},
+	modelInfo: {
+		flex: 1,
+		marginRight: 12,
+	},
+	modelName: {
+		fontSize: 15,
+		fontWeight: '600',
+	},
+	modelCode: {
+		fontSize: 12,
+	},
+	modelDeleteButton: {
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderWidth: 1,
+		borderRadius: 12,
+	},
+	modelDeleteText: {
+		fontSize: 13,
+		fontWeight: '600',
+	},
+	modelEmptyText: {
+		fontSize: 13,
+		textAlign: 'center',
+	},
+	modelsLoadingRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 10,
+	},
+	modelsLoadingText: {
+		fontSize: 13,
+	},
+	modelError: {
+		marginTop: 12,
+		fontSize: 13,
+		textAlign: 'center',
+	},
+	progressOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0,0,0,0.4)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	progressContent: {
+		width: '70%',
+		borderRadius: 16,
+		padding: 24,
+		alignItems: 'center',
+		gap: 16,
+	},
+	progressText: {
+		fontSize: 14,
+		textAlign: 'center',
 	},
 });
 

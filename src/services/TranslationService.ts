@@ -121,6 +121,15 @@ export const TranslationService = {
 		await mod.deleteLanguagePackAsync(source, target);
 		cache.clear();
 	},
+	async deleteLanguage(language: string): Promise<void> {
+		const trimmed = language.trim();
+		if (!trimmed) {
+			return;
+		}
+		const mod = ensureModule();
+		await mod.deleteLanguagePackAsync(trimmed, trimmed);
+		cache.clear();
+	},
 	async getDownloadedLanguages(): Promise<string[]> {
 		const mod = ensureModule();
 		return mod.getDownloadedLanguagePacksAsync();
