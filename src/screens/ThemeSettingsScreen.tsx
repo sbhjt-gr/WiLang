@@ -85,23 +85,24 @@ export default function ThemeSettingsScreen({ navigation, route }: Props) {
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#8b5cf6" />
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-        <View style={[styles.header, { backgroundColor: '#8b5cf6' }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#ffffff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Theme</Text>
-        <View style={styles.headerRight} />
-      </View>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={[styles.header, { backgroundColor: '#8b5cf6' }]}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#ffffff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Theme</Text>
+            <View style={styles.headerRight} />
+          </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
           <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
@@ -179,12 +180,17 @@ export default function ThemeSettingsScreen({ navigation, route }: Props) {
           </View>
         </View>
       </ScrollView>
+        </View>
       </SafeAreaView>
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#8b5cf6',
+  },
   container: {
     flex: 1,
   },
