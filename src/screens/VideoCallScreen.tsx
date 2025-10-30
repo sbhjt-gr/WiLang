@@ -102,6 +102,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [translationTarget, setTranslationTarget] = useState('en');
   const [ttsEnabled, setTTSEnabled] = useState(false);
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
+  const [subtitleLoading, setSubtitleLoading] = useState(true);
 
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
@@ -200,7 +201,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     detectedLanguage: subtitleDetectedLanguage,
     confidence: subtitleConfidence,
     isActive: subtitleActive,
-    isInitializing: subtitleLoading,
+    isInitializing: subtitleEngineInitializing,
     error: subtitleError,
     start: subtitleStart,
     stop: subtitleStop,
@@ -259,8 +260,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const ttsReloadRef = useRef(ttsHook.reloadPreferences);
   ttsReloadRef.current = ttsHook.reloadPreferences;
 
-  const translationPromptedRef = useRef(false);
-
   const subtitleStatus = useMemo(() => {
     if (!subtitlesEnabled) {
       return null;
@@ -268,14 +267,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     if (subtitleError) {
       return subtitleError;
     }
-    if (subtitleLoading) {
+    if (subtitleEngineInitializing) {
       return 'Starting';
     }
     if (subtitleActive) {
       return 'Listening';
     }
     return null;
-  }, [subtitlesEnabled, subtitleActive, subtitleError, subtitleLoading]);
+  }, [subtitlesEnabled, subtitleActive, subtitleError, subtitleEngineInitializing]);
 
   const translationStatus = useMemo(() => {
     if (!translationEnabled) {
@@ -312,7 +311,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (!translationEnabled) {
-      translationPromptedRef.current = false;
       return;
     }
     if (!subtitleData) {
@@ -368,55 +366,27 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     ttsHook.speak(text).catch(() => {});
   }, [translatedText, subtitleData, ttsEnabled, translationEnabled, ttsHook]);
 
-  useEffect(() => {
-    if (!translationEnabled) {
-      return;
-    }
-    if (!translationAvailable) {
-      return;
-    }
-    if (translationSourceLang === 'auto') {
-      return;
-    }
-    if (translationPackReady) {
-      translationPromptedRef.current = false;
-      return;
-    }
-    if (translationPromptedRef.current) {
-      return;
-    }
-    translationPromptedRef.current = true;
-    const sourceLabel = translationSourceLang.toUpperCase();
-    const targetLabel = (translationTarget || 'en').toUpperCase();
-    showModal(
-      'Download translation',
-      `Download ${sourceLabel} → ${targetLabel} pack for offline translation?`,
-      'download-outline',
-      [
-        { text: 'Later', onPress: () => { closeModal(); } },
-        {
-          text: 'Download',
-          onPress: () => {
-            requestTranslationPack().catch(() => {});
-            closeModal();
-          },
-        },
-      ],
-    );
-  }, [closeModal, requestTranslationPack, showModal, translationAvailable, translationEnabled, translationPackReady, translationSourceLang, translationTarget]);
 
   useEffect(() => {
     let active = true;
     const load = async () => {
       try {
-        const mode = await SubtitlePreferences.getExpoMode();
-        const langCode = await SubtitlePreferences.getExpoLanguage();
+        const [mode, langCode, enabled] = await Promise.all([
+          SubtitlePreferences.getExpoMode(),
+          SubtitlePreferences.getExpoLanguage(),
+          SubtitlePreferences.isEnabled(),
+        ]);
         const locale = SubtitlePreferences.getLocale(langCode);
         if (active) {
           setSubtitleMode(mode);
           setSubtitleLocale(locale);
+          setSubtitlesEnabled(enabled);
+          setSubtitleLoading(false);
         }
       } catch (error) {
+        if (active) {
+          setSubtitleLoading(false);
+        }
       }
     };
     load();
@@ -430,12 +400,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       let active = true;
       const load = async () => {
         try {
-          const [isEnabled, isAuto, src, tgt, ttsEnabledPref] = await Promise.all([
+          const [isEnabled, isAuto, src, tgt, ttsEnabledPref, subtitlesEnabledPref] = await Promise.all([
             TranslationPreferences.isEnabled(),
             TranslationPreferences.isAutoDetect(),
             TranslationPreferences.getSource(),
             TranslationPreferences.getTarget(),
             TTSPreferences.isEnabled(),
+            SubtitlePreferences.isEnabled(),
           ]);
           if (active) {
             setTranslationEnabled(isEnabled);
@@ -443,6 +414,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             setTranslationSource(src);
             setTranslationTarget(tgt);
             setTTSEnabled(ttsEnabledPref);
+            setSubtitlesEnabled(subtitlesEnabledPref);
             ttsReloadRef.current();
           }
         } catch (error) {
@@ -855,25 +827,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               {isGridMode ? "Focus" : "Grid"}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.topControlButton,
-              { backgroundColor: 'rgba(0,0,0,0.7)' },
-              subtitlesEnabled && remotePeers.length > 0 && { borderWidth: 1, borderColor: '#10b981' },
-              remotePeers.length === 0 && { opacity: 0.5 },
-            ]}
-            onPress={() => setSubtitlesEnabled(prev => !prev)}
-            disabled={remotePeers.length === 0}
-          >
-            <Ionicons
-              name={subtitlesEnabled ? 'text' : 'text-outline'}
-              size={20}
-              color={subtitlesEnabled && remotePeers.length > 0 ? '#10b981' : '#ffffff'}
-            />
-            <Text style={[styles.topControlText, subtitlesEnabled && remotePeers.length > 0 && { color: '#10b981' }]}>
-              {subtitlesEnabled ? 'CC On' : 'CC Off'}
-            </Text>
-          </TouchableOpacity>
           {remotePeers.length > 1 && (
             <TouchableOpacity
               style={[
@@ -892,24 +845,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               </Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            style={[
-              styles.topControlButton,
-              { backgroundColor: 'rgba(0,0,0,0.7)' },
-              ttsEnabled && translationEnabled && { borderWidth: 1, borderColor: '#8b5cf6' },
-            ]}
-            onPress={() => setTTSEnabled(prev => !prev)}
-            disabled={!translationEnabled}
-          >
-            <Ionicons
-              name={ttsEnabled && translationEnabled ? 'volume-high' : 'volume-high-outline'}
-              size={20}
-              color={ttsEnabled && translationEnabled ? '#8b5cf6' : '#ffffff'}
-            />
-            <Text style={[styles.topControlText, ttsEnabled && translationEnabled && { color: '#8b5cf6' }]}>
-              {ttsEnabled && translationEnabled ? 'TTS On' : 'TTS Off'}
-            </Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.topRightControls}>

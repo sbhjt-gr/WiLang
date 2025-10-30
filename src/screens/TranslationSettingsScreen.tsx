@@ -61,6 +61,8 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 	const [ttsVolume, setTTSVolume] = useState(1.0);
 	const [ttsLoading, setTTSLoading] = useState(true);
 	const [testTTSEnabled, setTestTTSEnabled] = useState(false);
+	const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
+	const [subtitleLoading, setSubtitleLoading] = useState(true);
 
 	const loadModels = useCallback(async () => {
 		setIsLoadingModels(true);
@@ -91,7 +93,7 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 				if (!cancelled) {
 					setAvailable(isAvailable);
 				}
-				const [storedEnabled, storedAuto, storedSource, storedTarget, storedTTSEnabled, storedTTSRate, storedTTSPitch, storedTTSVolume] = await Promise.all([
+				const [storedEnabled, storedAuto, storedSource, storedTarget, storedTTSEnabled, storedTTSRate, storedTTSPitch, storedTTSVolume, storedSubtitlesEnabled] = await Promise.all([
 					TranslationPreferences.isEnabled(),
 					TranslationPreferences.isAutoDetect(),
 					TranslationPreferences.getSource(),
@@ -100,6 +102,7 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 					TTSPreferences.getRate(),
 					TTSPreferences.getPitch(),
 					TTSPreferences.getVolume(),
+					SubtitlePreferences.isEnabled(),
 				]);
 				if (!cancelled) {
 					setEnabled(storedEnabled);
@@ -110,6 +113,7 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 					setTTSRate(storedTTSRate);
 					setTTSPitch(storedTTSPitch);
 					setTTSVolume(storedTTSVolume);
+					setSubtitlesEnabled(storedSubtitlesEnabled);
 				}
 			} catch (error) {
 				console.error('translation_settings_init_error', error);
@@ -117,6 +121,7 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 				if (!cancelled) {
 					setLoading(false);
 					setTTSLoading(false);
+					setSubtitleLoading(false);
 				}
 			}
 		};
@@ -199,6 +204,13 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 		TTSPreferences.setVolume(ttsVolume);
 	}, [ttsLoading, ttsVolume]);
 
+	useEffect(() => {
+		if (subtitleLoading) {
+			return;
+		}
+		SubtitlePreferences.setEnabled(subtitlesEnabled);
+	}, [subtitleLoading, subtitlesEnabled]);
+
 	const handleTestTTS = useCallback(async () => {
 		if (!translatedText.trim()) {
 			return;
@@ -232,6 +244,9 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 		if (!available) {
 			return 'Translation unavailable';
 		}
+		if (!enabled) {
+			return 'Enable translation first';
+		}
 		if (autoDetect || source === 'auto') {
 			return 'Select source language';
 		}
@@ -245,13 +260,13 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 			return 'Model missing';
 		}
 		return 'Model status unknown';
-	}, [available, autoDetect, source, packStatus, isCheckingPack]);
+	}, [available, enabled, autoDetect, source, packStatus, isCheckingPack]);
 
 	useEffect(() => {
 		if (loading || isDownloadingPack) {
 			return;
 		}
-		if (!available || autoDetect || source === 'auto') {
+		if (!available || !enabled || autoDetect || source === 'auto') {
 			setPackStatus('unknown');
 			setIsCheckingPack(false);
 			return;
@@ -469,32 +484,52 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 						contentContainerStyle={styles.scrollContent}
 						showsVerticalScrollIndicator={false}
 					>
-						<View style={styles.section}>
-							<Text style={[styles.sectionTitle, { color: colors.text }]}>Settings</Text>
-							<Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
-								Configure on-device subtitle translation
-							</Text>
-						</View>
+					<View style={styles.section}>
+						<Text style={[styles.sectionTitle, { color: colors.text }]}>Settings</Text>
+						<Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
+							Configure on-device subtitle translation
+						</Text>
+					</View>
 
-						<View style={[styles.card, { backgroundColor: colors.surface }]}>
-							<View style={styles.cardHeader}>
-								<View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-									<Ionicons name="language" size={24} color={colors.primary} />
-								</View>
-								<View style={styles.cardHeaderText}>
-									<Text style={[styles.cardTitle, { color: colors.text }]}>Enable Translation</Text>
-									<Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-										Real-time subtitle translation
-									</Text>
-								</View>
-								<Switch
-									value={enabled}
-									onValueChange={setEnabled}
-									disabled={!available}
-									trackColor={{ false: colors.border, true: colors.primary }}
-									thumbColor="#fff"
-								/>
+					<View style={[styles.card, { backgroundColor: colors.surface }]}>
+						<View style={styles.cardHeader}>
+							<View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
+								<Ionicons name="text" size={24} color={colors.primary} />
 							</View>
+							<View style={styles.cardHeaderText}>
+								<Text style={[styles.cardTitle, { color: colors.text }]}>Enable Subtitles</Text>
+								<Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+									Show subtitles during calls
+								</Text>
+							</View>
+							<Switch
+								value={subtitlesEnabled}
+								onValueChange={setSubtitlesEnabled}
+								trackColor={{ false: colors.border, true: colors.primary }}
+								thumbColor="#fff"
+							/>
+						</View>
+					</View>
+
+					<View style={[styles.card, { backgroundColor: colors.surface }]}>
+						<View style={styles.cardHeader}>
+							<View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
+								<Ionicons name="language" size={24} color={colors.primary} />
+							</View>
+							<View style={styles.cardHeaderText}>
+								<Text style={[styles.cardTitle, { color: colors.text }]}>Enable Translation</Text>
+								<Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+									Real-time subtitle translation
+								</Text>
+							</View>
+							<Switch
+								value={enabled}
+								onValueChange={setEnabled}
+								disabled={!available}
+								trackColor={{ false: colors.border, true: colors.primary }}
+								thumbColor="#fff"
+							/>
+						</View>
 
 							{!available && (
 								<View style={[styles.warningBanner, { backgroundColor: `${colors.error}10` }]}>
@@ -569,6 +604,52 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 								Translation is performed on-device for privacy. Some language pairs may require additional downloads.
 							</Text>
 						</View>
+
+						{enabled && (
+							<View style={[styles.card, { backgroundColor: colors.surface }]}>
+								<View style={styles.cardHeader}>
+									<View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
+										<Ionicons name="cloud-download" size={24} color={colors.primary} />
+									</View>
+									<View style={styles.cardHeaderText}>
+										<Text style={[styles.cardTitle, { color: colors.text }]}>Model Download</Text>
+										<Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+											Download language models for offline translation
+										</Text>
+									</View>
+								</View>
+								<View style={[styles.divider, { backgroundColor: colors.border, marginTop: 16 }]} />
+								<View style={styles.packRow}>
+									{isCheckingPack ? (
+										<ActivityIndicator size="small" color={colors.primary} style={styles.packSpinner} />
+									) : (
+										<Ionicons
+											name={packStatus === 'available' ? 'checkmark-circle' : 'cloud-download-outline'}
+											size={18}
+											color={packStatus === 'available' ? colors.primary : colors.textSecondary}
+										/>
+									)}
+									<Text style={[styles.packStatusText, { color: colors.text }]}>{packStatusLabel}</Text>
+									{canDownload && packStatus !== 'available' && (
+										<TouchableOpacity
+											style={[styles.packActionButton, { borderColor: colors.primary }]}
+											onPress={handleDownloadPack}
+											disabled={isDownloadingPack || isCheckingPack}
+											activeOpacity={0.7}
+										>
+											{isDownloadingPack ? (
+												<ActivityIndicator size="small" color={colors.primary} />
+											) : (
+												<Text style={[styles.packActionButtonText, { color: colors.primary }]}>Download</Text>
+											)}
+										</TouchableOpacity>
+									)}
+								</View>
+								{downloadError && (
+									<Text style={[styles.packError, { color: colors.error }]}>{downloadError}</Text>
+								)}
+							</View>
+						)}
 
 						<View style={styles.section}>
 							<Text style={[styles.sectionTitle, { color: colors.text }]}>Text-to-Speech</Text>
