@@ -60,28 +60,35 @@ const ensureModule = () => {
 
 const syncEngine = async (mod: TranslationModule, desired?: TranslationEngine): Promise<TranslationEngine> => {
 	const target = desired ?? currentEngine;
+	const previous = currentEngine;
 	if (engineSynced && target === currentEngine) {
 		if (currentEngine === 'apple' && !appleAvailable) {
-			currentEngine = 'mlkit';
+			const error: any = new Error('apple_unavailable');
+			error.code = 'apple_unavailable';
+			throw error;
 		}
 		return currentEngine;
 	}
-	let next = target;
-	if (next === 'apple' && !appleAvailable) {
-		next = 'mlkit';
+	if (target === 'apple' && !appleAvailable) {
+		const error: any = new Error('apple_unavailable');
+		error.code = 'apple_unavailable';
+		throw error;
 	}
 	if (typeof mod.setEngineAsync === 'function') {
 		try {
-			const result = await mod.setEngineAsync(next);
-			const resolved = normalizeEngine(result ?? next);
-			currentEngine = resolved === 'apple' && !appleAvailable ? 'mlkit' : resolved;
+			const result = await mod.setEngineAsync(target);
+			const resolved = normalizeEngine(result ?? target);
+			currentEngine = resolved;
 			engineSynced = true;
 			return currentEngine;
 		} catch (error) {
 			console.error('engine_sync_error', error);
+			currentEngine = previous;
+			engineSynced = false;
+			throw error;
 		}
 	}
-	currentEngine = next;
+	currentEngine = target;
 	engineSynced = true;
 	return currentEngine;
 };
