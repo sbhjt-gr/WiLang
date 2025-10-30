@@ -87,7 +87,7 @@ export default {
             "minSdkVersion": 28
           },
           "ios": {
-            "deploymentTarget": "17.0"
+            "deploymentTarget": "18.0"
           }
         }
       ],
