@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { TranslationEngine } from './TranslationService';
 
 export type TranslationLang =
 	| 'auto'
@@ -27,9 +28,12 @@ const TARGET_KEY = '@wilang:translation_target_lang';
 const ENABLED_KEY = '@wilang:translation_enabled';
 const AUTO_KEY = '@wilang:translation_auto_detect';
 const PACKS_KEY = '@wilang:translation_downloaded_packs';
+const ENGINE_KEY = '@wilang:translation_engine';
+const UI_KEY = '@wilang:translation_native_ui';
 
 const DEFAULT_SOURCE: TranslationLang = 'auto';
 const DEFAULT_TARGET: TranslationLang = 'en';
+const DEFAULT_ENGINE: TranslationEngine = 'mlkit';
 
 const parseBool = (value: string | null, fallback: boolean) => {
 	if (value === '1') {
@@ -74,6 +78,20 @@ const readLang = (value: string | null, fallback: TranslationLang) => {
 };
 
 export const TranslationPreferences = {
+	async getEngine(): Promise<TranslationEngine> {
+		try {
+			const value = await AsyncStorage.getItem(ENGINE_KEY);
+			if (value === 'apple') {
+				return 'apple';
+			}
+		} catch (error) {}
+		return DEFAULT_ENGINE;
+	},
+	async setEngine(value: TranslationEngine): Promise<void> {
+		try {
+			await AsyncStorage.setItem(ENGINE_KEY, value);
+		} catch (error) {}
+	},
 	async getSource(): Promise<TranslationLang> {
 		try {
 			const value = await AsyncStorage.getItem(SOURCE_KEY);
@@ -117,6 +135,16 @@ export const TranslationPreferences = {
 	},
 	async setAutoDetect(value: boolean): Promise<void> {
 		await saveBool(AUTO_KEY, value);
+	},
+	async isNativeUI(): Promise<boolean> {
+		try {
+			const value = await AsyncStorage.getItem(UI_KEY);
+			return parseBool(value, false);
+		} catch (error) {}
+		return false;
+	},
+	async setNativeUI(value: boolean): Promise<void> {
+		await saveBool(UI_KEY, value);
 	},
 	async getPacks(): Promise<TranslationPack[]> {
 		try {

@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
 import { TranslationPreferences, type TranslationLang } from '../services/TranslationPreferences';
 import { TRANSLATION_LANGUAGE_OPTIONS, getTranslationOptionLabel } from '../constants/translation';
-import { TranslationService } from '../services/TranslationService';
+import { TranslationService, type TranslationEngine } from '../services/TranslationService';
 import type { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -53,6 +53,13 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 	const [isLoadingModels, setIsLoadingModels] = useState(false);
 	const [activeDelete, setActiveDelete] = useState<string | null>(null);
 	const [modelError, setModelError] = useState<string | null>(null);
+	const [engine, setEngineValue] = useState<TranslationEngine>('mlkit');
+	const [nativeUI, setNativeUI] = useState(false);
+	const [supportsApple, setSupportsApple] = useState(() => TranslationService.isAppleAvailable());
+	const [supportsUI, setSupportsUI] = useState(() => TranslationService.isAppleUIAvailable());
+	const [isSwitchingEngine, setIsSwitchingEngine] = useState(false);
+	const [engineError, setEngineError] = useState<string | null>(null);
+	const [isPresentingUI, setIsPresentingUI] = useState(false);
 
 	const loadModels = useCallback(async () => {
 		setIsLoadingModels(true);
@@ -79,21 +86,35 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 		const init = async () => {
 			console.log('translation_settings_init_start');
 			try {
-				const isAvailable = TranslationService.isTranslationAvailable();
-				if (!cancelled) {
-					setAvailable(isAvailable);
-				}
-				const [storedEnabled, storedAuto, storedSource, storedTarget] = await Promise.all([
+				const apple = TranslationService.isAppleAvailable();
+				const appleUI = TranslationService.isAppleUIAvailable();
+				const [storedEnabled, storedAuto, storedSource, storedTarget, storedEngine, storedNativeUI] = await Promise.all([
 					TranslationPreferences.isEnabled(),
 					TranslationPreferences.isAutoDetect(),
 					TranslationPreferences.getSource(),
 					TranslationPreferences.getTarget(),
+					TranslationPreferences.getEngine(),
+					TranslationPreferences.isNativeUI(),
 				]);
+				const syncedEngine = await TranslationService.setEngine(storedEngine);
+				const currentAvailable = TranslationService.isTranslationAvailable();
 				if (!cancelled) {
+					setSupportsApple(apple);
+					setSupportsUI(appleUI);
+					setEngineError(null);
+					setEngineValue(syncedEngine);
+					setNativeUI(appleUI && syncedEngine === 'apple' && storedNativeUI);
 					setEnabled(storedEnabled);
 					setAutoDetect(storedAuto);
 					setSource(storedSource);
 					setTarget(storedTarget);
+					setAvailable(currentAvailable);
+				}
+				if (syncedEngine !== storedEngine) {
+					await TranslationPreferences.setEngine(syncedEngine);
+				}
+				if (storedNativeUI && (!(appleUI && syncedEngine === 'apple'))) {
+					await TranslationPreferences.setNativeUI(false);
 				}
 			} catch (error) {
 				console.error('translation_settings_init_error', error);
@@ -156,13 +177,25 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 		});
 	}, [navigation]);
 
+	useEffect(() => {
+		if (engine !== 'apple' || !supportsUI) {
+			if (nativeUI) {
+				setNativeUI(false);
+				TranslationPreferences.setNativeUI(false);
+			}
+		}
+	}, [engine, supportsUI, nativeUI]);
+
 	const sourceText = useMemo(() => getTranslationOptionLabel(source), [source]);
 	const targetText = useMemo(() => getTranslationOptionLabel(target), [target]);
 	const canTest = useMemo(() => available && !autoDetect && source !== 'auto', [available, autoDetect, source]);
-	const canDownload = useMemo(() => available && !autoDetect && source !== 'auto', [available, autoDetect, source]);
+	const canDownload = useMemo(() => available && engine === 'mlkit' && !autoDetect && source !== 'auto', [available, engine, autoDetect, source]);
 	const packStatusLabel = useMemo(() => {
 		if (!available) {
 			return 'Translation unavailable';
+		}
+		if (engine !== 'mlkit') {
+			return 'Language pack not required';
 		}
 		if (autoDetect || source === 'auto') {
 			return 'Select source language';
@@ -177,13 +210,13 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 			return 'Model missing';
 		}
 		return 'Model status unknown';
-	}, [available, autoDetect, source, packStatus, isCheckingPack]);
+	}, [available, engine, autoDetect, source, packStatus, isCheckingPack]);
 
 	useEffect(() => {
 		if (loading || isDownloadingPack) {
 			return;
 		}
-		if (!available || autoDetect || source === 'auto') {
+		if (!available || autoDetect || source === 'auto' || engine !== 'mlkit') {
 			setPackStatus('unknown');
 			setIsCheckingPack(false);
 			return;
@@ -213,7 +246,7 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 		return () => {
 			cancelled = true;
 		};
-	}, [loading, available, autoDetect, source, target, isDownloadingPack]);
+	}, [loading, available, autoDetect, source, target, isDownloadingPack, engine]);
 
 	const onSelectSource = useCallback((value: TranslationLang) => {
 		console.log('source_language_selected', value);
@@ -228,17 +261,21 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 	}, []);
 
 	useEffect(() => {
-		console.log('translation_config_changed', { autoDetect, source, target });
+		console.log('translation_config_changed', { autoDetect, source, target, engine });
 		setTestError(null);
 		setTranslatedText('');
 		setDownloadError(null);
 		setPackStatus('unknown');
-	}, [autoDetect, source, target]);
+		}, [autoDetect, source, target, engine]);
 
 	const handleDownloadPack = useCallback(async () => {
 		console.log('manual_pack_download_start');
 		if (!canDownload) {
-			setDownloadError('Disable auto-detect and select a source language first.');
+			if (engine !== 'mlkit') {
+				setDownloadError('Language packs are only available with ML Kit.');
+			} else {
+				setDownloadError('Disable auto-detect and select a source language first.');
+			}
 			return;
 		}
 		setDownloadError(null);
@@ -270,7 +307,7 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 		} finally {
 			setIsDownloadingPack(false);
 		}
-	}, [canDownload, source, target, loadModels]);
+	}, [canDownload, source, target, loadModels, engine]);
 
 	const handleTestTranslation = useCallback(async () => {
 		console.log('test_start');
@@ -302,9 +339,9 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 		const effectiveSource = source;
 		console.log('test_service', TranslationService.isTranslationAvailable());
 		try {
-			let readyPack = packStatus === 'available';
+			let readyPack = engine !== 'mlkit' || packStatus === 'available';
 			console.log('test_pack_state', packStatus);
-			if (!readyPack) {
+			if (engine === 'mlkit' && !readyPack) {
 				console.log('test_pack_check_start', { effectiveSource, target });
 				try {
 					readyPack = await TranslationService.isLanguagePackDownloaded(effectiveSource, target);
@@ -316,7 +353,7 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 					setPackStatus('missing');
 				}
 			}
-			if (!readyPack) {
+			if (engine === 'mlkit' && !readyPack) {
 				console.log('test_pack_download_start', { effectiveSource, target });
 				setIsDownloadingPack(true);
 				try {
@@ -362,7 +399,7 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 		} finally {
 			setIsTranslating(false);
 		}
-	}, [available, autoDetect, source, target, testText, packStatus, loadModels]);
+	}, [available, autoDetect, source, target, testText, packStatus, loadModels, engine]);
 
 	const handleDeleteModel = useCallback(async (code: string) => {
 		console.log('model_delete_start', code);
@@ -378,6 +415,87 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 			setActiveDelete(null);
 		}
 	}, [loadModels]);
+
+	const handleEngineChange = useCallback(async (value: TranslationEngine) => {
+		if (isSwitchingEngine || value === engine) {
+			return;
+		}
+		if (value === 'apple' && !supportsApple) {
+			setEngineError('Apple translation unavailable.');
+			return;
+		}
+		setIsSwitchingEngine(true);
+		setEngineError(null);
+		try {
+			const result = await TranslationService.setEngine(value);
+			await TranslationPreferences.setEngine(result);
+			if (!loading) {
+				setPackStatus('unknown');
+			}
+			setEngineValue(result);
+			setAvailable(TranslationService.isTranslationAvailable());
+			const nextAppleAvail = TranslationService.isAppleAvailable();
+			const nextAppleUI = TranslationService.isAppleUIAvailable();
+			setSupportsApple(nextAppleAvail);
+			setSupportsUI(nextAppleUI);
+			if (!(nextAppleUI && result === 'apple') && nativeUI) {
+				setNativeUI(false);
+				await TranslationPreferences.setNativeUI(false);
+			}
+			if (result !== value && value === 'apple') {
+				setEngineError('Apple translation unavailable.');
+			}
+			setTranslatedText('');
+			setTestError(null);
+			setDownloadError(null);
+			await loadModels();
+		} catch (error) {
+			console.error('engine_change_error', error);
+			setEngineError('Engine change failed.');
+		} finally {
+			setIsSwitchingEngine(false);
+		}
+	}, [engine, supportsApple, loading, loadModels, isSwitchingEngine, nativeUI]);
+
+	const handleNativeUIToggle = useCallback(async (value: boolean) => {
+		if (!supportsUI || engine !== 'apple') {
+			setNativeUI(false);
+			await TranslationPreferences.setNativeUI(false);
+			return;
+		}
+		setNativeUI(value);
+		await TranslationPreferences.setNativeUI(value);
+	}, [supportsUI, engine]);
+
+	const handleUITest = useCallback(async () => {
+		if (isPresentingUI) {
+			return;
+		}
+		const trimmed = testText.trim();
+		if (!trimmed) {
+			setTestError('Enter text to translate.');
+			setTranslatedText('');
+			return;
+		}
+		if (!supportsUI || engine !== 'apple') {
+			setTestError('Apple UI unavailable.');
+			setTranslatedText('');
+			return;
+		}
+		setIsPresentingUI(true);
+		setTestError(null);
+		setDownloadError(null);
+		try {
+			const result = await TranslationService.translateWithUI(trimmed);
+			setTranslatedText(result);
+		} catch (error) {
+			console.error('translation_ui_error', error);
+			setTestError('Apple UI unavailable.');
+			setTranslatedText('');
+		} finally {
+			setIsPresentingUI(false);
+		}
+	}, [testText, supportsUI, engine, isPresentingUI]);
 
 
 	return (
@@ -432,8 +550,99 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 								<View style={[styles.warningBanner, { backgroundColor: `${colors.error}10` }]}>
 									<Ionicons name="warning" size={16} color={colors.error} />
 									<Text style={[styles.warningText, { color: colors.error }]}>
-										Translation unavailable on this device. Requires iOS 18+
+										Translation unavailable on this device. Check engine selection.
 									</Text>
+								</View>
+							)}
+						</View>
+
+						<View style={[styles.card, { backgroundColor: colors.surface }]}>
+							<View style={styles.cardHeader}>
+								<View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}> 
+									<Ionicons name="git-compare" size={24} color={colors.primary} />
+								</View>
+								<View style={styles.cardHeaderText}>
+									<Text style={[styles.cardTitle, { color: colors.text }]}>Translation Engine</Text>
+									<Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>Choose provider for iOS</Text>
+								</View>
+							</View>
+
+							<View style={styles.engineButtons}>
+								<TouchableOpacity
+									style={[
+										styles.engineButton,
+										{ borderColor: colors.border },
+										engine === 'mlkit' && { backgroundColor: colors.primary, borderColor: colors.primary },
+										isSwitchingEngine && engine !== 'mlkit' && styles.engineButtonDisabled,
+									]}
+									disabled={isSwitchingEngine || engine === 'mlkit'}
+									onPress={() => handleEngineChange('mlkit')}
+									activeOpacity={0.7}
+								>
+									{isSwitchingEngine && engine !== 'mlkit' ? (
+										<ActivityIndicator size="small" color="#fff" />
+									) : (
+										<Text
+											style={[
+												styles.engineButtonText,
+												{ color: engine === 'mlkit' ? '#fff' : colors.text },
+											]}
+										>
+											ML Kit
+										</Text>
+									)}
+								</TouchableOpacity>
+
+								<TouchableOpacity
+									style={[
+										styles.engineButton,
+										{ borderColor: colors.border },
+										engine === 'apple' && { backgroundColor: colors.primary, borderColor: colors.primary },
+										(!supportsApple || (isSwitchingEngine && engine !== 'apple')) && styles.engineButtonDisabled,
+									]}
+									disabled={!supportsApple || isSwitchingEngine || engine === 'apple'}
+									onPress={() => handleEngineChange('apple')}
+									activeOpacity={0.7}
+								>
+									{isSwitchingEngine && engine !== 'apple' ? (
+										<ActivityIndicator size="small" color="#fff" />
+									) : (
+										<Text
+											style={[
+												styles.engineButtonText,
+												{ color: engine === 'apple' ? '#fff' : colors.text },
+											]}
+										>
+											Apple
+										</Text>
+									)}
+								</TouchableOpacity>
+							</View>
+
+							{engineError && (
+								<Text style={[styles.engineError, { color: colors.error }]}>{engineError}</Text>
+							)}
+
+							{!supportsApple && (
+								<Text style={[styles.engineNotice, { color: colors.error }]}>Apple translation unavailable on this device.</Text>
+							)}
+
+							{supportsUI && engine === 'apple' && (
+								<View style={[styles.nativeRow, { borderColor: colors.border }]}>
+									<View style={styles.nativeLeft}>
+										<Ionicons name="grid-outline" size={20} color={colors.text} style={styles.settingIcon} />
+										<View>
+											<Text style={[styles.nativeTitle, { color: colors.text }]}>Use Apple UI</Text>
+											<Text style={[styles.nativeSubtitle, { color: colors.textSecondary }]}>Show Apple's translation overlay</Text>
+										</View>
+									</View>
+									<Switch
+										value={nativeUI}
+										onValueChange={handleNativeUIToggle}
+										disabled={isSwitchingEngine}
+										trackColor={{ false: colors.border, true: colors.primary }}
+										thumbColor="#fff"
+									/>
 								</View>
 							)}
 						</View>
@@ -507,7 +716,11 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 								<Text style={[styles.sectionTitle, { color: colors.text }]}>Downloaded Models</Text>
 								<Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>Manage downloaded language models</Text>
 								<View style={[styles.card, { backgroundColor: colors.surface }]}>
-									{isLoadingModels ? (
+									{modelError ? (
+										<Text style={[styles.modelError, { color: colors.error }]}>{modelError}</Text>
+									) : engine !== 'mlkit' ? (
+										<Text style={[styles.modelEmptyText, { color: colors.textSecondary }]}>Language packs are not required when using Apple translation.</Text>
+									) : isLoadingModels ? (
 										<View style={styles.modelsLoadingRow}>
 											<ActivityIndicator size="small" color={colors.primary} />
 											<Text style={[styles.modelsLoadingText, { color: colors.textSecondary }]}>Loading models...</Text>
@@ -517,7 +730,7 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 									) : (
 										<View style={styles.modelsList}>
 											{downloadedModels.map(item => (
-												<View key={item} style={[styles.modelRow, { borderColor: colors.border }]}>
+												<View key={item} style={[styles.modelRow, { borderColor: colors.border }]}> 
 													<View style={styles.modelInfo}>
 														<Text style={[styles.modelName, { color: colors.text }]}>{labelForLanguage(item)}</Text>
 														<Text style={[styles.modelCode, { color: colors.textSecondary }]}>{item}</Text>
@@ -536,9 +749,6 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 												</View>
 											))}
 										</View>
-									)}
-									{modelError && (
-										<Text style={[styles.modelError, { color: colors.error }]}>{modelError}</Text>
 									)}
 								</View>
 							</View>
@@ -624,6 +834,31 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 											</>
 										)}
 									</TouchableOpacity>
+
+									{supportsUI && engine === 'apple' && (
+										<TouchableOpacity
+											style={[
+												styles.testSecondaryButton,
+												{ borderColor: colors.primary },
+												(isPresentingUI || !testText.trim()) && styles.testButtonDisabled,
+											]}
+											onPress={handleUITest}
+											disabled={isPresentingUI || !testText.trim()}
+											activeOpacity={0.7}
+										>
+											{isPresentingUI ? (
+												<>
+													<ActivityIndicator size="small" color={colors.primary} />
+													<Text style={[styles.testSecondaryText, { color: colors.primary }]}>Opening...</Text>
+												</>
+											) : (
+												<>
+													<Ionicons name="apps" size={20} color={colors.primary} />
+													<Text style={[styles.testSecondaryText, { color: colors.primary }]}>Open Apple UI</Text>
+												</>
+											)}
+										</TouchableOpacity>
+									)}
 
 									{testError && (
 										<Text style={[styles.testError, { color: colors.error }]}>{testError}</Text>
@@ -864,6 +1099,60 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		opacity: 0.6,
 	},
+	engineButtons: {
+		flexDirection: 'row',
+		gap: 12,
+		marginTop: 16,
+	},
+	engineButton: {
+		flex: 1,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: 'transparent',
+		paddingVertical: 14,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	engineButtonDisabled: {
+		opacity: 0.5,
+	},
+	engineButtonText: {
+		fontSize: 15,
+		fontWeight: '600',
+	},
+	engineError: {
+		marginTop: 12,
+		fontSize: 12,
+		textAlign: 'center',
+	},
+	engineNotice: {
+		marginTop: 12,
+		fontSize: 12,
+		textAlign: 'center',
+	},
+	nativeRow: {
+		marginTop: 20,
+		borderWidth: 1,
+		borderRadius: 12,
+		paddingVertical: 12,
+		paddingHorizontal: 14,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	nativeLeft: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 12,
+		flex: 1,
+	},
+	nativeTitle: {
+		fontSize: 15,
+		fontWeight: '600',
+	},
+	nativeSubtitle: {
+		fontSize: 12,
+	},
 	warningBanner: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -1022,6 +1311,21 @@ const styles = StyleSheet.create({
 	testButtonText: {
 		color: '#fff',
 		fontSize: 16,
+		fontWeight: '600',
+	},
+	testSecondaryButton: {
+		marginTop: 12,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: 'transparent',
+		paddingVertical: 14,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 8,
+	},
+	testSecondaryText: {
+		fontSize: 15,
 		fontWeight: '600',
 	},
 	testHint: {
