@@ -12,6 +12,7 @@ import type { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { TTSPreferences } from '../services/TTSPreferences';
 import { useTTS } from '../hooks/useTTS';
+import { SubtitlePreferences } from '../services/SubtitlePreferences';
 
 export type TranslationSettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'TranslationSettingsScreen'>;
 export type TranslationSettingsScreenRouteProp = RouteProp<RootStackParamList, 'TranslationSettingsScreen'>;
@@ -484,23 +485,10 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 						contentContainerStyle={styles.scrollContent}
 						showsVerticalScrollIndicator={false}
 					>
-					<View style={styles.section}>
-						<Text style={[styles.sectionTitle, { color: colors.text }]}>Settings</Text>
-						<Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
-							Configure on-device subtitle translation
-						</Text>
-					</View>
-
 					<View style={[styles.card, { backgroundColor: colors.surface }]}>
-						<View style={styles.cardHeader}>
-							<View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-								<Ionicons name="text" size={24} color={colors.primary} />
-							</View>
-							<View style={styles.cardHeaderText}>
-								<Text style={[styles.cardTitle, { color: colors.text }]}>Enable Subtitles</Text>
-								<Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-									Show subtitles during calls
-								</Text>
+						<View style={styles.settingRow}>
+							<View style={styles.settingLeft}>
+								<Text style={[styles.settingTitle, { color: colors.text }]}>Subtitles</Text>
 							</View>
 							<Switch
 								value={subtitlesEnabled}
@@ -509,18 +497,17 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 								thumbColor="#fff"
 							/>
 						</View>
-					</View>
 
-					<View style={[styles.card, { backgroundColor: colors.surface }]}>
-						<View style={styles.cardHeader}>
-							<View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-								<Ionicons name="language" size={24} color={colors.primary} />
-							</View>
-							<View style={styles.cardHeaderText}>
-								<Text style={[styles.cardTitle, { color: colors.text }]}>Enable Translation</Text>
-								<Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-									Real-time subtitle translation
-								</Text>
+						<View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+						<View style={styles.settingRow}>
+							<View style={styles.settingLeft}>
+								<Text style={[styles.settingTitle, { color: colors.text }]}>Translation</Text>
+								{!available && (
+									<Text style={[styles.settingSubtitle, { color: colors.error, fontSize: 11 }]}>
+										Requires iOS 18+
+									</Text>
+								)}
 							</View>
 							<Switch
 								value={enabled}
@@ -530,28 +517,12 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 								thumbColor="#fff"
 							/>
 						</View>
+					</View>
 
-							{!available && (
-								<View style={[styles.warningBanner, { backgroundColor: `${colors.error}10` }]}>
-									<Ionicons name="warning" size={16} color={colors.error} />
-									<Text style={[styles.warningText, { color: colors.error }]}>
-										Translation unavailable on this device. Requires iOS 18+
-									</Text>
-								</View>
-							)}
-						</View>
-
+					{enabled && (
 						<View style={[styles.card, { backgroundColor: colors.surface }]}>
 							<View style={[styles.settingRow, { opacity: enabled ? 1 : 0.5 }]}>
-								<View style={styles.settingLeft}>
-									<Ionicons name="scan" size={20} color={colors.text} style={styles.settingIcon} />
-									<View>
-										<Text style={[styles.settingTitle, { color: colors.text }]}>Auto-detect Source</Text>
-										<Text style={[styles.settingSubtitle, { color: colors.textSecondary }]}>
-											Detect language automatically
-										</Text>
-									</View>
-								</View>
+								<Text style={[styles.settingTitle, { color: colors.text }]}>Auto-detect Source</Text>
 								<Switch
 									value={autoDetect}
 									onValueChange={setAutoDetect}
@@ -569,14 +540,8 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 								onPress={() => setShowSource(true)}
 								activeOpacity={0.7}
 							>
-								<View style={styles.selectorLeft}>
-									<Ionicons name="chatbox-ellipses-outline" size={20} color={colors.text} style={styles.settingIcon} />
-									<View style={styles.selectorTextContainer}>
-										<Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>Source Language</Text>
-										<Text style={[styles.selectorValue, { color: colors.text }]}>{sourceText}</Text>
-									</View>
-								</View>
-								<Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+								<Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>From: {sourceText}</Text>
+								<Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
 							</TouchableOpacity>
 
 							<View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -587,198 +552,130 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 								onPress={() => setShowTarget(true)}
 								activeOpacity={0.7}
 							>
-								<View style={styles.selectorLeft}>
-									<Ionicons name="globe-outline" size={20} color={colors.text} style={styles.settingIcon} />
-									<View style={styles.selectorTextContainer}>
-										<Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>Target Language</Text>
-										<Text style={[styles.selectorValue, { color: colors.text }]}>{targetText}</Text>
-									</View>
-								</View>
-								<Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+								<Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>To: {targetText}</Text>
+								<Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
 							</TouchableOpacity>
 						</View>
+					)}
 
-						<View style={[styles.infoCard, { backgroundColor: `${colors.primary}08` }]}>
-							<Ionicons name="information-circle" size={20} color={colors.primary} />
-							<Text style={[styles.infoText, { color: colors.text }]}>
-								Translation is performed on-device for privacy. Some language pairs may require additional downloads.
-							</Text>
-						</View>
-
-						{enabled && (
-							<View style={[styles.card, { backgroundColor: colors.surface }]}>
-								<View style={styles.cardHeader}>
-									<View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-										<Ionicons name="cloud-download" size={24} color={colors.primary} />
-									</View>
-									<View style={styles.cardHeaderText}>
-										<Text style={[styles.cardTitle, { color: colors.text }]}>Model Download</Text>
-										<Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-											Download language models for offline translation
-										</Text>
-									</View>
-								</View>
-								<View style={[styles.divider, { backgroundColor: colors.border, marginTop: 16 }]} />
-								<View style={styles.packRow}>
-									{isCheckingPack ? (
-										<ActivityIndicator size="small" color={colors.primary} style={styles.packSpinner} />
-									) : (
-										<Ionicons
-											name={packStatus === 'available' ? 'checkmark-circle' : 'cloud-download-outline'}
-											size={18}
-											color={packStatus === 'available' ? colors.primary : colors.textSecondary}
-										/>
-									)}
-									<Text style={[styles.packStatusText, { color: colors.text }]}>{packStatusLabel}</Text>
-									{canDownload && packStatus !== 'available' && (
-										<TouchableOpacity
-											style={[styles.packActionButton, { borderColor: colors.primary }]}
-											onPress={handleDownloadPack}
-											disabled={isDownloadingPack || isCheckingPack}
-											activeOpacity={0.7}
-										>
-											{isDownloadingPack ? (
-												<ActivityIndicator size="small" color={colors.primary} />
-											) : (
-												<Text style={[styles.packActionButtonText, { color: colors.primary }]}>Download</Text>
-											)}
-										</TouchableOpacity>
-									)}
-								</View>
-								{downloadError && (
-									<Text style={[styles.packError, { color: colors.error }]}>{downloadError}</Text>
+					{enabled && !autoDetect && source !== 'auto' && (
+						<View style={[styles.card, { backgroundColor: colors.surface }]}>
+							<View style={styles.packRow}>
+								{isCheckingPack ? (
+									<ActivityIndicator size="small" color={colors.primary} />
+								) : (
+									<Ionicons
+										name={packStatus === 'available' ? 'checkmark-circle' : 'cloud-download-outline'}
+										size={18}
+										color={packStatus === 'available' ? colors.primary : colors.textSecondary}
+									/>
+								)}
+								<Text style={[styles.packStatusText, { color: colors.text }]}>{packStatusLabel}</Text>
+								{canDownload && packStatus !== 'available' && (
+									<TouchableOpacity
+										style={[styles.packActionButton, { borderColor: colors.primary }]}
+										onPress={handleDownloadPack}
+										disabled={isDownloadingPack || isCheckingPack}
+										activeOpacity={0.7}
+									>
+										{isDownloadingPack ? (
+											<ActivityIndicator size="small" color={colors.primary} />
+										) : (
+											<Text style={[styles.packActionButtonText, { color: colors.primary }]}>Download</Text>
+										)}
+									</TouchableOpacity>
 								)}
 							</View>
-						)}
-
-						<View style={styles.section}>
-							<Text style={[styles.sectionTitle, { color: colors.text }]}>Text-to-Speech</Text>
-							<Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
-								Speak translated text aloud during calls
-							</Text>
-						</View>
-
-						<View style={[styles.card, { backgroundColor: colors.surface }]}>
-							<View style={styles.cardHeader}>
-								<View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-									<Ionicons name="volume-high" size={24} color={colors.primary} />
-								</View>
-								<View style={styles.cardHeaderText}>
-									<Text style={[styles.cardTitle, { color: colors.text }]}>Enable TTS</Text>
-									<Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-										Read translated subtitles aloud
-									</Text>
-								</View>
-								<Switch
-									value={ttsEnabled}
-									onValueChange={setTTSEnabled}
-									trackColor={{ false: colors.border, true: colors.primary }}
-									thumbColor="#fff"
-								/>
-							</View>
-
-							{ttsEnabled && (
-								<>
-									<View style={[styles.divider, { backgroundColor: colors.border, marginTop: 16 }]} />
-
-									<View style={styles.ttsSliderContainer}>
-										<View style={styles.ttsSliderHeader}>
-											<Ionicons name="speedometer" size={18} color={colors.text} />
-											<Text style={[styles.ttsSliderLabel, { color: colors.text }]}>Rate</Text>
-											<Text style={[styles.ttsSliderValue, { color: colors.textSecondary }]}>{ttsRate.toFixed(1)}x</Text>
-										</View>
-										<View style={styles.sliderWrapper}>
-											<Text style={[styles.sliderMinMax, { color: colors.textSecondary }]}>0.1</Text>
-											<View style={styles.sliderContainer}>
-												<TouchableOpacity
-													style={styles.sliderTrack}
-													onPress={(e) => {
-														const { locationX } = e.nativeEvent;
-														const width = 280;
-														const ratio = Math.max(0, Math.min(1, locationX / width));
-														const value = 0.1 + ratio * 1.9;
-														setTTSRate(value);
-													}}
-													activeOpacity={1}
-												>
-													<View style={[styles.sliderProgress, { width: `${((ttsRate - 0.1) / 1.9) * 100}%`, backgroundColor: colors.primary }]} />
-													<View style={[styles.sliderThumb, { left: `${((ttsRate - 0.1) / 1.9) * 100}%`, backgroundColor: colors.primary }]} />
-												</TouchableOpacity>
-											</View>
-											<Text style={[styles.sliderMinMax, { color: colors.textSecondary }]}>2.0</Text>
-										</View>
-									</View>
-
-									<View style={styles.ttsSliderContainer}>
-										<View style={styles.ttsSliderHeader}>
-											<Ionicons name="musical-notes" size={18} color={colors.text} />
-											<Text style={[styles.ttsSliderLabel, { color: colors.text }]}>Pitch</Text>
-											<Text style={[styles.ttsSliderValue, { color: colors.textSecondary }]}>{ttsPitch.toFixed(1)}</Text>
-										</View>
-										<View style={styles.sliderWrapper}>
-											<Text style={[styles.sliderMinMax, { color: colors.textSecondary }]}>0.0</Text>
-											<View style={styles.sliderContainer}>
-												<TouchableOpacity
-													style={styles.sliderTrack}
-													onPress={(e) => {
-														const { locationX } = e.nativeEvent;
-														const width = 280;
-														const ratio = Math.max(0, Math.min(1, locationX / width));
-														const value = ratio * 2.0;
-														setTTSPitch(value);
-													}}
-													activeOpacity={1}
-												>
-													<View style={[styles.sliderProgress, { width: `${(ttsPitch / 2.0) * 100}%`, backgroundColor: colors.primary }]} />
-													<View style={[styles.sliderThumb, { left: `${(ttsPitch / 2.0) * 100}%`, backgroundColor: colors.primary }]} />
-												</TouchableOpacity>
-											</View>
-											<Text style={[styles.sliderMinMax, { color: colors.textSecondary }]}>2.0</Text>
-										</View>
-									</View>
-
-									<View style={styles.ttsSliderContainer}>
-										<View style={styles.ttsSliderHeader}>
-											<Ionicons name="volume-high" size={18} color={colors.text} />
-											<Text style={[styles.ttsSliderLabel, { color: colors.text }]}>Volume</Text>
-											<Text style={[styles.ttsSliderValue, { color: colors.textSecondary }]}>{Math.round(ttsVolume * 100)}%</Text>
-										</View>
-										<View style={styles.sliderWrapper}>
-											<Text style={[styles.sliderMinMax, { color: colors.textSecondary }]}>0%</Text>
-											<View style={styles.sliderContainer}>
-												<TouchableOpacity
-													style={styles.sliderTrack}
-													onPress={(e) => {
-														const { locationX } = e.nativeEvent;
-														const width = 280;
-														const ratio = Math.max(0, Math.min(1, locationX / width));
-														setTTSVolume(ratio);
-													}}
-													activeOpacity={1}
-												>
-													<View style={[styles.sliderProgress, { width: `${ttsVolume * 100}%`, backgroundColor: colors.primary }]} />
-													<View style={[styles.sliderThumb, { left: `${ttsVolume * 100}%`, backgroundColor: colors.primary }]} />
-												</TouchableOpacity>
-											</View>
-											<Text style={[styles.sliderMinMax, { color: colors.textSecondary }]}>100%</Text>
-										</View>
-									</View>
-								</>
+							{downloadError && (
+								<Text style={[styles.packError, { color: colors.error, marginTop: 8 }]}>{downloadError}</Text>
 							)}
 						</View>
+					)}
 
-						<View style={[styles.infoCard, { backgroundColor: `${colors.primary}08` }]}>
-							<Ionicons name="information-circle" size={20} color={colors.primary} />
-							<Text style={[styles.infoText, { color: colors.text }]}>
-								TTS will automatically speak translated text during video calls when enabled.
-							</Text>
+					<View style={[styles.card, { backgroundColor: colors.surface }]}>
+						<View style={styles.settingRow}>
+							<Text style={[styles.settingTitle, { color: colors.text }]}>Text-to-Speech</Text>
+							<Switch
+								value={ttsEnabled}
+								onValueChange={setTTSEnabled}
+								trackColor={{ false: colors.border, true: colors.primary }}
+								thumbColor="#fff"
+							/>
 						</View>
 
-						{available && (
-							<View style={styles.section}>
-								<Text style={[styles.sectionTitle, { color: colors.text }]}>Downloaded Models</Text>
-								<Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>Manage downloaded language models</Text>
-								<View style={[styles.card, { backgroundColor: colors.surface }]}>
+						{ttsEnabled && (
+							<>
+								<View style={[styles.divider, { backgroundColor: colors.border }]} />
+								<View style={styles.ttsSliderContainer}>
+									<View style={styles.ttsSliderHeader}>
+										<Text style={[styles.ttsSliderLabel, { color: colors.text }]}>Rate: {ttsRate.toFixed(1)}x</Text>
+									</View>
+									<View style={styles.sliderContainer}>
+										<TouchableOpacity
+											style={styles.sliderTrack}
+											onPress={(e) => {
+												const { locationX } = e.nativeEvent;
+												const width = e.currentTarget?.clientWidth || 280;
+												const ratio = Math.max(0, Math.min(1, locationX / width));
+												const value = 0.1 + ratio * 1.9;
+												setTTSRate(value);
+											}}
+											activeOpacity={1}
+										>
+											<View style={[styles.sliderProgress, { width: `${((ttsRate - 0.1) / 1.9) * 100}%`, backgroundColor: colors.primary }]} />
+											<View style={[styles.sliderThumb, { left: `${((ttsRate - 0.1) / 1.9) * 100}%`, backgroundColor: colors.primary }]} />
+										</TouchableOpacity>
+									</View>
+								</View>
+
+								<View style={styles.ttsSliderContainer}>
+									<View style={styles.ttsSliderHeader}>
+										<Text style={[styles.ttsSliderLabel, { color: colors.text }]}>Pitch: {ttsPitch.toFixed(1)}</Text>
+									</View>
+									<View style={styles.sliderContainer}>
+										<TouchableOpacity
+											style={styles.sliderTrack}
+											onPress={(e) => {
+												const { locationX } = e.nativeEvent;
+												const width = e.currentTarget?.clientWidth || 280;
+												const ratio = Math.max(0, Math.min(1, locationX / width));
+												const value = ratio * 2.0;
+												setTTSPitch(value);
+											}}
+											activeOpacity={1}
+										>
+											<View style={[styles.sliderProgress, { width: `${(ttsPitch / 2.0) * 100}%`, backgroundColor: colors.primary }]} />
+											<View style={[styles.sliderThumb, { left: `${(ttsPitch / 2.0) * 100}%`, backgroundColor: colors.primary }]} />
+										</TouchableOpacity>
+									</View>
+								</View>
+
+								<View style={styles.ttsSliderContainer}>
+									<View style={styles.ttsSliderHeader}>
+										<Text style={[styles.ttsSliderLabel, { color: colors.text }]}>Volume: {Math.round(ttsVolume * 100)}%</Text>
+									</View>
+									<View style={styles.sliderContainer}>
+										<TouchableOpacity
+											style={styles.sliderTrack}
+											onPress={(e) => {
+												const { locationX } = e.nativeEvent;
+												const width = e.currentTarget?.clientWidth || 280;
+												const ratio = Math.max(0, Math.min(1, locationX / width));
+												setTTSVolume(ratio);
+											}}
+											activeOpacity={1}
+										>
+											<View style={[styles.sliderProgress, { width: `${ttsVolume * 100}%`, backgroundColor: colors.primary }]} />
+											<View style={[styles.sliderThumb, { left: `${ttsVolume * 100}%`, backgroundColor: colors.primary }]} />
+										</TouchableOpacity>
+									</View>
+								</View>
+							</>
+						)}
+					</View>
+
+					{available && (
+						<View style={[styles.card, { backgroundColor: colors.surface }]}>
 									{isLoadingModels ? (
 										<View style={styles.modelsLoadingRow}>
 											<ActivityIndicator size="small" color={colors.primary} />
@@ -812,18 +709,11 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 									{modelError && (
 										<Text style={[styles.modelError, { color: colors.error }]}>{modelError}</Text>
 									)}
-								</View>
-							</View>
-						)}
+						</View>
+					)}
 
-						{available && (
-							<View style={styles.section}>
-								<Text style={[styles.sectionTitle, { color: colors.text }]}>Test Translation</Text>
-								<Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
-									Test the translation service with custom text
-								</Text>
-
-								<View style={[styles.card, { backgroundColor: colors.surface }]}>
+					{available && (
+						<View style={[styles.card, { backgroundColor: colors.surface }]}>
 									<Text style={[styles.testLabel, { color: colors.text }]}>Input Text</Text>
 									<TextInput
 										style={[styles.testInput, { 
@@ -938,7 +828,6 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 										</>
 									)}
 								</View>
-							</View>
 						)}
 					</ScrollView>
 				</View>
@@ -1109,54 +998,17 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	scrollContent: {
-		padding: 24,
-	},
-	section: {
-		marginBottom: 24,
-	},
-	sectionTitle: {
-		fontSize: 20,
-		fontWeight: '700',
-		marginBottom: 8,
-	},
-	sectionDescription: {
-		fontSize: 14,
-		marginBottom: 20,
-		lineHeight: 20,
+		padding: 20,
 	},
 	card: {
-		borderRadius: 16,
-		padding: 20,
-		marginBottom: 16,
+		borderRadius: 12,
+		padding: 16,
+		marginBottom: 12,
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 2 },
 		shadowOpacity: 0.05,
 		shadowRadius: 8,
 		elevation: 2,
-	},
-	cardHeader: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 12,
-	},
-	iconContainer: {
-		width: 48,
-		height: 48,
-		borderRadius: 12,
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	cardHeaderText: {
-		flex: 1,
-	},
-	cardTitle: {
-		fontSize: 17,
-		fontWeight: '600',
-		marginBottom: 2,
-	},
-	cardSubtitle: {
-		fontSize: 13,
-		opacity: 0.6,
 	},
 	warningBanner: {
 		flexDirection: 'row',
@@ -1188,39 +1040,25 @@ const styles = StyleSheet.create({
 	settingTitle: {
 		fontSize: 16,
 		fontWeight: '600',
-		marginBottom: 2,
 	},
 	settingSubtitle: {
-		fontSize: 13,
-		opacity: 0.6,
+		fontSize: 12,
+		marginTop: 2,
+		opacity: 0.7,
 	},
 	divider: {
 		height: StyleSheet.hairlineWidth,
-		marginVertical: 16,
+		marginVertical: 12,
 	},
 	languageSelector: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
-		paddingVertical: 4,
-	},
-	selectorLeft: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		flex: 1,
-		gap: 12,
-	},
-	selectorTextContainer: {
-		flex: 1,
+		paddingVertical: 8,
 	},
 	selectorLabel: {
-		fontSize: 13,
-		marginBottom: 4,
-		opacity: 0.6,
-	},
-	selectorValue: {
-		fontSize: 16,
-		fontWeight: '600',
+		fontSize: 15,
+		flex: 1,
 	},
 	infoCard: {
 		flexDirection: 'row',
@@ -1435,34 +1273,18 @@ const styles = StyleSheet.create({
 		textAlign: 'center',
 	},
 	ttsSliderContainer: {
-		marginTop: 16,
-		gap: 8,
+		marginTop: 12,
+		gap: 6,
 	},
 	ttsSliderHeader: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 8,
+		marginBottom: 4,
 	},
 	ttsSliderLabel: {
 		fontSize: 14,
-		fontWeight: '600',
-		flex: 1,
-	},
-	ttsSliderValue: {
-		fontSize: 14,
-		fontWeight: '600',
-		minWidth: 50,
-		textAlign: 'right',
-	},
-	sliderWrapper: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 12,
-		marginTop: 4,
+		fontWeight: '500',
 	},
 	sliderContainer: {
-		flex: 1,
-		height: 40,
+		height: 36,
 		justifyContent: 'center',
 	},
 	sliderTrack: {
@@ -1490,11 +1312,6 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.2,
 		shadowRadius: 4,
 		elevation: 4,
-	},
-	sliderMinMax: {
-		fontSize: 12,
-		minWidth: 30,
-		textAlign: 'center',
 	},
 	testTTSButton: {
 		flexDirection: 'row',

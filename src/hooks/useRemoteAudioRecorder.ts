@@ -30,6 +30,7 @@ export const useRemoteAudioRecorder = (
 	} | null>(null);
 	const chunkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 	const currentFileRef = useRef<string | null>(null);
+	const isProcessingRef = useRef(false);
 
 	const stop = useCallback(async () => {
 		if (chunkIntervalRef.current) {
@@ -64,43 +65,85 @@ export const useRemoteAudioRecorder = (
 		setAudioFileUri(null);
 	}, []);
 
+	const enabledRef = useRef(opts.enabled);
+	const streamRef = useRef(opts.remoteStream);
+	const lastStreamIdRef = useRef<string | null>(null);
+
+	const getStreamId = (stream: MediaStream | null | undefined): string | null => {
+		if (!stream) return null;
+		const tracks = stream.getAudioTracks();
+		return tracks.length > 0 ? tracks[0].id : null;
+	};
+
 	const start = useCallback(async () => {
-		if (!opts.remoteStream || !opts.enabled) {
+		if (isProcessingRef.current) {
+			return;
+		}
+		
+		const currentStream = streamRef.current;
+		const currentEnabled = enabledRef.current;
+		
+		if (!currentStream || !currentEnabled) {
 			setError('No remote stream available');
 			return;
 		}
 
+		isProcessingRef.current = true;
 		try {
 			await stop();
 
-			const audioTracks = opts.remoteStream.getAudioTracks();
+			const audioTracks = currentStream.getAudioTracks();
 			if (audioTracks.length === 0) {
 				setError('No audio tracks in remote stream');
 				return;
 			}
 
+			setError(null);
+			
 			const tempDir = FileSystem.cacheDirectory || FileSystem.documentDirectory || '';
-			const tempFile = `${tempDir}remote_audio_${Date.now()}.wav`;
+			if (!tempDir) {
+				setError('No temp directory available');
+				setIsRecording(false);
+				return;
+			}
 
-			setError('Remote audio recording requires native implementation');
+			const tempFile = `${tempDir}remote_audio_${Date.now()}.wav`;
+			
+			setError('Remote audio capture requires native implementation. Using microphone as fallback.');
 			setIsRecording(false);
+			setAudioFileUri(null);
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Failed to start recording';
 			setError(msg);
 			setIsRecording(false);
+		} finally {
+			isProcessingRef.current = false;
 		}
-	}, [opts.remoteStream, opts.enabled, opts.chunkDurationMs, stop]);
+	}, [stop]);
 
 	useEffect(() => {
-		if (opts.enabled && opts.remoteStream) {
+		enabledRef.current = opts.enabled;
+		streamRef.current = opts.remoteStream;
+		
+		const currentStreamId = getStreamId(opts.remoteStream);
+		const lastStreamId = lastStreamIdRef.current;
+		
+		if (isProcessingRef.current) {
+			return;
+		}
+		
+		if (opts.enabled && opts.remoteStream && currentStreamId !== lastStreamId) {
+			lastStreamIdRef.current = currentStreamId;
 			start();
-		} else {
+		} else if (!opts.enabled || !opts.remoteStream) {
+			lastStreamIdRef.current = null;
 			stop();
 		}
+		
 		return () => {
 			stop();
 		};
-	}, [opts.enabled, opts.remoteStream, start, stop]);
+	}, [opts.enabled, opts.remoteStream]);
 
 	return {
 		audioFileUri,

@@ -196,6 +196,11 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     }
   }, [route.params.type, route.params.joinCode, route.params.autoJoinHandled]);
 
+  const remoteAudioRecorder = useRemoteAudioRecorder({
+    enabled: subtitlesEnabled && !!selectedRemoteStream,
+    remoteStream: selectedRemoteStream,
+  });
+
   const {
     subtitle: subtitleData,
     detectedLanguage: subtitleDetectedLanguage,
@@ -207,11 +212,11 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     stop: subtitleStop,
     reset: subtitleReset,
   } = useSubtitleEngine({
-    enabled: subtitlesEnabled && !!selectedRemoteStream,
+    enabled: subtitlesEnabled && !!selectedRemoteStream && !!remoteAudioRecorder.audioFileUri && !remoteAudioRecorder.error,
     locale: subtitleLocale,
     mode: subtitleMode,
     detect: false,
-    audioSourceUri: selectedRemoteStream ? `webrtc://${selectedParticipantId}` : null,
+    audioSourceUri: remoteAudioRecorder.audioFileUri || null,
   });
 
   const detectedLanguageCode = useMemo(() => {
@@ -264,6 +269,15 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     if (!subtitlesEnabled) {
       return null;
     }
+    if (!selectedRemoteStream) {
+      return 'No remote participant';
+    }
+    if (remoteAudioRecorder.error) {
+      return 'Remote audio not available';
+    }
+    if (!remoteAudioRecorder.audioFileUri) {
+      return 'Remote audio not available';
+    }
     if (subtitleError) {
       return subtitleError;
     }
@@ -274,7 +288,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return 'Listening';
     }
     return null;
-  }, [subtitlesEnabled, subtitleActive, subtitleError, subtitleEngineInitializing]);
+  }, [subtitlesEnabled, selectedRemoteStream, subtitleActive, subtitleError, subtitleEngineInitializing, remoteAudioRecorder.error, remoteAudioRecorder.audioFileUri]);
 
   const translationStatus = useMemo(() => {
     if (!translationEnabled) {
