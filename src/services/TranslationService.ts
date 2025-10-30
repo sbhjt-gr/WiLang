@@ -1,4 +1,5 @@
 import { NativeModulesProxy } from 'expo-modules-core';
+import { NativeModules } from 'react-native';
 import { TranslationCache } from './TranslationCache';
 
 export type TranslationModule = {
@@ -8,10 +9,11 @@ export type TranslationModule = {
 	deleteLanguagePackAsync: (source: string, target: string) => Promise<void>;
 	getDownloadedLanguagePacksAsync: () => Promise<string[]>;
 	getAvailableLanguagesAsync: () => Promise<string[]>;
-	isAvailable: () => boolean;
+	isAvailable?: (() => boolean) | boolean;
 };
 
-const nativeModule = NativeModulesProxy.ExpoTranslationModule as TranslationModule | undefined;
+const rawModule = NativeModulesProxy.ExpoTranslationModule ?? (NativeModules as any).ExpoTranslationModule;
+const nativeModule = rawModule as TranslationModule | undefined;
 
 const cache = new TranslationCache();
 
@@ -30,7 +32,14 @@ export const TranslationService = {
 			return false;
 		}
 		try {
-			return nativeModule.isAvailable();
+			const value = nativeModule.isAvailable;
+			if (typeof value === 'function') {
+				return Boolean(value());
+			}
+			if (typeof value === 'boolean') {
+				return value;
+			}
+			return Boolean(value);
 		} catch (error) {
 			return false;
 		}

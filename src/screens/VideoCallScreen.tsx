@@ -27,6 +27,7 @@ import { SubtitlePreferences } from '../services/SubtitlePreferences';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import type { ExpoSpeechMode } from '../services/SubtitlePreferences';
 import { TranslationPreferences } from '../services/TranslationPreferences';
+import { TranslationService } from '../services/TranslationService';
 import { useTranslation } from '../hooks/useTranslation';
 
 const {width, height} = Dimensions.get('window');
@@ -227,18 +228,23 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     return translationSource;
   }, [detectedLanguageCode, translationAuto, translationEnabled, translationSource]);
 
+  const translationAvailable = useMemo(() => TranslationService.isTranslationAvailable(), []);
+
   const {
     translate: translateSubtitle,
     translatedText,
     isTranslating: translationLoading,
     error: translationError,
     isLanguagePackDownloaded: translationPackReady,
+    downloadLanguagePack: requestTranslationPack,
     setTranslatedText,
   } = useTranslation({
     enabled: translationEnabled,
     sourceLang: translationSourceLang,
     targetLang: translationTarget || 'en',
   });
+
+  const translationPromptedRef = useRef(false);
 
   const subtitleStatus = useMemo(() => {
     if (!subtitlesEnabled) {
@@ -260,6 +266,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     if (!translationEnabled) {
       return null;
     }
+    if (!translationAvailable) {
+      return 'Translation unavailable';
+    }
     if (translationError) {
       return 'Translation error';
     }
@@ -270,7 +279,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return 'Translating';
     }
     return null;
-  }, [translationEnabled, translationError, translationLoading, translationPackReady]);
+  }, [translationAvailable, translationEnabled, translationError, translationLoading, translationPackReady]);
 
   const overlayStatus = useMemo(() => {
     const parts: string[] = [];
@@ -288,6 +297,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (!translationEnabled) {
+      translationPromptedRef.current = false;
       return;
     }
     if (!subtitleData) {
@@ -309,13 +319,59 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     if (!subtitleData.isFinal) {
       return;
     }
+    if (!translationAvailable) {
+      return;
+    }
+    if (translationSourceLang === 'auto') {
+      return;
+    }
+    if (!translationPackReady) {
+      return;
+    }
     const text = subtitleData.text.trim();
     if (!text) {
       setTranslatedText('');
       return;
     }
     translateSubtitle(text).catch(() => {});
-  }, [setTranslatedText, subtitleData, translationEnabled, translateSubtitle]);
+  }, [setTranslatedText, subtitleData, translationEnabled, translationPackReady, translationSourceLang, translateSubtitle]);
+
+  useEffect(() => {
+    if (!translationEnabled) {
+      return;
+    }
+    if (!translationAvailable) {
+      return;
+    }
+    if (translationSourceLang === 'auto') {
+      return;
+    }
+    if (translationPackReady) {
+      translationPromptedRef.current = false;
+      return;
+    }
+    if (translationPromptedRef.current) {
+      return;
+    }
+    translationPromptedRef.current = true;
+    const sourceLabel = translationSourceLang.toUpperCase();
+    const targetLabel = (translationTarget || 'en').toUpperCase();
+    showModal(
+      'Download translation',
+      `Download ${sourceLabel} → ${targetLabel} pack for offline translation?`,
+      'download-outline',
+      [
+        { text: 'Later', onPress: () => { closeModal(); } },
+        {
+          text: 'Download',
+          onPress: () => {
+            requestTranslationPack().catch(() => {});
+            closeModal();
+          },
+        },
+      ],
+    );
+  }, [closeModal, requestTranslationPack, showModal, translationAvailable, translationEnabled, translationPackReady, translationSourceLang, translationTarget]);
 
   useEffect(() => {
     let active = true;

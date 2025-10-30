@@ -19,8 +19,6 @@ export type UseTranslationReturn = {
 	setTranslatedText: (value: string | null) => void;
 };
 
-const nullify = (value: string | null | undefined) => (value ? value : null);
-
 const normalizeLang = (value: string) => value.trim().toLowerCase();
 
 const makeKey = (text: string, source: string, target: string) => `${source}::${target}::${text}`;
@@ -58,6 +56,10 @@ export const useTranslation = (options: UseTranslationOptions): UseTranslationRe
 			setIsLanguagePackDownloaded(false);
 			return;
 		}
+		if (sourceLang === 'auto') {
+			setIsLanguagePackDownloaded(true);
+			return;
+		}
 		if (!TranslationService.isTranslationAvailable()) {
 			setIsLanguagePackDownloaded(false);
 			return;
@@ -88,6 +90,12 @@ export const useTranslation = (options: UseTranslationOptions): UseTranslationRe
 			if (!trimmed) {
 				setTranslatedText('');
 				return '';
+			}
+			if (sourceLang === 'auto') {
+				setIsTranslating(false);
+				setError('translation_source_unknown');
+				setTranslatedText(null);
+				throw new Error('translation_source_unknown');
 			}
 			const cacheKey = makeKey(trimmed, sourceLang, targetLang);
 			lastKeyRef.current = cacheKey;
@@ -136,6 +144,9 @@ export const useTranslation = (options: UseTranslationOptions): UseTranslationRe
 
 	const downloadLanguagePack = useCallback(async () => {
 		if (!options.enabled) {
+			return;
+		}
+		if (sourceLang === 'auto') {
 			return;
 		}
 		setDownloadProgress(0);

@@ -103,7 +103,8 @@ export default {
           microphonePermission: "WiLang needs microphone access for real-time speech transcription.",
           speechRecognitionPermission: "WiLang needs speech recognition access for real-time subtitle transcription."
         }
-      ]
+      ],
+      "./app.plugin.js"
     ]
   }
 };
