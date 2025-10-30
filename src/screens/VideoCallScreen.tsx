@@ -196,6 +196,18 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     }
   }, [route.params.type, route.params.joinCode, route.params.autoJoinHandled]);
 
+  const remotePeers = useMemo(
+    () => (participants || []).filter(p => !p.isLocal && p.peerId !== peerId),
+    [participants, peerId],
+  );
+
+  const selectedRemoteStream = useMemo(() => {
+    if (!selectedParticipantId) {
+      return null;
+    }
+    return remoteStreams?.get(selectedParticipantId) || null;
+  }, [selectedParticipantId, remoteStreams]);
+
   const remoteAudioRecorder = useRemoteAudioRecorder({
     enabled: subtitlesEnabled && !!selectedRemoteStream,
     remoteStream: selectedRemoteStream,
@@ -212,11 +224,11 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     stop: subtitleStop,
     reset: subtitleReset,
   } = useSubtitleEngine({
-    enabled: subtitlesEnabled && !!selectedRemoteStream && !!remoteAudioRecorder.audioFileUri && !remoteAudioRecorder.error,
+    enabled: false,
     locale: subtitleLocale,
     mode: subtitleMode,
     detect: false,
-    audioSourceUri: remoteAudioRecorder.audioFileUri || null,
+    audioSourceUri: null,
   });
 
   const detectedLanguageCode = useMemo(() => {
@@ -269,14 +281,17 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     if (!subtitlesEnabled) {
       return null;
     }
-    if (!selectedRemoteStream) {
+    if (remotePeers.length === 0) {
       return 'No remote participant';
     }
+    if (!selectedRemoteStream) {
+      return 'Waiting for stream';
+    }
     if (remoteAudioRecorder.error) {
-      return 'Remote audio not available';
+      return remoteAudioRecorder.error;
     }
     if (!remoteAudioRecorder.audioFileUri) {
-      return 'Remote audio not available';
+      return 'Remote audio capture requires native implementation';
     }
     if (subtitleError) {
       return subtitleError;
@@ -288,7 +303,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return 'Listening';
     }
     return null;
-  }, [subtitlesEnabled, selectedRemoteStream, subtitleActive, subtitleError, subtitleEngineInitializing, remoteAudioRecorder.error, remoteAudioRecorder.audioFileUri]);
+  }, [subtitlesEnabled, remotePeers.length, selectedRemoteStream, subtitleActive, subtitleError, subtitleEngineInitializing, remoteAudioRecorder.error, remoteAudioRecorder.audioFileUri]);
 
   const translationStatus = useMemo(() => {
     if (!translationEnabled) {
@@ -450,18 +465,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return;
     }
   }, [subtitlesEnabled, selectedRemoteStream, remotePeers]);
-
-  const remotePeers = useMemo(
-    () => participants.filter(p => !p.isLocal && p.peerId !== peerId),
-    [participants, peerId],
-  );
-
-  const selectedRemoteStream = useMemo(() => {
-    if (!selectedParticipantId) {
-      return null;
-    }
-    return remoteStreams?.get(selectedParticipantId) || null;
-  }, [selectedParticipantId, remoteStreams]);
 
   useEffect(() => {
     if (remotePeers.length > 0 && !selectedParticipantId) {

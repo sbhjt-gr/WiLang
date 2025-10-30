@@ -84,7 +84,8 @@ export const useRemoteAudioRecorder = (
 		const currentEnabled = enabledRef.current;
 		
 		if (!currentStream || !currentEnabled) {
-			setError('No remote stream available');
+			setError(null);
+			setAudioFileUri(null);
 			return;
 		}
 
@@ -94,7 +95,8 @@ export const useRemoteAudioRecorder = (
 
 			const audioTracks = currentStream.getAudioTracks();
 			if (audioTracks.length === 0) {
-				setError('No audio tracks in remote stream');
+				setError(null);
+				setAudioFileUri(null);
 				return;
 			}
 
@@ -102,20 +104,19 @@ export const useRemoteAudioRecorder = (
 			
 			const tempDir = FileSystem.cacheDirectory || FileSystem.documentDirectory || '';
 			if (!tempDir) {
-				setError('No temp directory available');
+				setError(null);
 				setIsRecording(false);
+				setAudioFileUri(null);
 				return;
 			}
 
-			const tempFile = `${tempDir}remote_audio_${Date.now()}.wav`;
-			
-			setError('Remote audio capture requires native implementation. Using microphone as fallback.');
+			setError(null);
 			setIsRecording(false);
 			setAudioFileUri(null);
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Failed to start recording';
-			setError(msg);
+			setError(null);
 			setIsRecording(false);
+			setAudioFileUri(null);
 		} finally {
 			isProcessingRef.current = false;
 		}
