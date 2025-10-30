@@ -29,6 +29,8 @@ import type { ExpoSpeechMode } from '../services/SubtitlePreferences';
 import { TranslationPreferences } from '../services/TranslationPreferences';
 import { TranslationService } from '../services/TranslationService';
 import { useTranslation } from '../hooks/useTranslation';
+import { TTSPreferences } from '../services/TTSPreferences';
+import { useTTS } from '../hooks/useTTS';
 
 const {width, height} = Dimensions.get('window');
 
@@ -97,6 +99,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [translationAuto, setTranslationAuto] = useState(true);
   const [translationSource, setTranslationSource] = useState('auto');
   const [translationTarget, setTranslationTarget] = useState('en');
+  const [ttsEnabled, setTTSEnabled] = useState(false);
 
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
@@ -244,6 +247,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     targetLang: translationTarget || 'en',
   });
 
+  const ttsHook = useTTS({
+    enabled: ttsEnabled && translationEnabled,
+    targetLanguage: translationTarget || 'en',
+    autoSpeak: true,
+  });
+
   const translationPromptedRef = useRef(false);
 
   const subtitleStatus = useMemo(() => {
@@ -337,6 +346,23 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, [setTranslatedText, subtitleData, translationEnabled, translationPackReady, translationSourceLang, translateSubtitle]);
 
   useEffect(() => {
+    if (!ttsEnabled || !translationEnabled) {
+      return;
+    }
+    if (!translatedText || !translatedText.trim()) {
+      return;
+    }
+    if (!subtitleData || !subtitleData.isFinal) {
+      return;
+    }
+    const text = translatedText.trim();
+    if (!text) {
+      return;
+    }
+    ttsHook.speak(text).catch(() => {});
+  }, [translatedText, subtitleData, ttsEnabled, translationEnabled, ttsHook]);
+
+  useEffect(() => {
     if (!translationEnabled) {
       return;
     }
@@ -398,17 +424,19 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       let active = true;
       const load = async () => {
         try {
-          const [isEnabled, isAuto, src, tgt] = await Promise.all([
+          const [isEnabled, isAuto, src, tgt, ttsEnabledPref] = await Promise.all([
             TranslationPreferences.isEnabled(),
             TranslationPreferences.isAutoDetect(),
             TranslationPreferences.getSource(),
             TranslationPreferences.getTarget(),
+            TTSPreferences.isEnabled(),
           ]);
           if (active) {
             setTranslationEnabled(isEnabled);
             setTranslationAuto(isAuto);
             setTranslationSource(src);
             setTranslationTarget(tgt);
+            setTTSEnabled(ttsEnabledPref);
           }
         } catch (error) {
         }
@@ -492,8 +520,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   useEffect(() => {
     return () => {
       subtitleStop();
+      ttsHook.stop();
     };
-  }, [subtitleStop]);
+  }, [subtitleStop, ttsHook]);
 
   useEffect(() => {
     if (initializationAttempted.current) {
@@ -835,6 +864,24 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             />
             <Text style={[styles.topControlText, subtitlesEnabled && { color: '#10b981' }]}>
               {subtitlesEnabled ? 'CC On' : 'CC Off'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.topControlButton,
+              { backgroundColor: 'rgba(0,0,0,0.7)' },
+              ttsEnabled && translationEnabled && { borderWidth: 1, borderColor: '#8b5cf6' },
+            ]}
+            onPress={() => setTTSEnabled(prev => !prev)}
+            disabled={!translationEnabled}
+          >
+            <Ionicons
+              name={ttsEnabled && translationEnabled ? 'volume-high' : 'volume-high-outline'}
+              size={20}
+              color={ttsEnabled && translationEnabled ? '#8b5cf6' : '#ffffff'}
+            />
+            <Text style={[styles.topControlText, ttsEnabled && translationEnabled && { color: '#8b5cf6' }]}>
+              {ttsEnabled && translationEnabled ? 'TTS On' : 'TTS Off'}
             </Text>
           </TouchableOpacity>
         </View>

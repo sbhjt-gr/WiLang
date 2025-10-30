@@ -26,7 +26,6 @@ export type RootStackParamList = {
   EnvironmentConfig: undefined;
   ThemeSettingsScreen: undefined;
   TranslationSettingsScreen: undefined;
-  AppleTranslationScreen: undefined;
 };
 
 export type TabParamList = {

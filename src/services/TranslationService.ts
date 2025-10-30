@@ -10,14 +10,7 @@ export type TranslationModule = {
 	getDownloadedLanguagePacksAsync: () => Promise<string[]>;
 	getAvailableLanguagesAsync: () => Promise<string[]>;
 	isAvailable?: (() => boolean) | boolean;
-	setEngineAsync?: (engine: string) => Promise<string | void>;
-	translateWithUIAsync?: (text: string) => Promise<string>;
-	appleAvailable?: boolean;
-	appleUIAvailable?: boolean;
-	engine?: string;
 };
-
-export type TranslationEngine = 'mlkit' | 'apple';
 
 const rawModule = NativeModulesProxy.ExpoTranslationModule ?? (NativeModules as any).ExpoTranslationModule;
 const nativeModule = rawModule as TranslationModule | undefined;
@@ -32,21 +25,6 @@ console.log('translation_module_init', {
 
 const cache = new TranslationCache();
 
-const normalizeEngine = (value: unknown): TranslationEngine => {
-	return value === 'apple' ? 'apple' : 'mlkit';
-};
-
-const appleAvailable = nativeModule ? Boolean((nativeModule as any).appleAvailable) : false;
-const appleUIAvailable = nativeModule ? Boolean((nativeModule as any).appleUIAvailable) : false;
-
-let currentEngine: TranslationEngine = normalizeEngine(nativeModule ? (nativeModule as any).engine : undefined);
-
-if (currentEngine === 'apple' && !appleAvailable) {
-	currentEngine = 'mlkit';
-}
-
-let engineSynced = false;
-
 const keyFor = (text: string, source: string, target: string) => `${source}::${target}::${text}`;
 
 const ensureModule = () => {
@@ -58,49 +36,11 @@ const ensureModule = () => {
 	return nativeModule;
 };
 
-const syncEngine = async (mod: TranslationModule, desired?: TranslationEngine): Promise<TranslationEngine> => {
-	const target = desired ?? currentEngine;
-	const previous = currentEngine;
-	if (engineSynced && target === currentEngine) {
-		if (currentEngine === 'apple' && !appleAvailable) {
-			const error: any = new Error('apple_unavailable');
-			error.code = 'apple_unavailable';
-			throw error;
-		}
-		return currentEngine;
-	}
-	if (target === 'apple' && !appleAvailable) {
-		const error: any = new Error('apple_unavailable');
-		error.code = 'apple_unavailable';
-		throw error;
-	}
-	if (typeof mod.setEngineAsync === 'function') {
-		try {
-			const result = await mod.setEngineAsync(target);
-			const resolved = normalizeEngine(result ?? target);
-			currentEngine = resolved;
-			engineSynced = true;
-			return currentEngine;
-		} catch (error) {
-			console.error('engine_sync_error', error);
-			currentEngine = previous;
-			engineSynced = false;
-			throw error;
-		}
-	}
-	currentEngine = target;
-	engineSynced = true;
-	return currentEngine;
-};
-
 export const TranslationService = {
 	isTranslationAvailable(): boolean {
 		console.log('isTranslationAvailable_called', { hasModule: !!nativeModule });
 		if (!nativeModule) {
 			console.log('translation_unavailable_no_module');
-			return false;
-		}
-		if (currentEngine === 'apple' && !appleAvailable) {
 			return false;
 		}
 		try {
@@ -137,7 +77,6 @@ export const TranslationService = {
 		}
 		console.log('translate_cache_miss', { cacheKey });
 		const mod = ensureModule();
-		await syncEngine(mod);
 		console.log('translate_calling_native', { text, source, target });
 		try {
 			const res = await mod.translateAsync(text, source, target);
@@ -157,7 +96,6 @@ export const TranslationService = {
 	async downloadLanguagePack(source: string, target: string): Promise<void> {
 		console.log('downloadLanguagePack_called', { source, target });
 		const mod = ensureModule();
-		await syncEngine(mod);
 		try {
 			await mod.downloadLanguagePackAsync(source, target);
 			console.log('downloadLanguagePack_success', { source, target });
@@ -169,7 +107,6 @@ export const TranslationService = {
 	async isLanguagePackDownloaded(source: string, target: string): Promise<boolean> {
 		console.log('isLanguagePackDownloaded_called', { source, target });
 		const mod = ensureModule();
-		await syncEngine(mod);
 		try {
 			const result = await mod.isLanguagePackDownloadedAsync(source, target);
 			console.log('isLanguagePackDownloaded_result', { source, target, result });
@@ -181,7 +118,6 @@ export const TranslationService = {
 	},
 	async deleteLanguagePack(source: string, target: string): Promise<void> {
 		const mod = ensureModule();
-		await syncEngine(mod);
 		await mod.deleteLanguagePackAsync(source, target);
 		cache.clear();
 	},
@@ -191,18 +127,15 @@ export const TranslationService = {
 			return;
 		}
 		const mod = ensureModule();
-		await syncEngine(mod);
 		await mod.deleteLanguagePackAsync(trimmed, trimmed);
 		cache.clear();
 	},
 	async getDownloadedLanguages(): Promise<string[]> {
 		const mod = ensureModule();
-		await syncEngine(mod);
 		return mod.getDownloadedLanguagePacksAsync();
 	},
 	async getAvailableLanguages(): Promise<string[]> {
 		const mod = ensureModule();
-		await syncEngine(mod);
 		return mod.getAvailableLanguagesAsync();
 	},
 	getCachedTranslation(text: string, source: string, target: string): string | null {
@@ -210,29 +143,5 @@ export const TranslationService = {
 	},
 	cacheTranslation(text: string, translation: string, source: string, target: string): void {
 		cache.set(keyFor(text, source, target), translation);
-	},
-	getEngine(): TranslationEngine {
-		return currentEngine;
-	},
-	async setEngine(engine: TranslationEngine): Promise<TranslationEngine> {
-		const mod = ensureModule();
-		engineSynced = false;
-		return syncEngine(mod, engine);
-	},
-	isAppleAvailable(): boolean {
-		return appleAvailable;
-	},
-	isAppleUIAvailable(): boolean {
-		return appleUIAvailable;
-	},
-	async translateWithUI(text: string): Promise<string> {
-		if (!appleUIAvailable) {
-			throw new Error('apple_ui_unavailable');
-		}
-		const mod = ensureModule();
-		if (typeof mod.translateWithUIAsync !== 'function') {
-			throw new Error('apple_ui_unavailable');
-		}
-		return mod.translateWithUIAsync(text);
 	},
 };

@@ -18,7 +18,6 @@ import CallingScreen from './src/screens/CallingScreen';
 import EnvironmentConfig from './src/screens/EnvironmentConfig';
 import ThemeSettingsScreen from './src/screens/ThemeSettingsScreen';
 import TranslationSettingsScreen from './src/screens/TranslationSettingsScreen';
-import AppleTranslationScreen from './src/screens/AppleTranslationScreen';
 import { RootStackParamList } from './src/types/navigation';
 import WebRTCProvider from './src/store/WebRTCProvider';
 import WebRTCInitializer from './src/components/WebRTCInitializer';
@@ -111,10 +110,6 @@ export default function App() {
                 <Stack.Screen
                   name="TranslationSettingsScreen"
                   component={TranslationSettingsScreen}
-                />
-                <Stack.Screen
-                  name="AppleTranslationScreen"
-                  component={AppleTranslationScreen}
                 />
               </Stack.Navigator>
             </NavigationContainer>
