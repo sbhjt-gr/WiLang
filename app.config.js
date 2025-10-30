@@ -23,7 +23,7 @@ export default {
       supportsTablet: true,
       bundleIdentifier: "com.gorai.wilanger",
       googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
-      deploymentTarget: "17.0",
+  deploymentTarget: "18.0",
       infoPlist: {
         NSContactsUsageDescription: "WiLang needs access to your contacts to help you connect with friends and family for video calls.",
         NSCameraUsageDescription: "WiLang needs access to your camera for video calls.",
