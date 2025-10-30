@@ -31,6 +31,7 @@ import { TranslationService } from '../services/TranslationService';
 import { useTranslation } from '../hooks/useTranslation';
 import { TTSPreferences } from '../services/TTSPreferences';
 import { useTTS } from '../hooks/useTTS';
+import { useRemoteAudioRecorder } from '../hooks/useRemoteAudioRecorder';
 
 const {width, height} = Dimensions.get('window');
 
@@ -100,6 +101,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [translationSource, setTranslationSource] = useState('auto');
   const [translationTarget, setTranslationTarget] = useState('en');
   const [ttsEnabled, setTTSEnabled] = useState(false);
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
 
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
@@ -204,10 +206,11 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     stop: subtitleStop,
     reset: subtitleReset,
   } = useSubtitleEngine({
-    enabled: subtitlesEnabled,
+    enabled: subtitlesEnabled && !!selectedRemoteStream,
     locale: subtitleLocale,
     mode: subtitleMode,
     detect: false,
+    audioSourceUri: selectedRemoteStream ? `webrtc://${selectedParticipantId}` : null,
   });
 
   const detectedLanguageCode = useMemo(() => {
@@ -226,10 +229,10 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return 'auto';
     }
     if (translationAuto) {
-      return detectedLanguageCode || 'auto';
+      return detectedLanguageCode || subtitleLocale.split('-')[0].toLowerCase() || 'auto';
     }
     return translationSource;
-  }, [detectedLanguageCode, translationAuto, translationEnabled, translationSource]);
+  }, [detectedLanguageCode, translationAuto, translationEnabled, translationSource, subtitleLocale]);
 
   const translationAvailable = useMemo(() => TranslationService.isTranslationAvailable(), []);
 
@@ -252,6 +255,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     targetLanguage: translationTarget || 'en',
     autoSpeak: true,
   });
+
+  const ttsReloadRef = useRef(ttsHook.reloadPreferences);
+  ttsReloadRef.current = ttsHook.reloadPreferences;
 
   const translationPromptedRef = useRef(false);
 
@@ -437,6 +443,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             setTranslationSource(src);
             setTranslationTarget(tgt);
             setTTSEnabled(ttsEnabledPref);
+            ttsReloadRef.current();
           }
         } catch (error) {
         }
@@ -449,37 +456,36 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   );
 
   useEffect(() => {
-    if (!subtitlesEnabled) {
+    if (!subtitlesEnabled || !selectedRemoteStream) {
       return;
     }
-    let active = true;
-    const ensure = async () => {
-      try {
-        const mic = await ExpoSpeechRecognitionModule.getMicrophonePermissionsAsync();
-        if (!mic.granted) {
-          const res = await ExpoSpeechRecognitionModule.requestMicrophonePermissionsAsync();
-          if (!res.granted && active) {
-            showModal('Permission needed', 'Allow microphone for subtitles.', 'mic-off');
-            setSubtitlesEnabled(false);
-          }
-        }
-      } catch (error) {
-        if (active) {
-          showModal('Permission needed', 'Allow microphone for subtitles.', 'mic-off');
-          setSubtitlesEnabled(false);
-        }
-      }
-    };
-    ensure();
-    return () => {
-      active = false;
-    };
-  }, [showModal, subtitlesEnabled]);
+    if (remotePeers.length === 0) {
+      setSubtitlesEnabled(false);
+      return;
+    }
+  }, [subtitlesEnabled, selectedRemoteStream, remotePeers]);
 
   const remotePeers = useMemo(
     () => participants.filter(p => !p.isLocal && p.peerId !== peerId),
     [participants, peerId],
   );
+
+  const selectedRemoteStream = useMemo(() => {
+    if (!selectedParticipantId) {
+      return null;
+    }
+    return remoteStreams?.get(selectedParticipantId) || null;
+  }, [selectedParticipantId, remoteStreams]);
+
+  useEffect(() => {
+    if (remotePeers.length > 0 && !selectedParticipantId) {
+      setSelectedParticipantId(remotePeers[0].peerId);
+    } else if (remotePeers.length === 0) {
+      setSelectedParticipantId(null);
+    } else if (selectedParticipantId && !remotePeers.find(p => p.peerId === selectedParticipantId)) {
+      setSelectedParticipantId(remotePeers[0]?.peerId || null);
+    }
+  }, [remotePeers, selectedParticipantId]);
 
   useEffect(() => {
     const run = async () => {
@@ -853,19 +859,39 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             style={[
               styles.topControlButton,
               { backgroundColor: 'rgba(0,0,0,0.7)' },
-              subtitlesEnabled && { borderWidth: 1, borderColor: '#10b981' },
+              subtitlesEnabled && remotePeers.length > 0 && { borderWidth: 1, borderColor: '#10b981' },
+              remotePeers.length === 0 && { opacity: 0.5 },
             ]}
             onPress={() => setSubtitlesEnabled(prev => !prev)}
+            disabled={remotePeers.length === 0}
           >
             <Ionicons
               name={subtitlesEnabled ? 'text' : 'text-outline'}
               size={20}
-              color={subtitlesEnabled ? '#10b981' : '#ffffff'}
+              color={subtitlesEnabled && remotePeers.length > 0 ? '#10b981' : '#ffffff'}
             />
-            <Text style={[styles.topControlText, subtitlesEnabled && { color: '#10b981' }]}>
+            <Text style={[styles.topControlText, subtitlesEnabled && remotePeers.length > 0 && { color: '#10b981' }]}>
               {subtitlesEnabled ? 'CC On' : 'CC Off'}
             </Text>
           </TouchableOpacity>
+          {remotePeers.length > 1 && (
+            <TouchableOpacity
+              style={[
+                styles.topControlButton,
+                { backgroundColor: 'rgba(0,0,0,0.7)' },
+              ]}
+              onPress={() => {
+                const currentIndex = remotePeers.findIndex(p => p.peerId === selectedParticipantId);
+                const nextIndex = (currentIndex + 1) % remotePeers.length;
+                setSelectedParticipantId(remotePeers[nextIndex].peerId);
+              }}
+            >
+              <Ionicons name="people" size={20} color="#ffffff" />
+              <Text style={styles.topControlText} numberOfLines={1}>
+                {remotePeers.find(p => p.peerId === selectedParticipantId)?.username?.substring(0, 8) || 'Select'}
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={[
               styles.topControlButton,

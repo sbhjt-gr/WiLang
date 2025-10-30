@@ -22,6 +22,7 @@ export type UseTTSReturn = {
 	pitch: number;
 	volume: number;
 	ttsLanguage: string | null;
+	reloadPreferences: () => Promise<void>;
 };
 
 let speechQueue: string | null = null;
@@ -58,34 +59,41 @@ export const useTTS = (options: UseTTSOptions): UseTTSReturn => {
 		};
 	}, []);
 
-	useEffect(() => {
+	const reloadPreferences = useCallback(async () => {
 		let active = true;
-		const load = async () => {
-			try {
-				const [storedRate, storedPitch, storedVolume, storedLanguage] = await Promise.all([
-					TTSPreferences.getRate(),
-					TTSPreferences.getPitch(),
-					TTSPreferences.getVolume(),
-					TTSPreferences.getLanguage(),
-				]);
-				if (active && mountedRef.current) {
-					setRate(storedRate);
-					setPitch(storedPitch);
-					setVolume(storedVolume);
-					const lang = storedLanguage || getTTSLanguage(options.targetLanguage);
-					setTTSLanguage(lang);
-				}
-			} catch (error) {
-				if (active && mountedRef.current) {
-					setError('Failed to load TTS preferences');
-				}
+		try {
+			const [storedRate, storedPitch, storedVolume, storedLanguage] = await Promise.all([
+				TTSPreferences.getRate(),
+				TTSPreferences.getPitch(),
+				TTSPreferences.getVolume(),
+				TTSPreferences.getLanguage(),
+			]);
+			if (active && mountedRef.current) {
+				setRate(storedRate);
+				setPitch(storedPitch);
+				setVolume(storedVolume);
+				const lang = storedLanguage || getTTSLanguage(options.targetLanguage);
+				setTTSLanguage(lang);
 			}
-		};
-		load();
-		return () => {
-			active = false;
-		};
+		} catch (error) {
+			if (active && mountedRef.current) {
+				setError('Failed to load TTS preferences');
+			}
+		}
 	}, [options.targetLanguage]);
+
+	useEffect(() => {
+		reloadPreferences();
+	}, [reloadPreferences]);
+
+	useEffect(() => {
+		const interval = setInterval(() => {
+			if (mountedRef.current) {
+				reloadPreferences();
+			}
+		}, 5000);
+		return () => clearInterval(interval);
+	}, [reloadPreferences]);
 
 	useEffect(() => {
 		let active = true;
@@ -213,6 +221,7 @@ export const useTTS = (options: UseTTSOptions): UseTTSReturn => {
 		pitch,
 		volume,
 		ttsLanguage,
+		reloadPreferences,
 	};
 };
 

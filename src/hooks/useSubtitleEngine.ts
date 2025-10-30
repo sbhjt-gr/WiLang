@@ -20,6 +20,7 @@ type UseSubtitleEngineOptions = {
 	locale: string;
 	mode: ExpoSpeechMode;
 	detect: boolean;
+	audioSourceUri?: string | null;
 };
 
 const cleanConfidence = (val?: number) => {
@@ -101,6 +102,14 @@ const useSubtitleEngine = (opts: UseSubtitleEngineOptions) => {
 			opt.requiresOnDeviceRecognition = false;
 			opt.androidRecognitionServicePackage = EXPO_ON_DEVICE_SERVICE;
 		}
+		if (opts.audioSourceUri) {
+			opt.audioSource = {
+				uri: opts.audioSourceUri,
+				audioChannels: 1,
+				audioEncoding: 'pcm_s16le',
+				sampleRate: 16000,
+			};
+		}
 		try {
 			await ExpoSpeechRecognitionModule.start(opt);
 			runRef.current = true;
@@ -113,7 +122,7 @@ const useSubtitleEngine = (opts: UseSubtitleEngineOptions) => {
 		} finally {
 			setIsInitializing(false);
 		}
-	}, [opts.detect, opts.locale, opts.mode]);
+	}, [opts.detect, opts.locale, opts.mode, opts.audioSourceUri]);
 
 	const stop = useCallback(async () => {
 		if (!runRef.current) {
