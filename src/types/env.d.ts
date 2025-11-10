@@ -6,4 +6,7 @@ declare module '@env' {
   export const WEBRTC_RECONNECTION_ATTEMPTS: string;
   export const WEBRTC_RECONNECTION_DELAY: string;
   export const STUN_SERVERS: string;
+  export const AZURE_SPEECH_KEY: string;
+  export const AZURE_SPEECH_REGION: string;
+  export const AZURE_SPEECH_ENABLED: string;
 }
