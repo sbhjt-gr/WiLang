@@ -1,4 +1,4 @@
-package com.wilang
+package com.gorai.wilanger
 
 import android.app.Application
 import android.content.res.Configuration
