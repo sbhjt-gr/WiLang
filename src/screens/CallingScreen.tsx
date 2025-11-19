@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Animated, Dimensions, Platform, Image } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, StyleSheet, TouchableOpacity, Dimensions, Platform, Image, Text } from 'react-native';
+import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,28 +28,7 @@ export default function CallingScreen() {
   const route = useRoute();
   const params = route.params as CallingScreenProps;
 
-  const [pulseAnim] = useState(new Animated.Value(1));
   const [callDuration, setCallDuration] = useState(0);
-
-  useEffect(() => {
-    const pulseAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.2,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    pulseAnimation.start();
-
-    return () => pulseAnimation.stop();
-  }, []);
 
   useEffect(() => {
     if (params.callType === 'outgoing') {
@@ -133,7 +112,17 @@ export default function CallingScreen() {
           </View>
 
           <View style={styles.callerContainer}>
-            <Animated.View style={[styles.avatarPulse, { transform: [{ scale: pulseAnim }] }]}>
+            <MotiView 
+              from={{ scale: 1 }}
+              animate={{ scale: 1.2 }}
+              transition={{
+                type: 'timing',
+                duration: 1000,
+                loop: true,
+                repeatReverse: true,
+              }}
+              style={styles.avatarPulse}
+            >
               <View style={styles.avatarOuter}>
                 {params.callerImage ? (
                   <Image source={{ uri: params.callerImage }} style={styles.avatarImage} />
@@ -145,7 +134,7 @@ export default function CallingScreen() {
                   </View>
                 )}
               </View>
-            </Animated.View>
+            </MotiView>
 
             <Text style={[styles.callerName, { color: colors.textInverse }]}>
               {params.callerName}

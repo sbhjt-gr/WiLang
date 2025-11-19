@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { callHistoryService, CallHistoryEntry } from '../../services/CallHistoryService';

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, StyleSheet, TouchableOpacity, Platform, Text } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
-import { View, StyleSheet, Image, Platform, ScrollView, TouchableOpacity, StatusBar, TextInput, Keyboard, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, StyleSheet, Image, Platform, ScrollView, TouchableOpacity, StatusBar, TextInput, Keyboard, TouchableWithoutFeedback, ActivityIndicator, Text } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { loginWithEmail, initializeFirebase, signInWithGoogle, onAuthStateChange } from '../../services/FirebaseService';
 import { RootStackParamList } from '../../types/navigation';

@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo, useContext } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Linking, FlatList, TextInput, ActivityIndicator, Platform, RefreshControl, Image } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Linking, FlatList, TextInput, ActivityIndicator, Platform, RefreshControl, Image, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Contacts from 'expo-contacts';

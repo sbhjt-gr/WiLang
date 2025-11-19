@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Switch, StatusBar } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Switch, StatusBar, Text } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';

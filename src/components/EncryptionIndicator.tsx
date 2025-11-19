@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Icon } from '@rneui/themed';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface EncryptionIndicatorProps {
   isEncrypted: boolean;
@@ -23,9 +23,8 @@ export const EncryptionIndicator: React.FC<EncryptionIndicatorProps> = ({
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <Icon
+      <MaterialIcons
         name="lock"
-        type="material"
         color="#4CAF50"
         size={16}
       />

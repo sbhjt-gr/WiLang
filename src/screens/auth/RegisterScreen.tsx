@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, Platform, ScrollView, Alert, TouchableOpacity, StatusBar, TextInput, Keyboard, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, StyleSheet, Image, Platform, ScrollView, Alert, TouchableOpacity, StatusBar, TextInput, Keyboard, TouchableWithoutFeedback, ActivityIndicator, Text } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
 import { LinearGradient } from 'expo-linear-gradient';

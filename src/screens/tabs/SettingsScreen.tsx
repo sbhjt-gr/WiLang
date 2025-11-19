@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Modal } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Modal, Text } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
