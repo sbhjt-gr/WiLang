@@ -80,6 +80,7 @@ export default {
       "expo-router",
       "expo-sqlite",
       "expo-secure-store",
+      "expo-audio",
       [
         "expo-build-properties",
         {

@@ -9,6 +9,7 @@ import { SubtitlePreferences, type SubtitleLang } from '../../services/SubtitleP
 import { TranslationPreferences } from '../../services/TranslationPreferences';
 import { getTranslationOptionLabel } from '../../constants/translation';
 import { useFocusEffect } from '@react-navigation/native';
+import TranslationDemoModal from '../../components/TranslationDemoModal';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -22,6 +23,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const [langOpen, setLangOpen] = useState(false);
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translationTarget, setTranslationTarget] = useState('en');
+  const [demoOpen, setDemoOpen] = useState(false);
 
   const langOpts = useMemo<Array<{ id: SubtitleLang; label: string }>>(
     () => [
@@ -140,6 +142,14 @@ export default function SettingsScreen({ navigation }: Props) {
       onPress: () => navigation.navigate('TranslationSettingsScreen'),
     },
     {
+      id: 'realtime-demo',
+      title: 'Speech Translation Demo',
+      subtitle: 'Replicate SeamlessM4T preview',
+      icon: 'mic-outline' as const,
+      color: '#8b5cf6',
+      onPress: () => setDemoOpen(true),
+    },
+    {
       id: 'notifications',
       title: 'Notifications',
       subtitle: 'Manage call notifications',
@@ -171,7 +181,7 @@ export default function SettingsScreen({ navigation }: Props) {
       color: '#8b5cf6',
       onPress: () => {},
     },
-  ]), [langLabel, navigation]);
+  ]), [langLabel, navigation, translationLabel]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -225,7 +235,9 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
       </ScrollView>
 
-      <Modal transparent visible={langOpen} animationType="fade">
+  <TranslationDemoModal visible={demoOpen} onClose={() => setDemoOpen(false)} />
+
+  <Modal transparent visible={langOpen} animationType="fade">
         <View style={styles.modalBackdrop}>
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setLangOpen(false)} />
           <View style={[styles.modalCard, { backgroundColor: colors.surface }]}

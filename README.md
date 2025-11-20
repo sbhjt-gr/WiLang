@@ -84,7 +84,15 @@ Getting WiLang running is straightforward. Follow these steps:
    FIREBASE_ANDROID_APP_ID=your-android-app-id
    FIREBASE_IOS_API_KEY=your-ios-api-key
    FIREBASE_IOS_APP_ID=your-ios-app-id
+
+   # Speech translation demo
+   REPLICATE_API_TOKEN=your-replicate-token
+   REPLICATE_MODEL_PATH=models/meta/seamless-m4t
+   REPLICATE_POLL_INTERVAL_MS=2000
+   REPLICATE_PREDICTION_TIMEOUT_MS=90000
    ```
+
+   The SeamlessM4T demo in **Settings → Speech Translation Demo** uploads short clips to Replicate, so keep recordings brief and never include sensitive data.
 
 ## How to Run This Project
 
@@ -169,6 +177,15 @@ WiLang needs these permissions to work:
 - **Camera & Microphone** - For video calls and speech transcription
 - **Contacts** - Optional, for calling people from your contact list
 - **Network** - For connecting to other users
+
+### Speech Translation Demo (Replicate)
+
+The optional demo in Settings uses Meta's SeamlessM4T model via the Replicate API:
+
+- Install `expo-audio` (already in `package.json`) and keep the plugin entry in `app.config.js` so the native recorder works on EAS builds.
+- Create a Replicate account, generate a token, and add it to `.env` as `REPLICATE_API_TOKEN`. Restart the dev server after changing environment variables.
+- Customize `REPLICATE_MODEL_PATH`, `REPLICATE_POLL_INTERVAL_MS`, and `REPLICATE_PREDICTION_TIMEOUT_MS` if you need to point at a different model or tweak polling behavior.
+- The demo records short clips (~5 seconds), uploads them through Replicate's Files API, calls SeamlessM4T for speech-to-speech translation, and then plays the synthetic audio response.
 
 ## App Structure
 
