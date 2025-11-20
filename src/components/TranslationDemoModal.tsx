@@ -10,10 +10,10 @@ import ReplicateTranslationService, {
 } from '../services/ReplicateTranslationService';
 
 const LANG_OPTIONS = [
-	{ id: 'eng', label: 'English' },
-	{ id: 'spa', label: 'Spanish' },
-	{ id: 'fra', label: 'French' },
-	{ id: 'deu', label: 'German' },
+	{ id: 'en', label: 'English' },
+	{ id: 'es', label: 'Spanish' },
+	{ id: 'fr', label: 'French' },
+	{ id: 'de', label: 'German' },
 ];
 
 const formatError = (error: unknown): string => {
@@ -195,7 +195,7 @@ export const TranslationDemoModal: React.FC<Props> = ({ visible, onClose }) => {
 								3. Send to Replicate
 							</Text>
 							<Text style={[styles.cardBody, { color: colors.textSecondary }]}>
-								We upload the clip via the Replicate files API, trigger SeamlessM4T, then poll for results.
+								We convert the clip to a Base64 data URI, send it to cjwbw/seamless_communication on Replicate, then poll for results.
 							</Text>
 							<View style={styles.statusRow}>
 								<Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Status</Text>
@@ -225,8 +225,7 @@ export const TranslationDemoModal: React.FC<Props> = ({ visible, onClose }) => {
 										{result.translatedText || 'No text returned'}
 									</Text>
 									<View style={styles.resultMeta}>
-										<Text style={[styles.metaItem, { color: colors.textSecondary }]}>Detected: {result.detectedLanguage || 'unknown'}</Text>
-										<Text style={[styles.metaItem, { color: colors.textSecondary }]}>Target: {result.targetLanguage || targetLanguage}</Text>
+										<Text style={[styles.metaItem, { color: colors.textSecondary }]}>Target: {result.targetLanguage || LANG_OPTIONS.find(option => option.id === targetLanguage)?.label || 'English'}</Text>
 									</View>
 									{result.audioUrl && (
 										<TouchableOpacity style={styles.playbackButton} onPress={handlePlayTranslation}>

@@ -1,17 +1,34 @@
 import * as FileSystem from 'expo-file-system';
-import type { FileSystemUploadOptions } from 'expo-file-system';
 
 import {
 	REPLICATE_API_TOKEN,
 	REPLICATE_MODEL_PATH,
+	REPLICATE_MODEL_VERSION,
 	REPLICATE_POLL_INTERVAL_MS,
 	REPLICATE_PREDICTION_TIMEOUT_MS,
 } from '@env';
 
 const API_BASE_URL = 'https://api.replicate.com/v1';
-const DEFAULT_MODEL_PATH = 'models/meta/seamless-m4t';
+const DEFAULT_MODEL_PATH = 'models/cjwbw/seamless_communication';
 const DEFAULT_POLL_INTERVAL = 2_000;
 const DEFAULT_PREDICTION_TIMEOUT = 90_000;
+const DEFAULT_VERSION_ID = '668a4fec05a887143e5fe8d45df25ec4c794dd43169b9a11562309b2d45873b0';
+
+const TASK_S2S = 'S2ST (Speech to Speech translation)';
+const TASK_S2T = 'S2TT (Speech to Text translation)';
+
+const LANGUAGE_NAME_MAP: Record<string, string> = {
+	en: 'English',
+	es: 'Spanish',
+	fr: 'French',
+	de: 'German',
+	pt: 'Portuguese',
+	hi: 'Hindi',
+	ja: 'Japanese',
+	ko: 'Korean',
+	bn: 'Bengali',
+	sv: 'Swedish',
+};
 
 export type ReplicatePredictionStatus =
 	| 'starting'
@@ -35,9 +52,7 @@ export type SpeechTranslationRequest = {
 	targetLanguage?: string;
 	sourceLanguage?: string;
 	mode?: 'speech_to_speech' | 'speech_to_text';
-	voice?: string;
-	temperature?: number;
-	beamSize?: number;
+	maxInputAudioLength?: number;
 	additionalInput?: Record<string, unknown>;
 };
 
@@ -45,40 +60,12 @@ export type SpeechTranslationResult = {
 	predictionId: string;
 	status: ReplicatePredictionStatus;
 	translatedText: string | null;
-	detectedLanguage: string | null;
 	targetLanguage: string | null;
 	audioUrl: string | null;
 	raw: ReplicatePrediction;
 };
 
-type ReplicateFileResponse = {
-	urls?: {
-		serve?: string;
-		get?: string;
-		download?: string;
-	};
-	paths?: {
-		serve?: string;
-		get?: string;
-	};
-	serve_url?: string;
-	get_url?: string;
-};
-
 const sleep = (duration: number) => new Promise(resolve => setTimeout(resolve, duration));
-
-const resolveServeUrl = (payload: ReplicateFileResponse): string | null => {
-	return (
-		payload?.urls?.serve ||
-		payload?.urls?.get ||
-		payload?.urls?.download ||
-		payload?.paths?.serve ||
-		payload?.paths?.get ||
-		payload?.serve_url ||
-		payload?.get_url ||
-		null
-	);
-};
 
 const coerceNumber = (value: string | undefined, fallback: number): number => {
 	const parsed = Number(value);
@@ -117,75 +104,52 @@ export class ReplicateTranslationService {
 		};
 	}
 
-	private static async uploadAudioAsync(fileUri: string): Promise<string> {
-		if (!fileUri) {
-			throw new Error('Missing recording URI.');
-		}
-
-		if (/^https?:/i.test(fileUri)) {
-			return fileUri;
-		}
-
+	private static async fileToDataUri(fileUri: string): Promise<string> {
 		const info = await FileSystem.getInfoAsync(fileUri);
 		if (!info.exists) {
 			throw new Error('Recording file no longer exists.');
 		}
-
-		const uploadOptions: FileSystemUploadOptions = {
-			headers: {
-				Authorization: `Bearer ${this.token}`,
-				'Content-Type': 'application/octet-stream',
-			},
-			httpMethod: 'POST',
-			uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-		};
-
-		const response = await FileSystem.uploadAsync(
-			`${API_BASE_URL}/files`,
-			fileUri,
-			uploadOptions,
-		);
-
-		if (response.status < 200 || response.status >= 300) {
-			throw new Error(`Failed to upload audio (${response.status}).`);
-		}
-
-		let json: ReplicateFileResponse;
-		try {
-			json = JSON.parse(response.body);
-		} catch (error) {
-			throw new Error('Invalid upload response.');
-		}
-
-		const remoteUrl = resolveServeUrl(json);
-		if (!remoteUrl) {
-			throw new Error('Upload succeeded but no audio URL was returned.');
-		}
-
-		return remoteUrl;
+		const base64 = await FileSystem.readAsStringAsync(fileUri, {
+			encoding: FileSystem.EncodingType.Base64,
+		});
+		const extension = (fileUri.split('.').pop() || '').toLowerCase();
+		const mime = extension === 'wav' ? 'audio/wav' : extension === 'mp3' ? 'audio/mpeg' : 'audio/m4a';
+		return `data:${mime};base64,${base64}`;
 	}
 
-	private static buildInput(audioUrl: string, request: SpeechTranslationRequest) {
-		const taskName = request.mode === 'speech_to_text' ? 'Speech-to-Text' : 'Speech-to-Speech';
+	private static buildInput(dataUri: string, request: SpeechTranslationRequest) {
+		const isTextMode = request.mode === 'speech_to_text';
+		const languageKey = (request.targetLanguage || 'en').toLowerCase();
+		const languageName = LANGUAGE_NAME_MAP[languageKey] || 'English';
+		const taskName = isTextMode ? TASK_S2T : TASK_S2S;
 		const input: Record<string, unknown> = {
 			task_name: taskName,
-			speech: audioUrl,
-			target_language: request.targetLanguage ?? 'eng',
-			source_language: request.sourceLanguage ?? 'auto',
-			temperature: request.temperature ?? 1,
-			beam_size: request.beamSize ?? 5,
+			input_audio: dataUri,
+			max_input_audio_length: request.maxInputAudioLength ?? 15,
 			...request.additionalInput,
 		};
 
-		if (request.mode !== 'speech_to_text') {
-			input.vocoder = request.voice ?? 'auto';
+		if (isTextMode) {
+			input.target_language_text_only = languageName;
+		} else {
+			input.target_language_with_speech = languageName;
 		}
 
 		return input;
 	}
 
+	private static get versionPath(): string {
+		const trimmed = REPLICATE_MODEL_VERSION?.trim();
+		return trimmed || DEFAULT_VERSION_ID;
+	}
+
+	private static get predictionEndpoint(): string {
+		const version = this.versionPath;
+		return `${API_BASE_URL}/${this.modelPath}/versions/${version}/predictions`;
+	}
+
 	private static async createPrediction(body: Record<string, unknown>) {
-		const response = await fetch(`${API_BASE_URL}/${this.modelPath}/predictions`, {
+		const response = await fetch(this.predictionEndpoint, {
 			method: 'POST',
 			headers: this.headers,
 			body: JSON.stringify({ input: body }),
@@ -229,49 +193,14 @@ export class ReplicateTranslationService {
 	}
 
 	private static parsePrediction(prediction: ReplicatePrediction): SpeechTranslationResult {
-		const rawOutput = prediction.output;
-		const output = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
-
-		let translatedText: string | null = null;
-		let detectedLanguage: string | null = null;
-		let targetLanguage: string | null = null;
-		let audioUrl: string | null = null;
-
-		if (typeof output === 'string') {
-			if (/^https?:/i.test(output)) {
-				audioUrl = output;
-			} else {
-				translatedText = output;
-			}
-		} else if (output && typeof output === 'object') {
-			const candidateText =
-				(output as any).translated_text ||
-				(output as any).translation ||
-				(output as any).text ||
-				(Array.isArray((output as any).texts) ? (output as any).texts[0] : null);
-			translatedText = candidateText ?? null;
-			detectedLanguage =
-				(output as any).detected_language ||
-				(output as any).source_language ||
-				null;
-			targetLanguage =
-				(output as any).target_language ||
-				(output as any).language ||
-				null;
-			audioUrl =
-				(output as any).audio ||
-				(output as any).audio_out ||
-				(output as any).audio_url ||
-				(output as any).speech ||
-				null;
-		}
-
+		const output = (prediction.output ?? {}) as Record<string, unknown>;
+		const translatedText = typeof output.text_output === 'string' ? (output.text_output as string) : null;
+		const audioUrl = typeof output.audio_output === 'string' ? (output.audio_output as string) : null;
 		return {
 			predictionId: prediction.id,
 			status: prediction.status,
 			translatedText,
-			detectedLanguage,
-			targetLanguage,
+			targetLanguage: (output.target_language as string) || null,
 			audioUrl,
 			raw: prediction,
 		};
@@ -284,8 +213,8 @@ export class ReplicateTranslationService {
 			throw new Error('Replicate API token is not configured.');
 		}
 
-		const remoteAudioUrl = await this.uploadAudioAsync(request.fileUri);
-		const input = this.buildInput(remoteAudioUrl, request);
+		const dataUri = await this.fileToDataUri(request.fileUri);
+		const input = this.buildInput(dataUri, request);
 		const prediction = await this.createPrediction(input);
 		const finalPrediction = await this.waitForPrediction(prediction.id);
 

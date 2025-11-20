@@ -11,6 +11,7 @@ declare module '@env' {
   export const AZURE_SPEECH_ENABLED: string;
   export const REPLICATE_API_TOKEN: string;
   export const REPLICATE_MODEL_PATH: string;
+  export const REPLICATE_MODEL_VERSION: string;
   export const REPLICATE_POLL_INTERVAL_MS: string;
   export const REPLICATE_PREDICTION_TIMEOUT_MS: string;
 }

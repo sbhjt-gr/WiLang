@@ -87,7 +87,8 @@ Getting WiLang running is straightforward. Follow these steps:
 
    # Speech translation demo
    REPLICATE_API_TOKEN=your-replicate-token
-   REPLICATE_MODEL_PATH=models/meta/seamless-m4t
+   REPLICATE_MODEL_PATH=models/cjwbw/seamless_communication
+   REPLICATE_MODEL_VERSION=668a4fec05a887143e5fe8d45df25ec4c794dd43169b9a11562309b2d45873b0
    REPLICATE_POLL_INTERVAL_MS=2000
    REPLICATE_PREDICTION_TIMEOUT_MS=90000
    ```
@@ -182,11 +183,8 @@ WiLang needs these permissions to work:
 
 The optional demo in Settings uses Meta's SeamlessM4T model via the Replicate API:
 
-- Install `expo-audio` (already in `package.json`) and keep the plugin entry in `app.config.js` so the native recorder works on EAS builds.
-- Create a Replicate account, generate a token, and add it to `.env` as `REPLICATE_API_TOKEN`. Restart the dev server after changing environment variables.
-- Customize `REPLICATE_MODEL_PATH`, `REPLICATE_POLL_INTERVAL_MS`, and `REPLICATE_PREDICTION_TIMEOUT_MS` if you need to point at a different model or tweak polling behavior.
-- The demo records short clips (~5 seconds), uploads them through Replicate's Files API, calls SeamlessM4T for speech-to-speech translation, and then plays the synthetic audio response.
-
+ - The SeamlessM4T demo in **Settings → Speech Translation Demo** uploads short clips to Replicate, so keep recordings brief and never include sensitive data.
+ - `REPLICATE_MODEL_PATH` defaults to `models/cjwbw/seamless_communication`, and `REPLICATE_MODEL_VERSION` should point at the current version slug (for example the provided `668a4fec05a887143e5fe8d45df25ec4c794dd43169b9a11562309b2d45873b0`). Update these if you switch models.
 ## App Structure
 
 WiLang is organized into four main tabs:
