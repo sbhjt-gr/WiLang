@@ -172,11 +172,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     showModal('Copied!', 'Join code copied to clipboard', 'checkmark-circle');
   }, [currentMeetingId, showModal]);
 
-  const handleCloseCall = useCallback(() => {
-    closeCall();
-    navigation.navigate('HomeScreen', {});
-  }, [closeCall, navigation]);
-
   const toggleSecurityCodeModal = useCallback(() => {
     setShowSecurityCodeModal(prev => !prev);
   }, []);
@@ -195,12 +190,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       denyJoinRequest?.(pendingJoinRequestId);
     }
   }, [denyJoinRequest, pendingJoinRequestId]);
-
-  const handleJoinDeniedClose = useCallback(() => {
-    acknowledgeJoinDenied?.();
-    closeCall();
-    navigation.goBack();
-  }, [acknowledgeJoinDenied, closeCall, navigation]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -681,6 +670,46 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const handlePalabraTargetSelect = useCallback((code: string) => {
     setPalabraTarget(code as TargetLangCode);
   }, []);
+
+  const handleCloseCall = useCallback(async () => {
+    try {
+      if (palabraServiceRef.current) {
+        await palabraServiceRef.current.stop();
+        palabraServiceRef.current = null;
+      }
+      setPalabraEnabled(false);
+      setPalabraState('idle');
+      setPalabraTranscript(null);
+      setPalabraTranslation(null);
+
+      await subtitleStop();
+      ttsHook.stop();
+      closeCall();
+    } catch (err) {
+      console.error('call_cleanup_err:', err);
+    } finally {
+      navigation.navigate('HomeScreen', {});
+    }
+  }, [closeCall, navigation, subtitleStop, ttsHook]);
+
+  const handleJoinDeniedClose = useCallback(async () => {
+    acknowledgeJoinDenied?.();
+    try {
+      if (palabraServiceRef.current) {
+        await palabraServiceRef.current.stop();
+        palabraServiceRef.current = null;
+      }
+      setPalabraEnabled(false);
+
+      await subtitleStop();
+      ttsHook.stop();
+      closeCall();
+    } catch (err) {
+      console.error('denied_cleanup_err:', err);
+    } finally {
+      navigation.goBack();
+    }
+  }, [acknowledgeJoinDenied, closeCall, navigation, subtitleStop, ttsHook]);
 
   useEffect(() => {
     if (initializationAttempted.current) {
