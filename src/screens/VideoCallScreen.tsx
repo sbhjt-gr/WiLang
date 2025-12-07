@@ -32,6 +32,13 @@ import { useTranslation } from '../hooks/useTranslation';
 import { TTSPreferences } from '../services/TTSPreferences';
 import { useTTS } from '../hooks/useTTS';
 import { useRemoteAudioRecorder } from '../hooks/useRemoteAudioRecorder';
+// Palabra real-time translation
+import TranslationControls from '../components/translation-controls';
+import TranscriptionOverlay from '../components/transcription-overlay';
+import LanguageSelector from '../components/language-selector';
+import { VideoCallTranslation, type TranslationState } from '../services/video-call-translation';
+import { CallTranslationPrefs } from '../services/call-translation-prefs';
+import type { SourceLangCode, TargetLangCode } from '../services/palabra/types';
 
 const {width, height} = Dimensions.get('window');
 
@@ -103,6 +110,17 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [ttsEnabled, setTTSEnabled] = useState(false);
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [subtitleLoading, setSubtitleLoading] = useState(true);
+
+  // Palabra real-time translation state
+  const [palabraEnabled, setPalabraEnabled] = useState(false);
+  const [palabraState, setPalabraState] = useState<TranslationState>('idle');
+  const [palabraSource, setPalabraSource] = useState<SourceLangCode>('auto');
+  const [palabraTarget, setPalabraTarget] = useState<TargetLangCode>('en-us');
+  const [palabraTranscript, setPalabraTranscript] = useState<string | null>(null);
+  const [palabraTranslation, setPalabraTranslation] = useState<string | null>(null);
+  const [showPalabraSourceLang, setShowPalabraSourceLang] = useState(false);
+  const [showPalabraTargetLang, setShowPalabraTargetLang] = useState(false);
+  const palabraServiceRef = useRef<VideoCallTranslation | null>(null);
 
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
@@ -519,6 +537,151 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     };
   }, [subtitleStop, ttsHook]);
 
+  // Palabra: Load saved preferences on mount
+  useEffect(() => {
+    let active = true;
+    const loadPalabraPrefs = async () => {
+      try {
+        const [enabled, source, target] = await Promise.all([
+          CallTranslationPrefs.isEnabled(),
+          CallTranslationPrefs.getSource(),
+          CallTranslationPrefs.getTarget(),
+        ]);
+        if (active) {
+          setPalabraEnabled(enabled);
+          setPalabraSource(source);
+          setPalabraTarget(target);
+        }
+      } catch (error) {
+        console.warn('[Palabra] Failed to load prefs:', error);
+      }
+    };
+    loadPalabraPrefs();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Palabra: Initialize or cleanup service when enabled/disabled
+  useEffect(() => {
+    if (!palabraEnabled) {
+      if (palabraServiceRef.current) {
+        palabraServiceRef.current.stop();
+        palabraServiceRef.current = null;
+        setPalabraState('idle');
+        setPalabraTranscript(null);
+        setPalabraTranslation(null);
+      }
+      return;
+    }
+
+    // Skip if already running
+    if (palabraServiceRef.current) {
+      return;
+    }
+
+    const service = new VideoCallTranslation();
+    palabraServiceRef.current = service;
+    
+    service.setLanguages(palabraSource, palabraTarget);
+
+    const handleStateChange = (state: TranslationState) => {
+      setPalabraState(state);
+    };
+
+    const handleTranscription = (data: { text: string; isFinal?: boolean }) => {
+      setPalabraTranscript(data.text);
+    };
+
+    const handleTranslation = (data: { text: string; isFinal?: boolean }) => {
+      setPalabraTranslation(data.text);
+    };
+
+    const handleError = (err: Error) => {
+      console.error('[Palabra] err:', err);
+      showModal('Translation Error', err.message || 'An error occurred', 'alert-circle');
+    };
+
+    service.on('stateChange', handleStateChange);
+    service.on('transcription', handleTranscription);
+    service.on('translation', handleTranslation);
+    service.on('error', handleError);
+
+    return () => {
+      service.off('stateChange', handleStateChange);
+      service.off('transcription', handleTranscription);
+      service.off('translation', handleTranslation);
+      service.off('error', handleError);
+    };
+  }, [palabraEnabled, palabraSource, palabraTarget, showModal]);
+
+  // Palabra: Start when localStream becomes available
+  useEffect(() => {
+    if (!palabraEnabled || !localStream || !palabraServiceRef.current) {
+      return;
+    }
+
+    const service = palabraServiceRef.current;
+    if (service.getState() !== 'idle') {
+      return;
+    }
+
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (audioTrack) {
+      service.start(audioTrack as unknown as MediaStreamTrack).catch((err) => {
+        console.error('[Palabra] start_failed:', err);
+      });
+    }
+  }, [palabraEnabled, localStream]);
+
+  // Palabra: Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (palabraServiceRef.current) {
+        palabraServiceRef.current.stop();
+        palabraServiceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Palabra: Save preferences when they change
+  useEffect(() => {
+    CallTranslationPrefs.setEnabled(palabraEnabled);
+  }, [palabraEnabled]);
+
+  useEffect(() => {
+    CallTranslationPrefs.setSource(palabraSource);
+    // Update service if active
+    if (palabraServiceRef.current && palabraEnabled) {
+      palabraServiceRef.current.setLanguages(palabraSource, palabraTarget);
+    }
+  }, [palabraSource, palabraTarget, palabraEnabled]);
+
+  useEffect(() => {
+    CallTranslationPrefs.setTarget(palabraTarget);
+  }, [palabraTarget]);
+
+  // Palabra: Toggle handler
+  const handlePalabraToggle = useCallback(() => {
+    setPalabraEnabled((prev) => !prev);
+  }, []);
+
+  // Palabra: Open settings modal
+  const handlePalabraSettings = useCallback(() => {
+    setShowPalabraSourceLang(true);
+  }, []);
+
+  // Palabra: Language selection handlers
+  const handlePalabraSourceSelect = useCallback((code: string) => {
+    setPalabraSource(code as SourceLangCode);
+    setShowPalabraSourceLang(false);
+    setShowPalabraTargetLang(true);
+  }, []);
+
+  const handlePalabraTargetSelect = useCallback((code: string) => {
+    setPalabraTarget(code as TargetLangCode);
+  }, []);
+
   useEffect(() => {
     if (initializationAttempted.current) {
       return;
@@ -916,6 +1079,25 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         </View>
       )}
 
+      {/* Palabra real-time translation overlay */}
+      <TranscriptionOverlay
+        sourceText={palabraTranscript}
+        translatedText={palabraTranslation}
+        visible={palabraEnabled && palabraState === 'active'}
+      />
+
+      {/* Palabra translation controls */}
+      <View style={styles.palabraControlsContainer}>
+        <TranslationControls
+          state={palabraState}
+          enabled={palabraEnabled}
+          sourceLang={palabraSource}
+          targetLang={palabraTarget}
+          onToggle={handlePalabraToggle}
+          onSettings={handlePalabraSettings}
+        />
+      </View>
+
       <View style={styles.bottomControls}>
         <View style={styles.controlsBackground}>
           <View style={styles.controlButtonsRow}>
@@ -1085,6 +1267,22 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           </Text>
         </View>
       </GlassModal>
+
+      {/* Palabra Language Selector Modals */}
+      <LanguageSelector
+        visible={showPalabraSourceLang}
+        mode="source"
+        currentCode={palabraSource}
+        onSelect={handlePalabraSourceSelect}
+        onClose={() => setShowPalabraSourceLang(false)}
+      />
+      <LanguageSelector
+        visible={showPalabraTargetLang}
+        mode="target"
+        currentCode={palabraTarget}
+        onSelect={handlePalabraTargetSelect}
+        onClose={() => setShowPalabraTargetLang(false)}
+      />
     </View>
   );
 }
@@ -1268,6 +1466,12 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
     marginTop: 2,
+  },
+  palabraControlsContainer: {
+    position: 'absolute',
+    bottom: 140,
+    left: 16,
+    zIndex: 15,
   },
   bottomControls: {
     position: 'absolute',

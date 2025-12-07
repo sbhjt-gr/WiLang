@@ -14,6 +14,7 @@
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		D679A32EDA2530C0ECD245AB /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E3B4D5E6C425EF48B7DE1B /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		7B04CFE202DA48C79F18F76A /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = DF428F7BE71E4574B0DC0F31 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = WiLang/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* WiLang-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "WiLang-Bridging-Header.h"; path = "WiLang/WiLang-Bridging-Header.h"; sourceTree = "<group>"; };
 		F9ADB3E80AAD5BF51A38D813 /* Pods-WiLang.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-WiLang.release.xcconfig"; path = "Target Support Files/Pods-WiLang/Pods-WiLang.release.xcconfig"; sourceTree = "<group>"; };
+		DF428F7BE71E4574B0DC0F31 /* GoogleService-Info.plist */ = {isa = PBXFileReference; name = "GoogleService-Info.plist"; path = "WiLang/GoogleService-Info.plist"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = text.plist.xml; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +56,7 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 				81019E45C55F8B460D3BED55 /* PrivacyInfo.xcprivacy */,
+				DF428F7BE71E4574B0DC0F31 /* GoogleService-Info.plist */,
 			);
 			name = WiLang;
 			sourceTree = "<group>";
@@ -199,6 +202,7 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				57CE41B25BC2B3256B67BA17 /* PrivacyInfo.xcprivacy in Resources */,
+				7B04CFE202DA48C79F18F76A /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
