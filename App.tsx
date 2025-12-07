@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { registerGlobals } from '@livekit/react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, StyleSheet } from 'react-native';
@@ -23,6 +24,8 @@ import WebRTCProvider from './src/store/WebRTCProvider';
 import WebRTCInitializer from './src/components/WebRTCInitializer';
 import { ThemeProvider } from './src/theme';
 
+registerGlobals();
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const customTheme = {
@@ -34,6 +37,8 @@ const customTheme = {
 };
 
 export default function App() {
+  registerGlobals();
+  
   useEffect(() => {
     const initApp = async () => {
       try {
