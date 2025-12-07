@@ -10,6 +10,7 @@ import { TranslationPreferences } from '../../services/TranslationPreferences';
 import { getTranslationOptionLabel } from '../../constants/translation';
 import { useFocusEffect } from '@react-navigation/native';
 import TranslationDemoModal from '../../components/TranslationDemoModal';
+import PalabraTranslationDemoModal from '../../components/PalabraTranslationDemoModal';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -24,6 +25,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translationTarget, setTranslationTarget] = useState('en');
   const [demoOpen, setDemoOpen] = useState(false);
+  const [palabraDemoOpen, setPalabraDemoOpen] = useState(false);
 
   const langOpts = useMemo<Array<{ id: SubtitleLang; label: string }>>(
     () => [
@@ -150,6 +152,14 @@ export default function SettingsScreen({ navigation }: Props) {
       onPress: () => setDemoOpen(true),
     },
     {
+      id: 'palabra-demo',
+      title: 'Palabra AI Demo',
+      subtitle: 'Real-time speech-to-speech translation',
+      icon: 'language-outline' as const,
+      color: '#8b5cf6',
+      onPress: () => setPalabraDemoOpen(true),
+    },
+    {
       id: 'notifications',
       title: 'Notifications',
       subtitle: 'Manage call notifications',
@@ -236,6 +246,8 @@ export default function SettingsScreen({ navigation }: Props) {
       </ScrollView>
 
   <TranslationDemoModal visible={demoOpen} onClose={() => setDemoOpen(false)} />
+
+  <PalabraTranslationDemoModal visible={palabraDemoOpen} onClose={() => setPalabraDemoOpen(false)} />
 
   <Modal transparent visible={langOpen} animationType="fade">
         <View style={styles.modalBackdrop}>

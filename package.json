@@ -17,6 +17,8 @@
     "@expo/metro-runtime": "~5.0.5",
     "@expo/vector-icons": "^14.1.0",
     "@fugood/react-native-audio-pcm-stream": "^1.1.4",
+    "@livekit/react-native": "^2.9.5",
+    "@livekit/react-native-webrtc": "^137.0.2",
     "@noble/ciphers": "^2.0.1",
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",
@@ -69,7 +71,6 @@
     "react-native-sound": "^0.11.2",
     "react-native-svg": "15.11.2",
     "react-native-vector-icons": "^10.1.0",
-    "react-native-webrtc": "^124.0.7",
     "socket.io-client": "^4.7.4"
   },
   "devDependencies": {

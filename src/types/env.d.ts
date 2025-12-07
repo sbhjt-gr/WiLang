@@ -14,4 +14,9 @@ declare module '@env' {
   export const REPLICATE_MODEL_VERSION: string;
   export const REPLICATE_POLL_INTERVAL_MS: string;
   export const REPLICATE_PREDICTION_TIMEOUT_MS: string;
+
+  // Palabra AI - Real-time speech-to-speech translation
+  export const PALABRA_CLIENT_ID: string;
+  export const PALABRA_CLIENT_SECRET: string;
+  export const PALABRA_API_BASE_URL: string;
 }

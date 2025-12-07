@@ -1,5 +1,5 @@
 import React, {useState, useRef, useEffect} from 'react';
-import {mediaDevices, MediaStream} from 'react-native-webrtc';
+import {mediaDevices, MediaStream} from '@livekit/react-native-webrtc';
 import {WebRTCContext} from './WebRTCContext';
 import {User, WebRTCContextType, E2EStatus, JoinRequest} from './WebRTCTypes';
 import {WebRTCSocketManager} from './WebRTCSocketManager';
@@ -500,6 +500,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   useEffect(() => {
     const autoConnectSocket = async () => {
       if (socketManager.current && !socket) {
+        console.log('auto_connect_start', { hasSocketManager: !!socketManager.current, hasSocket: !!socket });
+        
         try {
           const { getCurrentUser } = require('../services/FirebaseService');
           const { doc, getDoc } = require('firebase/firestore');
@@ -508,29 +510,37 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           const currentUser = getCurrentUser();
           
           if (currentUser) {
-            console.log('attempting_socket_auto_connect', currentUser.uid);
+            console.log('attempting_socket_auto_connect', { uid: currentUser.uid, hasPhone: !!currentUser.phoneNumber, hasEmail: !!currentUser.email });
             
             let phoneNumber = currentUser.phoneNumber;
             
             if (!phoneNumber) {
+              console.log('fetching_phone_from_firestore', currentUser.uid);
               try {
                 const userDoc = await getDoc(doc(firestore, 'users', currentUser.uid));
                 if (userDoc.exists()) {
                   phoneNumber = userDoc.data()?.phone;
+                  console.log('phone_fetched_from_firestore', { hasPhone: !!phoneNumber });
+                } else {
+                  console.log('user_doc_not_found', currentUser.uid);
                 }
               } catch (error) {
-                console.log('failed_to_fetch_phone');
+                console.log('failed_to_fetch_phone', error);
               }
             }
             
             const userDisplayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'User';
+            console.log('initializing_socket', { displayName: userDisplayName });
+            
             const io = await socketManager.current.initializeSocket(userDisplayName);
+            console.log('socket_initialized', { socketId: io.id, connected: io.connected });
             
             setSocket(io);
             setPeerId(io.id || '');
             peerIdRef.current = io.id || '';
             socketRef.current = io;
             
+            console.log('registering_user', { username: userDisplayName, userId: currentUser.uid, peerId: io.id });
             socketManager.current.registerUser({
               username: userDisplayName,
               userId: currentUser.uid,
@@ -538,8 +548,10 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
               peerId: io.id,
               fcmToken: undefined
             });
+            console.log('user_registered');
 
             try {
+              console.log('uploading_key_bundle', { userId: currentUser.uid, peerId: io.id });
               const keyBundle = keyManager.createKeyBundle(currentUser.uid, io.id || undefined);
               socketManager.current.uploadKeyBundle(keyBundle);
               console.log('key_bundle_uploaded', { userId: currentUser.uid, peerId: io.id });
@@ -547,13 +559,15 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
               console.log('key_bundle_upload_failed', error);
             }
 
-            console.log('socket_auto_connected', currentUser.uid, phoneNumber);
+            console.log('socket_auto_connected', { uid: currentUser.uid, phone: phoneNumber, socketId: io.id });
           } else {
             console.log('no_user_logged_in');
           }
         } catch (error) {
-          console.log('socket_auto_connect_failed', error);
+          console.log('socket_auto_connect_failed', { error: error instanceof Error ? error.message : error, stack: error instanceof Error ? error.stack : undefined });
         }
+      } else {
+        console.log('auto_connect_skipped', { hasSocketManager: !!socketManager.current, hasSocket: !!socket, reason: !socketManager.current ? 'no_manager' : 'socket_exists' });
       }
     };
 

@@ -61,8 +61,11 @@ export class WebRTCSocketManager {
   }
 
   private async connectWithFallback(urls: string[], username: string): Promise<SocketInstance> {
+    console.log('connect_with_fallback_start', { urlCount: urls.length, username });
+    
     for (let i = 0; i < urls.length; i += 1) {
       const url = urls[i];
+      console.log('trying_server', { attempt: i + 1, total: urls.length, url });
 
       try {
         const io = socketio(url, {
@@ -76,41 +79,61 @@ export class WebRTCSocketManager {
           upgrade: true,
         });
 
+        console.log('socket_instance_created', { url, timeout: WEBRTC_CONFIG.timeout });
+
         await new Promise<void>((resolve, reject) => {
           const connectionTimeout = setTimeout(() => {
+            console.log('connection_timeout_triggered', { url, timeout: WEBRTC_CONFIG.timeout + 5000 });
             io.disconnect();
-            reject(new Error(`Connection timeout: ${url}`));
+            reject(new Error(`timeout`));
           }, WEBRTC_CONFIG.timeout + 5000);
 
           io.on('connect', () => {
+            console.log('socket_connected_event', { url, socketId: io.id });
             clearTimeout(connectionTimeout);
             this.peerId = io.id || '';
+            console.log('emitting_register', { username, socketId: io.id });
             io.emit('register', username);
             io.emit('set-peer-id', io.id);
+            console.log('register_emitted');
             resolve();
           });
 
           io.on('connect_error', (error: any) => {
+            console.log('connect_error_event', { url, error: error.message || error });
             clearTimeout(connectionTimeout);
             io.disconnect();
             reject(error);
           });
         });
 
+        console.log('connection_successful', { url, socketId: io.id });
         return io;
       } catch (error) {
+        console.log('connection_attempt_failed', { 
+          url, 
+          attempt: i + 1, 
+          total: urls.length, 
+          error: error instanceof Error ? error.message : error,
+          isLastAttempt: i === urls.length - 1
+        });
+        
         if (i === urls.length - 1) {
+          console.log('all_connection_attempts_exhausted', { urlCount: urls.length });
           throw error;
         }
 
+        console.log('retrying_next_server', { waitMs: 2000 });
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
 
+    console.log('fallback_failed_completely');
     throw new Error('All server URLs failed');
   }
 
   async initializeSocket(username: string): Promise<SocketInstance> {
+    console.log('socket_init_start', { username });
     this.username = username;
 
     const primaryUrl = SERVER_URL;
@@ -118,12 +141,17 @@ export class WebRTCSocketManager {
     const allUrls = [primaryUrl, ...fallbackUrls].filter(url => url && url !== 'undefined');
 
     if (allUrls.length === 0) {
+      console.log('no_urls_configured_using_default');
       allUrls.push('https://whisperlang-render.onrender.com');
     }
 
+    console.log('socket_init_urls', { urlCount: allUrls.length, urls: allUrls });
     const io = await this.connectWithFallback(allUrls, username);
+    console.log('socket_connected', { socketId: io.id, connected: io.connected });
+    
     this.socket = io;
     this.setupSocketListeners(io);
+    console.log('socket_listeners_setup');
 
     return io;
   }
@@ -281,10 +309,19 @@ export class WebRTCSocketManager {
     fcmToken?: string;
   }) {
     if (!this.socket) {
+      console.log('register_user_no_socket', { userId: userData.userId });
       throw new Error('Socket not initialized');
     }
 
+    console.log('register_user_emit', { 
+      userId: userData.userId, 
+      username: userData.username, 
+      hasPhone: !!userData.phoneNumber,
+      peerId: userData.peerId,
+      socketConnected: this.socket.connected
+    });
     this.socket.emit('register-user', userData);
+    console.log('register_user_emitted');
   }
 
   initiateCall(callData: {
@@ -356,8 +393,14 @@ export class WebRTCSocketManager {
       throw new Error('Socket not initialized');
     }
 
-    console.log('uploading_key_bundle', { userId: bundle.userId, hasIdentityKey: !!bundle.identityKey, hasEphemeralKey: !!bundle.ephemeralKey });
+    console.log('upload_key_bundle_emit', { 
+      userId: bundle.userId, 
+      hasIdentityKey: !!bundle.identityKey, 
+      hasEphemeralKey: !!bundle.ephemeralKey,
+      socketConnected: this.socket.connected
+    });
     this.socket.emit('upload-key-bundle', bundle);
+    console.log('upload_key_bundle_emitted');
   }
 
   requestKeyBundle(userId: string): Promise<KeyBundle | null> {

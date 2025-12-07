@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as FileSystem from 'expo-file-system';
-import type { MediaStream } from 'react-native-webrtc';
+import type { MediaStream } from '@livekit/react-native-webrtc';
 
 type UseRemoteAudioRecorderOptions = {
 	enabled: boolean;

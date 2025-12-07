@@ -1,4 +1,4 @@
-import {MediaStream, RTCPeerConnection} from 'react-native-webrtc';
+import {MediaStream, RTCPeerConnection} from '@livekit/react-native-webrtc';
 import {User} from './WebRTCTypes';
 import {ICE_SERVERS} from './WebRTCConfig';
 import {WebRTCSocketManager} from './WebRTCSocketManager';
@@ -131,11 +131,13 @@ export class WebRTCPeerManager {
   }
 
   private setupPeerConnectionEvents(pc: RTCPeerConnection, user: User) {
-    pc.addEventListener('track', (event: any) => {
+    // @ts-ignore - LiveKit WebRTC uses on() method
+    pc.ontrack = (event: any) => {
       this.handleRemoteTrack(event, user);
-    });
+    };
 
-    pc.addEventListener('icecandidate', (event: any) => {
+    // @ts-ignore
+    pc.onicecandidate = (event: any) => {
       if (!event.candidate) {
         return;
       }
@@ -144,9 +146,10 @@ export class WebRTCPeerManager {
         return;
       }
       this.socketManager.sendIceCandidate(event.candidate, user.peerId, meetingId);
-    });
+    };
 
-    pc.addEventListener('connectionstatechange', () => {
+    // @ts-ignore
+    pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
       
       if (this.onConnectionStateChanged) {
@@ -163,26 +166,30 @@ export class WebRTCPeerManager {
       } else if (state === 'closed') {
         this.remoteStreams.delete(user.peerId);
       }
-    });
+    };
 
-    pc.addEventListener('iceconnectionstatechange', () => {
+    // @ts-ignore
+    pc.oniceconnectionstatechange = () => {
       const state = pc.iceConnectionState;
       if (state === 'failed') {
         pc.restartIce();
       }
-    });
+    };
 
-    pc.addEventListener('icegatheringstatechange', () => {});
-    pc.addEventListener('signalingstatechange', () => {});
+    // @ts-ignore
+    pc.onicegatheringstatechange = () => {};
+    // @ts-ignore
+    pc.onsignalingstatechange = () => {};
 
-    pc.addEventListener('negotiationneeded', () => {
+    // @ts-ignore
+    pc.onnegotiationneeded = () => {
       if (pc.connectionState !== 'connected') {
         return;
       }
       if (this.peerId > user.peerId && pc.signalingState === 'stable') {
         this.signalingHandler.createAndSendOffer(pc, user);
       }
-    });
+    };
   }
 
   private handleRemoteTrack(event: any, user: User) {
