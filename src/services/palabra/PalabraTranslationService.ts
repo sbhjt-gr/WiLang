@@ -96,6 +96,17 @@ export class PalabraTranslationService extends EventEmitter {
     console.log('[PalabraService] Target language:', lang);
   }
 
+  private getDetectableLanguages(): SourceLangCode[] {
+    if (this.sourceLanguage === 'auto') {
+      return [
+        'en', 'uk', 'it', 'es', 'de', 'pt', 'tr', 'ar', 'ru', 'pl',
+        'fr', 'id', 'zh', 'nl', 'ja', 'ko', 'fi', 'hu', 'el', 'cs',
+        'da', 'he', 'hi',
+      ];
+    }
+    return [this.sourceLanguage];
+  }
+
   private createPipelineConfig(): PipelineConfig {
     return {
       input_stream: {
@@ -120,7 +131,7 @@ export class PalabraTranslationService extends EventEmitter {
         },
         transcription: {
           source_language: this.sourceLanguage,
-          detectable_languages: [this.sourceLanguage],
+          detectable_languages: this.getDetectableLanguages(),
           segment_confirmation_silence_threshold: 0.5,
           sentence_splitter: { enabled: true },
           verification: {

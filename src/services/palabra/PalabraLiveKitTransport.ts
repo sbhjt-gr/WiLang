@@ -336,6 +336,7 @@ export class PalabraLiveKitTransport extends EventEmitter {
     try {
       const decoder = new TextDecoder();
       const message = decoder.decode(payload);
+      console.log('[PalabraTransport] Raw data:', message);
       const data: DataReceivedPayload = JSON.parse(message);
 
       console.log('[PalabraTransport] Data received:', data.message_type);
