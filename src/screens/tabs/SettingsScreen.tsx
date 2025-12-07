@@ -9,7 +9,6 @@ import { SubtitlePreferences, type SubtitleLang } from '../../services/SubtitleP
 import { TranslationPreferences } from '../../services/TranslationPreferences';
 import { getTranslationOptionLabel } from '../../constants/translation';
 import { useFocusEffect } from '@react-navigation/native';
-import TranslationDemoModal from '../../components/TranslationDemoModal';
 import PalabraTranslationDemoModal from '../../components/PalabraTranslationDemoModal';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
@@ -24,7 +23,6 @@ export default function SettingsScreen({ navigation }: Props) {
   const [langOpen, setLangOpen] = useState(false);
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translationTarget, setTranslationTarget] = useState('en');
-  const [demoOpen, setDemoOpen] = useState(false);
   const [palabraDemoOpen, setPalabraDemoOpen] = useState(false);
 
   const langOpts = useMemo<Array<{ id: SubtitleLang; label: string }>>(
@@ -144,14 +142,6 @@ export default function SettingsScreen({ navigation }: Props) {
       onPress: () => navigation.navigate('TranslationSettingsScreen'),
     },
     {
-      id: 'realtime-demo',
-      title: 'Speech Translation Demo',
-      subtitle: 'Replicate SeamlessM4T preview',
-      icon: 'mic-outline' as const,
-      color: '#8b5cf6',
-      onPress: () => setDemoOpen(true),
-    },
-    {
       id: 'palabra-demo',
       title: 'Palabra AI Demo',
       subtitle: 'Real-time speech-to-speech translation',
@@ -244,8 +234,6 @@ export default function SettingsScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-  <TranslationDemoModal visible={demoOpen} onClose={() => setDemoOpen(false)} />
 
   <PalabraTranslationDemoModal visible={palabraDemoOpen} onClose={() => setPalabraDemoOpen(false)} />
 

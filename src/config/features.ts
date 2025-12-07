@@ -1,4 +1,3 @@
 export const FEATURES = {
-	AZURE_TRANSLATION: __DEV__,
-	AZURE_REAL_TIME: __DEV__,
+	PALABRA_TRANSLATION: __DEV__,
 };

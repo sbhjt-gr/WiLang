@@ -13,8 +13,6 @@ import { TTSPreferences } from '../services/TTSPreferences';
 import { useTTS } from '../hooks/useTTS';
 import { SubtitlePreferences } from '../services/SubtitlePreferences';
 import { FEATURES } from '../config/features';
-import { AzureTranslationService } from '../services/AzureTranslationService';
-import type { AzureStatus } from '../types/azure';
 
 export type TranslationSettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'TranslationSettingsScreen'>;
 export type TranslationSettingsScreenRouteProp = RouteProp<RootStackParamList, 'TranslationSettingsScreen'>;
@@ -66,12 +64,6 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 	const [testTTSEnabled, setTestTTSEnabled] = useState(false);
 	const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
 	const [subtitleLoading, setSubtitleLoading] = useState(true);
-	
-	const [azureEnabled, setAzureEnabled] = useState(false);
-	const [azureStatus, setAzureStatus] = useState<AzureStatus>('idle');
-	const [azureLiveOriginal, setAzureLiveOriginal] = useState('');
-	const [azureLiveTranslated, setAzureLiveTranslated] = useState('');
-	const [azureError, setAzureError] = useState<string | null>(null);
 
 	const loadModels = useCallback(async () => {
 		setIsLoadingModels(true);
@@ -471,38 +463,6 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 		}
 	}, [loadModels]);
 
-	const handleAzureRealtimeTest = useCallback(async () => {
-		if (!AzureTranslationService.isAvailable()) {
-			setAzureError('Azure not configured');
-			return;
-		}
-		if (source === 'auto' || target === 'auto') {
-			setAzureError('Select source and target language');
-			return;
-		}
-		setAzureStatus('connecting');
-		setAzureError(null);
-		setAzureLiveOriginal('');
-		setAzureLiveTranslated('');
-
-		try {
-			await AzureTranslationService.translateRealtime(
-				testText,
-				source,
-				target,
-				(orig, trans) => {
-					setAzureLiveOriginal(orig);
-					setAzureLiveTranslated(trans);
-					setAzureStatus('translating');
-				}
-			);
-			setAzureStatus('idle');
-		} catch (error) {
-			setAzureError(error instanceof Error ? error.message : 'Azure translation failed');
-			setAzureStatus('error');
-		}
-	}, [source, target, testText]);
-
 	return (
 		<>
 			<StatusBar barStyle="light-content" backgroundColor="#8b5cf6" />
@@ -867,78 +827,6 @@ const TranslationSettingsScreen = ({ navigation }: Props) => {
 										</>
 									)}
 								</View>
-						)}
-
-						{FEATURES.AZURE_TRANSLATION && (
-							<View style={[styles.card, { backgroundColor: colors.surface }]}>
-								<View style={styles.settingRow}>
-									<Text style={[styles.settingTitle, { color: colors.text }]}>Azure Real-Time Translation (Beta)</Text>
-									<Switch
-										value={azureEnabled}
-										onValueChange={setAzureEnabled}
-										trackColor={{ false: '#ccc', true: colors.primary }}
-										thumbColor={azureEnabled ? '#fff' : '#f4f3f4'}
-									/>
-								</View>
-
-								{azureEnabled && (
-									<>
-										<Text style={[styles.settingSubtitle, { color: colors.textSecondary, marginTop: 8 }]}>
-											Simulated streaming translation (Dev only - Not real Azure)
-										</Text>
-
-										{azureError && (
-											<Text style={[styles.testError, { color: colors.error }]}>{azureError}</Text>
-										)}
-
-										{azureStatus === 'idle' && (
-											<TouchableOpacity
-												style={[styles.testButton, { backgroundColor: colors.primary }]}
-												onPress={handleAzureRealtimeTest}
-												disabled={!testText.trim() || source === 'auto' || target === 'auto'}
-												activeOpacity={0.7}
-											>
-												<Ionicons name="flash" size={20} color="#fff" />
-												<Text style={styles.testButtonText}>Start Real-Time Test</Text>
-											</TouchableOpacity>
-										)}
-
-										{azureStatus === 'connecting' && (
-											<View style={styles.azureStatusContainer}>
-												<ActivityIndicator size="small" color={colors.primary} />
-												<Text style={[styles.azureStatusText, { color: colors.textSecondary }]}>
-													Connecting to Azure...
-												</Text>
-											</View>
-										)}
-
-										{(azureStatus === 'translating' || azureLiveOriginal || azureLiveTranslated) && (
-											<>
-												<View style={[styles.azureLiveBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
-													<Text style={[styles.azureLiveLabel, { color: colors.textSecondary }]}>Original</Text>
-													<Text style={[styles.azureLiveText, { color: colors.text }]}>
-														{azureLiveOriginal || '...'}
-													</Text>
-												</View>
-												<View style={[styles.azureLiveBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
-													<Text style={[styles.azureLiveLabel, { color: colors.textSecondary }]}>Translated</Text>
-													<Text style={[styles.azureLiveText, { color: colors.text }]}>
-														{azureLiveTranslated || '...'}
-													</Text>
-												</View>
-												{azureStatus === 'translating' && (
-													<View style={styles.azureStatusContainer}>
-														<ActivityIndicator size="small" color={colors.primary} />
-														<Text style={[styles.azureStatusText, { color: colors.textSecondary }]}>
-															Translating...
-														</Text>
-													</View>
-												)}
-											</>
-										)}
-									</>
-								)}
-							</View>
 						)}
 					</ScrollView>
 				</View>
@@ -1432,31 +1320,6 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 		gap: 8,
 		marginTop: 12,
-	},
-	azureStatusContainer: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'center',
-		padding: 12,
-		gap: 8,
-	},
-	azureStatusText: {
-		fontSize: 14,
-	},
-	azureLiveBox: {
-		padding: 12,
-		borderRadius: 8,
-		borderWidth: 1,
-		marginTop: 12,
-	},
-	azureLiveLabel: {
-		fontSize: 12,
-		fontWeight: '600',
-		marginBottom: 6,
-	},
-	azureLiveText: {
-		fontSize: 14,
-		minHeight: 40,
 	},
 });
 
