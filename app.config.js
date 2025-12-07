@@ -22,8 +22,8 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.gorai.wilanger",
-      googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
-  deploymentTarget: "18.0",
+      // googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
+      deploymentTarget: "18.0",
       infoPlist: {
         NSContactsUsageDescription: "WiLang needs access to your contacts to help you connect with friends and family for video calls.",
         NSCameraUsageDescription: "WiLang needs access to your camera for video calls.",
@@ -41,7 +41,7 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/icon.png",
+        foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#3754AB"
       },
       package: "com.gorai.wilanger",
