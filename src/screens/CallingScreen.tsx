@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { videoCallService } from '../services/VideoCallService';
 import { WebRTCContext } from '../store/WebRTCContext';
+import InCallManager from 'react-native-incall-manager';
 
 interface CallingScreenProps {
   callType: 'outgoing' | 'incoming';
@@ -33,6 +34,20 @@ export default function CallingScreen() {
   const [callDuration, setCallDuration] = useState(0);
 
   useEffect(() => {
+    if (params.callType === 'incoming') {
+      InCallManager.startRingtone('_DEFAULT_', [0, 500, 200, 500], 'playback', 60);
+    } else if (params.callType === 'outgoing') {
+      InCallManager.start({ media: 'video', ringback: '_DEFAULT_' });
+    }
+
+    return () => {
+      InCallManager.stopRingtone();
+      InCallManager.stopRingback();
+      InCallManager.stop();
+    };
+  }, [params.callType]);
+
+  useEffect(() => {
     if (params.callType === 'outgoing') {
       const timer = setInterval(() => {
         setCallDuration(prev => prev + 1);
@@ -48,7 +63,13 @@ export default function CallingScreen() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const stopRingtone = () => {
+    InCallManager.stopRingtone();
+    InCallManager.stopRingback();
+  };
+
   const handleAccept = () => {
+    stopRingtone();
     if (params.callType === 'incoming' && params.callId && params.callerSocketId) {
       webRTCContext?.prepareDirectCall?.({
         peerId: params.callerSocketId,
@@ -73,6 +94,7 @@ export default function CallingScreen() {
   };
 
   const handleDecline = () => {
+    stopRingtone();
     if (params.callType === 'incoming' && params.callId && params.callerSocketId) {
       videoCallService.declineIncomingCall(params.callId, params.callerSocketId);
     }
@@ -84,6 +106,7 @@ export default function CallingScreen() {
   };
 
   const handleCancel = () => {
+    stopRingtone();
     videoCallService.cancelOutgoingCall();
     if (navigation.canGoBack()) {
       navigation.goBack();
