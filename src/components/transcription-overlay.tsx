@@ -1,19 +1,44 @@
 import React from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 
 interface Props {
   sourceText?: string | null;
   translatedText?: string | null;
   visible: boolean;
+  isConnecting?: boolean;
 }
 
 const TranscriptionOverlay: React.FC<Props> = ({
   sourceText,
   translatedText,
   visible,
+  isConnecting,
 }) => {
-  if (!visible || (!sourceText && !translatedText)) {
+  if (!visible) {
     return null;
+  }
+
+  const hasContent = sourceText || translatedText;
+
+  if (!hasContent && isConnecting) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.bubble}>
+          <ActivityIndicator size="small" color="#8b5cf6" />
+          <Text style={styles.sourceText}>Connecting...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!hasContent) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.bubble}>
+          <Text style={styles.sourceText}>Listening...</Text>
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -35,7 +60,7 @@ const TranscriptionOverlay: React.FC<Props> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 160,
     left: 16,
     right: 16,
     alignItems: 'center',
@@ -47,6 +72,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     maxWidth: '90%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   translatedBubble: {
     backgroundColor: 'rgba(139, 92, 246, 0.85)',

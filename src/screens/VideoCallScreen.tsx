@@ -1117,6 +1117,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         sourceText={palabraTranscript}
         translatedText={palabraTranslation}
         visible={palabraEnabled && palabraState !== 'idle' && palabraState !== 'error'}
+        isConnecting={palabraState === 'connecting'}
       />
 
       <View style={styles.bottomControls}>
