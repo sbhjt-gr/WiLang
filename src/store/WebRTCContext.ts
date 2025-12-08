@@ -75,4 +75,7 @@ export const WebRTCContext = createContext<WebRTCContextType>({
   isMeetingOwner: false,
   joinDeniedReason: null,
   acknowledgeJoinDenied: () => {},
+  prepareDirectCall: () => {},
+  endDirectCall: () => {},
+  isDirectCallActive: false,
 });

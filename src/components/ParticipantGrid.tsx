@@ -142,6 +142,15 @@ const ParticipantGrid: React.FC<ParticipantGridProps> = ({
 
   const remoteParticipants = participants.filter(p => !p.isLocal && p.peerId !== currentUser);
 
+  console.log('participant_grid_render', {
+    participantCount: participants.length,
+    remoteParticipantsCount: remoteParticipants.length,
+    remoteStreamsSize: remoteStreams?.size,
+    remoteStreamsKeys: remoteStreams ? Array.from(remoteStreams.keys()) : [],
+    participantPeerIds: remoteParticipants.map(p => p.peerId),
+    participantIds: remoteParticipants.map(p => p.id)
+  });
+
   const allParticipants = [localParticipant, ...remoteParticipants];
   const totalParticipants = allParticipants.length;
   
@@ -154,6 +163,15 @@ const ParticipantGrid: React.FC<ParticipantGridProps> = ({
     const animatedParticipant = animatedParticipants.get(participant.id);
     const hasStream = isLocal ? !!localStream : !!remoteStreams?.get(participant.peerId);
     const stream = isLocal ? localStream : remoteStreams?.get(participant.peerId);
+
+    if (!isLocal) {
+      console.log('render_remote_participant', {
+        peerId: participant.peerId,
+        id: participant.id,
+        hasStream,
+        streamKeys: remoteStreams ? Array.from(remoteStreams.keys()) : []
+      });
+    }
 
     return (
       <Animated.View

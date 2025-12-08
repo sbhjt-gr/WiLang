@@ -590,6 +590,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     const remoteParticipant = remotePeers.find(p => !p.isLocal);
     const remoteStream = remoteParticipant ? remoteStreams?.get(remoteParticipant.peerId) : null;
     
+    console.log('render_featured', {
+      remotePeersCount: remotePeers.length,
+      remoteParticipantPeerId: remoteParticipant?.peerId,
+      hasRemoteStream: !!remoteStream,
+      remoteStreamsSize: remoteStreams?.size,
+      remoteStreamsKeys: remoteStreams ? Array.from(remoteStreams.keys()) : []
+    });
+    
     return (
       <View style={styles.featuredContainer}>
         {remoteStream && remoteParticipant ? (

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions, Platform, Image, Text } from 'react-native';
 import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { videoCallService } from '../services/VideoCallService';
+import { WebRTCContext } from '../store/WebRTCContext';
 
 interface CallingScreenProps {
   callType: 'outgoing' | 'incoming';
@@ -27,6 +28,7 @@ export default function CallingScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const params = route.params as CallingScreenProps;
+  const webRTCContext = useContext(WebRTCContext);
 
   const [callDuration, setCallDuration] = useState(0);
 
@@ -48,6 +50,13 @@ export default function CallingScreen() {
 
   const handleAccept = () => {
     if (params.callType === 'incoming' && params.callId && params.callerSocketId) {
+      webRTCContext?.prepareDirectCall?.({
+        peerId: params.callerSocketId,
+        userId: params.callerId,
+        username: params.callerName,
+        phoneNumber: params.callerPhone,
+        role: 'recipient',
+      });
       videoCallService.acceptIncomingCall(
         params.callId,
         params.callerSocketId,

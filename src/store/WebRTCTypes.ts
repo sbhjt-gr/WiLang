@@ -13,6 +13,14 @@ export interface User {
   isRefreshing?: boolean;
 }
 
+export interface DirectCallConfig {
+  peerId: string;
+  username: string;
+  role: 'caller' | 'recipient';
+  userId?: string;
+  phoneNumber?: string | null;
+}
+
 export interface E2EStatus {
   initialized: boolean;
   keyExchangeInProgress: boolean;
@@ -66,4 +74,7 @@ export interface WebRTCContextType {
   isMeetingOwner?: boolean;
   joinDeniedReason?: string | null;
   acknowledgeJoinDenied?: () => void;
+  prepareDirectCall?: (config: DirectCallConfig) => void;
+  endDirectCall?: () => void;
+  isDirectCallActive?: boolean;
 }

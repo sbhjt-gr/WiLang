@@ -197,6 +197,12 @@ export class WebRTCPeerManager {
   }
 
   private handleRemoteTrack(event: any, user: User) {
+    console.log('remote_track_received', { 
+      peerId: user.peerId, 
+      trackKind: event.track?.kind,
+      hasStreams: event.streams?.length > 0 
+    });
+    
     let remoteStream = event.streams && event.streams.length > 0 ? event.streams[0] : null;
     if (!remoteStream) {
       const existing = this.remoteStreams.get(user.peerId) || new MediaStream();
@@ -219,6 +225,13 @@ export class WebRTCPeerManager {
     }
 
     this.remoteStreams.set(user.peerId, remoteStream);
+    
+    console.log('remote_stream_stored', { 
+      peerId: user.peerId, 
+      trackCount: remoteStream.getTracks().length,
+      videoTracks: remoteStream.getVideoTracks().length,
+      audioTracks: remoteStream.getAudioTracks().length
+    });
     
     if (this.onRemoteStreamAdded) {
       this.onRemoteStreamAdded(user.peerId, remoteStream);
