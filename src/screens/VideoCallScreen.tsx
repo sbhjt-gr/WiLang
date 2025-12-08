@@ -698,26 +698,20 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.topRightControls}>
-          {e2eStatus?.initialized && (
+          {e2eStatus?.initialized && e2eStatus.activeSessions.length > 0 && (
             <TouchableOpacity 
               style={[styles.e2eIndicator, { backgroundColor: 'rgba(0,0,0,0.7)' }]}
-              onPress={e2eStatus.activeSessions.length > 0 ? toggleSecurityCodeModal : undefined}
-              disabled={e2eStatus.activeSessions.length === 0}
+              onPress={toggleSecurityCodeModal}
             >
               {e2eStatus.keyExchangeInProgress ? (
                 <>
                   <ActivityIndicator size="small" color="#fbbf24" />
                   <Text style={styles.e2eText}>Securing...</Text>
                 </>
-              ) : e2eStatus.activeSessions.length > 0 ? (
+              ) : (
                 <>
                   <Ionicons name="lock-closed" size={16} color="#10b981" />
                   <Text style={[styles.e2eText, { color: '#10b981' }]}>End-to-End Encrypted</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="lock-open" size={16} color="#6b7280" />
-                  <Text style={[styles.e2eText, { color: '#9ca3af' }]}>Not Encrypted</Text>
                 </>
               )}
             </TouchableOpacity>
