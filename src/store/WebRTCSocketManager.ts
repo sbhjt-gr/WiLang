@@ -324,13 +324,13 @@ export class WebRTCSocketManager {
     console.log('register_user_emitted');
   }
 
-  updateFcmToken(userId: string, fcmToken: string) {
+  updateFcmToken(userId: string, fcmToken: string, platform: 'ios' | 'android') {
     if (!this.socket) {
       console.log('fcm_update_no_socket');
       return;
     }
-    this.socket.emit('update-fcm-token', { userId, fcmToken });
-    console.log('fcm_token_sent');
+    this.socket.emit('update-fcm-token', { userId, fcmToken, platform });
+    console.log('fcm_token_sent', platform);
   }
 
   initiateCall(callData: {

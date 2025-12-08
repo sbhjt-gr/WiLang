@@ -7,31 +7,31 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		074A28F86B49F7068FE92D0D /* libPods-WiLang.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2966674B91B26C662BF19627 /* libPods-WiLang.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		21434579717263104B431053 /* libPods-WiLang.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 865D304ABB7506F85AC92C53 /* libPods-WiLang.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		57CE41B25BC2B3256B67BA17 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 81019E45C55F8B460D3BED55 /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		D679A32EDA2530C0ECD245AB /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E3B4D5E6C425EF48B7DE1B /* ExpoModulesProvider.swift */; };
+		DE719C851F8FE75A27F9C9A3 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67F8037F3EB617124211C275 /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		7B04CFE202DA48C79F18F76A /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = DF428F7BE71E4574B0DC0F31 /* GoogleService-Info.plist */; };
+		F284D145350D7227B57C1662 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DFA56384C2E710C382318C01 /* PrivacyInfo.xcprivacy */; };
+		2B39894EE11944C2A3924387 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 25E489C446AE40BA904552D3 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		058F007A2C5380752A5873BE /* Pods-WiLang.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-WiLang.debug.xcconfig"; path = "Target Support Files/Pods-WiLang/Pods-WiLang.debug.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* WiLang.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WiLang.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = WiLang/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = WiLang/Info.plist; sourceTree = "<group>"; };
-		45E3B4D5E6C425EF48B7DE1B /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-WiLang/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		81019E45C55F8B460D3BED55 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = WiLang/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		865D304ABB7506F85AC92C53 /* libPods-WiLang.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-WiLang.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		89E546C65FAB19B3EEC7AB3E /* Pods-WiLang.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-WiLang.debug.xcconfig"; path = "Target Support Files/Pods-WiLang/Pods-WiLang.debug.xcconfig"; sourceTree = "<group>"; };
+		2966674B91B26C662BF19627 /* libPods-WiLang.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-WiLang.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5D58F2F48D9766774A760EFF /* Pods-WiLang.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-WiLang.release.xcconfig"; path = "Target Support Files/Pods-WiLang/Pods-WiLang.release.xcconfig"; sourceTree = "<group>"; };
+		67F8037F3EB617124211C275 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-WiLang/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = WiLang/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		DFA56384C2E710C382318C01 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = WiLang/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = WiLang/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* WiLang-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "WiLang-Bridging-Header.h"; path = "WiLang/WiLang-Bridging-Header.h"; sourceTree = "<group>"; };
-		F9ADB3E80AAD5BF51A38D813 /* Pods-WiLang.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-WiLang.release.xcconfig"; path = "Target Support Files/Pods-WiLang/Pods-WiLang.release.xcconfig"; sourceTree = "<group>"; };
-		DF428F7BE71E4574B0DC0F31 /* GoogleService-Info.plist */ = {isa = PBXFileReference; name = "GoogleService-Info.plist"; path = "WiLang/GoogleService-Info.plist"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = text.plist.xml; explicitFileType = undefined; includeInIndex = 0; };
+		25E489C446AE40BA904552D3 /* GoogleService-Info.plist */ = {isa = PBXFileReference; name = "GoogleService-Info.plist"; path = "WiLang/GoogleService-Info.plist"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = text.plist.xml; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -39,7 +39,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				21434579717263104B431053 /* libPods-WiLang.a in Frameworks */,
+				074A28F86B49F7068FE92D0D /* libPods-WiLang.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -55,8 +55,8 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				81019E45C55F8B460D3BED55 /* PrivacyInfo.xcprivacy */,
-				DF428F7BE71E4574B0DC0F31 /* GoogleService-Info.plist */,
+				DFA56384C2E710C382318C01 /* PrivacyInfo.xcprivacy */,
+				25E489C446AE40BA904552D3 /* GoogleService-Info.plist */,
 			);
 			name = WiLang;
 			sourceTree = "<group>";
@@ -65,19 +65,27 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				865D304ABB7506F85AC92C53 /* libPods-WiLang.a */,
+				2966674B91B26C662BF19627 /* libPods-WiLang.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		33AE3ACBF2DEEC668F50D958 /* Pods */ = {
+		31572EA900DD34C9221F7D9F /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				89E546C65FAB19B3EEC7AB3E /* Pods-WiLang.debug.xcconfig */,
-				F9ADB3E80AAD5BF51A38D813 /* Pods-WiLang.release.xcconfig */,
+				058F007A2C5380752A5873BE /* Pods-WiLang.debug.xcconfig */,
+				5D58F2F48D9766774A760EFF /* Pods-WiLang.release.xcconfig */,
 			);
 			name = Pods;
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		61918A3924EB0C4987852E6B /* WiLang */ = {
+			isa = PBXGroup;
+			children = (
+				67F8037F3EB617124211C275 /* ExpoModulesProvider.swift */,
+			);
+			name = WiLang;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -94,8 +102,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				33AE3ACBF2DEEC668F50D958 /* Pods */,
-				94A83892C34440D7CB2E723E /* ExpoModulesProviders */,
+				31572EA900DD34C9221F7D9F /* Pods */,
+				BF19E8F966EFF6CE49D36CF7 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -110,14 +118,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		94A83892C34440D7CB2E723E /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				CD60496D4A5A607AAF848E43 /* WiLang */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -127,12 +127,12 @@
 			path = WiLang/Supporting;
 			sourceTree = "<group>";
 		};
-		CD60496D4A5A607AAF848E43 /* WiLang */ = {
+		BF19E8F966EFF6CE49D36CF7 /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				45E3B4D5E6C425EF48B7DE1B /* ExpoModulesProvider.swift */,
+				61918A3924EB0C4987852E6B /* WiLang */,
 			);
-			name = WiLang;
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -143,13 +143,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "WiLang" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				9EED216DD8337B047658B377 /* [Expo] Configure project */,
+				CF7567ACCCADA5FB1280EB40 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				00536C048C0157F8B1F765B3 /* [CP] Embed Pods Frameworks */,
+				6BC33704EA446CB4D24C7833 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -170,8 +170,6 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1250;
-						DevelopmentTeam = "GXKD77CCQ6";
-						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -201,34 +199,14 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				57CE41B25BC2B3256B67BA17 /* PrivacyInfo.xcprivacy in Resources */,
-				7B04CFE202DA48C79F18F76A /* GoogleService-Info.plist in Resources */,
+				F284D145350D7227B57C1662 /* PrivacyInfo.xcprivacy in Resources */,
+				2B39894EE11944C2A3924387 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		00536C048C0157F8B1F765B3 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-WiLang/Pods-WiLang-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/WebRTC-SDK/WebRTC.framework/WebRTC",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/WebRTC.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-WiLang/Pods-WiLang-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -264,6 +242,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		6BC33704EA446CB4D24C7833 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-WiLang/Pods-WiLang-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/WebRTC-SDK/WebRTC.framework/WebRTC",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/WebRTC.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-WiLang/Pods-WiLang-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
@@ -362,7 +360,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-WiLang/Pods-WiLang-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		9EED216DD8337B047658B377 /* [Expo] Configure project */ = {
+		CF7567ACCCADA5FB1280EB40 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -389,7 +387,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				D679A32EDA2530C0ECD245AB /* ExpoModulesProvider.swift in Sources */,
+				DE719C851F8FE75A27F9C9A3 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -398,7 +396,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 89E546C65FAB19B3EEC7AB3E /* Pods-WiLang.debug.xcconfig */;
+			baseConfigurationReference = 058F007A2C5380752A5873BE /* Pods-WiLang.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -429,15 +427,12 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
-				DEVELOPMENT_TEAM = "GXKD77CCQ6";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 			};
 			name = Debug;
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F9ADB3E80AAD5BF51A38D813 /* Pods-WiLang.release.xcconfig */;
+			baseConfigurationReference = 5D58F2F48D9766774A760EFF /* Pods-WiLang.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -462,9 +457,6 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
-				DEVELOPMENT_TEAM = "GXKD77CCQ6";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 			};
 			name = Release;
 		};

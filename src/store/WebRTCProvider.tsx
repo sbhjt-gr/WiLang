@@ -1,4 +1,5 @@
 import React, {useState, useRef, useEffect, useCallback} from 'react';
+import {Platform} from 'react-native';
 import {mediaDevices, MediaStream, MediaStreamTrack} from '@livekit/react-native-webrtc';
 import { setAudioModeAsync } from 'expo-audio';
 import {WebRTCContext} from './WebRTCContext';
@@ -802,7 +803,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
 
             pushService.init().then(fcmToken => {
               if (fcmToken && socketManager.current) {
-                socketManager.current.updateFcmToken(currentUser.uid, fcmToken);
+                const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+                socketManager.current.updateFcmToken(currentUser.uid, fcmToken, platform);
               }
             });
 
@@ -917,7 +919,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
 
         pushService.getToken().then(fcmToken => {
           if (fcmToken && socketManager.current) {
-            socketManager.current.updateFcmToken(currentUser.uid, fcmToken);
+            const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+            socketManager.current.updateFcmToken(currentUser.uid, fcmToken, platform);
           }
         });
 

@@ -1,5 +1,5 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Dimensions, Platform, Image, Text } from 'react-native';
+import React, { useContext, useEffect, useState, useRef } from 'react';
+import { View, StyleSheet, TouchableOpacity, Platform, Image, Text, AppState } from 'react-native';
 import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
@@ -8,6 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { videoCallService } from '../services/VideoCallService';
 import { WebRTCContext } from '../store/WebRTCContext';
+import { callKeepService } from '../services/callkeep-service';
+import RNCallKeep from 'react-native-callkeep';
 
 interface CallingScreenProps {
   callType: 'outgoing' | 'incoming';
@@ -19,9 +21,8 @@ interface CallingScreenProps {
   callId?: string;
   meetingId?: string;
   meetingToken?: string;
+  fromPush?: boolean;
 }
-
-const { width, height } = Dimensions.get('window');
 
 export default function CallingScreen() {
   const { colors } = useTheme();
@@ -31,6 +32,40 @@ export default function CallingScreen() {
   const webRTCContext = useContext(WebRTCContext);
 
   const [callDuration, setCallDuration] = useState(0);
+  const [callState, setCallState] = useState<'ringing' | 'connecting' | 'connected' | 'ended'>('ringing');
+  const callUUID = useRef<string>(params.callId || `call_${Date.now()}`);
+
+  useEffect(() => {
+    const initNativeCall = async () => {
+      await callKeepService.init();
+      
+      if (params.callType === 'incoming' && !params.fromPush) {
+        if (Platform.OS === 'android') {
+          RNCallKeep.displayIncomingCall(
+            callUUID.current,
+            params.callerPhone || params.callerName,
+            params.callerName,
+            'generic',
+            true
+          );
+        }
+      } else if (params.callType === 'outgoing') {
+        RNCallKeep.startCall(
+          callUUID.current,
+          params.callerPhone || params.callerName,
+          params.callerName,
+          'generic',
+          true
+        );
+      }
+    };
+
+    initNativeCall();
+
+    return () => {
+      RNCallKeep.endCall(callUUID.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (params.callType === 'outgoing') {
@@ -42,13 +77,40 @@ export default function CallingScreen() {
     }
   }, [params.callType]);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'background' && params.callType === 'incoming') {
+        console.log('call_backgrounded');
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    callKeepService.setOnAnswerCall(() => {
+      handleAccept();
+    });
+
+    callKeepService.setOnEndCall(() => {
+      handleDecline();
+    });
+
+    return () => {
+      callKeepService.setOnAnswerCall(() => {});
+      callKeepService.setOnEndCall(() => {});
+    };
+  }, []);
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
+    setCallState('connecting');
+
     if (params.callType === 'incoming' && params.callId && params.callerSocketId) {
       webRTCContext?.prepareDirectCall?.({
         peerId: params.callerSocketId,
@@ -64,7 +126,10 @@ export default function CallingScreen() {
         params.meetingToken
       );
     }
-    (navigation as any).navigate('VideoCallScreen', {
+
+    RNCallKeep.setCurrentCallActive(callUUID.current);
+
+    (navigation as any).replace('VideoCallScreen', {
       id: params.meetingId || `call_${params.callerId || Date.now()}`,
       type: 'incoming',
       joinCode: params.meetingId,
@@ -73,26 +138,36 @@ export default function CallingScreen() {
   };
 
   const handleDecline = () => {
+    setCallState('ended');
+
     if (params.callType === 'incoming' && params.callId && params.callerSocketId) {
       videoCallService.declineIncomingCall(params.callId, params.callerSocketId);
     }
+
+    RNCallKeep.endCall(callUUID.current);
+
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
-      (navigation as any).navigate('HomeScreen');
+      (navigation as any).replace('HomeScreen');
     }
   };
 
   const handleCancel = () => {
+    setCallState('ended');
+
     videoCallService.cancelOutgoingCall();
+    RNCallKeep.endCall(callUUID.current);
+
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
-      (navigation as any).navigate('HomeScreen');
+      (navigation as any).replace('HomeScreen');
     }
   };
 
   const getInitials = (name: string) => {
+    if (!name) return '??';
     const names = name.split(' ');
     if (names.length >= 2) {
       return (names[0][0] + names[1][0]).toUpperCase();
@@ -111,7 +186,9 @@ export default function CallingScreen() {
         <View style={styles.content}>
           <View style={styles.statusContainer}>
             <Text style={[styles.statusText, { color: colors.textInverse }]}>
-              {params.callType === 'incoming' ? 'Incoming Call' : 'Calling...'}
+              {params.callType === 'incoming' 
+                ? (callState === 'ringing' ? 'Incoming Video Call' : 'Connecting...')
+                : 'Calling...'}
             </Text>
             {params.callType === 'outgoing' && callDuration > 0 && (
               <Text style={[styles.durationText, { color: colors.textInverse }]}>
@@ -122,11 +199,11 @@ export default function CallingScreen() {
 
           <View style={styles.callerContainer}>
             <MotiView 
-              from={{ scale: 1 }}
-              animate={{ scale: 1.2 }}
+              from={{ scale: 1, opacity: 0.8 }}
+              animate={{ scale: 1.15, opacity: 1 }}
               transition={{
                 type: 'timing',
-                duration: 1000,
+                duration: 1200,
                 loop: true,
                 repeatReverse: true,
               }}
@@ -146,12 +223,21 @@ export default function CallingScreen() {
             </MotiView>
 
             <Text style={[styles.callerName, { color: colors.textInverse }]}>
-              {params.callerName}
+              {params.callerName || 'Unknown'}
             </Text>
             {params.callerPhone && (
               <Text style={[styles.callerPhone, { color: colors.textInverse }]}>
                 {params.callerPhone}
               </Text>
+            )}
+
+            {params.callType === 'incoming' && (
+              <View style={styles.callTypeIndicator}>
+                <Ionicons name="videocam" size={20} color={colors.textInverse} />
+                <Text style={[styles.callTypeText, { color: colors.textInverse }]}>
+                  Video Call
+                </Text>
+              </View>
             )}
           </View>
 
@@ -159,31 +245,48 @@ export default function CallingScreen() {
             {params.callType === 'incoming' ? (
               <View style={styles.incomingActions}>
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.declineButton, { backgroundColor: colors.error }]}
+                  style={styles.actionButton}
                   onPress={handleDecline}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="close" size={32} color={colors.textInverse} />
+                  <View style={[styles.buttonInner, { backgroundColor: '#FF3B30' }]}>
+                    <Ionicons name="close" size={36} color="#FFF" />
+                  </View>
                   <Text style={[styles.actionLabel, { color: colors.textInverse }]}>Decline</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.acceptButton, { backgroundColor: colors.success }]}
+                  style={styles.actionButton}
                   onPress={handleAccept}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="call" size={32} color={colors.textInverse} />
+                  <MotiView
+                    from={{ scale: 1 }}
+                    animate={{ scale: 1.1 }}
+                    transition={{
+                      type: 'timing',
+                      duration: 800,
+                      loop: true,
+                      repeatReverse: true,
+                    }}
+                  >
+                    <View style={[styles.buttonInner, { backgroundColor: '#34C759' }]}>
+                      <Ionicons name="videocam" size={36} color="#FFF" />
+                    </View>
+                  </MotiView>
                   <Text style={[styles.actionLabel, { color: colors.textInverse }]}>Accept</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <TouchableOpacity
-                style={[styles.actionButton, styles.cancelButton, { backgroundColor: colors.error }]}
+                style={[styles.actionButton, styles.cancelButton]}
                 onPress={handleCancel}
                 activeOpacity={0.8}
               >
-                <Ionicons name="close" size={32} color={colors.textInverse} />
-                <Text style={[styles.actionLabel, { color: colors.textInverse }]}>Cancel</Text>
+                <View style={[styles.buttonInner, { backgroundColor: '#FF3B30' }]}>
+                  <Ionicons name="call" size={36} color="#FFF" style={{ transform: [{ rotate: '135deg' }] }} />
+                </View>
+                <Text style={[styles.actionLabel, { color: colors.textInverse }]}>End Call</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -191,8 +294,8 @@ export default function CallingScreen() {
           <View style={styles.hintContainer}>
             <Text style={[styles.hintText, { color: colors.textInverse }]}>
               {params.callType === 'incoming' 
-                ? 'Video call with WiLang user'
-                : 'Connecting...'}
+                ? 'Swipe up or tap Accept to answer'
+                : 'Waiting for answer...'}
             </Text>
           </View>
         </View>
@@ -218,9 +321,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   statusText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
   durationText: {
     fontSize: 16,
@@ -267,6 +371,21 @@ const styles = StyleSheet.create({
   callerPhone: {
     fontSize: 18,
     opacity: 0.9,
+    marginBottom: 16,
+  },
+  callTypeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 8,
+  },
+  callTypeText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   actionsContainer: {
     paddingHorizontal: 40,
@@ -275,25 +394,22 @@ const styles = StyleSheet.create({
   incomingActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    gap: 40,
   },
   actionButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  },
+  buttonInner: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
-  },
-  declineButton: {
-    flex: 1,
-  },
-  acceptButton: {
-    flex: 1,
   },
   cancelButton: {
     alignSelf: 'center',
@@ -301,7 +417,7 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    marginTop: 8,
+    marginTop: 12,
   },
   hintContainer: {
     alignItems: 'center',
@@ -309,7 +425,7 @@ const styles = StyleSheet.create({
   },
   hintText: {
     fontSize: 14,
-    opacity: 0.8,
+    opacity: 0.7,
     textAlign: 'center',
   },
 });
