@@ -196,74 +196,74 @@ export default function CallTranslationSettings() {
               </Text>
             </View>
           </ScrollView>
-
-          <GlassModal
-            isVisible={showSource}
-            onClose={handleCloseSource}
-            title="Your Language"
-            subtitle="Select the language you speak"
-            icon="mic-outline"
-            height={500}
-          >
-            <View style={[styles.searchRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Ionicons name="search" size={18} color={colors.textSecondary} />
-              <TextInput
-                style={[styles.searchInput, { color: colors.text }]}
-                placeholder="Search languages..."
-                placeholderTextColor={colors.textSecondary}
-                value={search}
-                onChangeText={setSearch}
-                autoCorrect={false}
-              />
-              {search.length > 0 && (
-                <TouchableOpacity onPress={() => setSearch('')}>
-                  <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
-              )}
-            </View>
-            <FlatList
-              data={filteredSource}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => renderLangItem({ item, isSelected: item.id === source, onSelect: handleSourceSelect })}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.langList}
-            />
-          </GlassModal>
-
-          <GlassModal
-            isVisible={showTarget}
-            onClose={handleCloseTarget}
-            title="Translate To"
-            subtitle="Select the output language"
-            icon="ear-outline"
-            height={500}
-          >
-            <View style={[styles.searchRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Ionicons name="search" size={18} color={colors.textSecondary} />
-              <TextInput
-                style={[styles.searchInput, { color: colors.text }]}
-                placeholder="Search languages..."
-                placeholderTextColor={colors.textSecondary}
-                value={search}
-                onChangeText={setSearch}
-                autoCorrect={false}
-              />
-              {search.length > 0 && (
-                <TouchableOpacity onPress={() => setSearch('')}>
-                  <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
-              )}
-            </View>
-            <FlatList
-              data={filteredTarget}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => renderLangItem({ item, isSelected: item.id === target, onSelect: handleTargetSelect })}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.langList}
-            />
-          </GlassModal>
         </View>
       </SafeAreaView>
+
+      <GlassModal
+        isVisible={showSource}
+        onClose={handleCloseSource}
+        title="Your Language"
+        subtitle="Select the language you speak"
+        icon="mic-outline"
+        height={500}
+      >
+        <View style={[styles.searchRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <Ionicons name="search" size={18} color={colors.textSecondary} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="Search languages..."
+            placeholderTextColor={colors.textSecondary}
+            value={search}
+            onChangeText={setSearch}
+            autoCorrect={false}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <FlatList
+          data={filteredSource}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => renderLangItem({ item, isSelected: item.id === source, onSelect: handleSourceSelect })}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.langList}
+        />
+      </GlassModal>
+
+      <GlassModal
+        isVisible={showTarget}
+        onClose={handleCloseTarget}
+        title="Translate To"
+        subtitle="Select the output language"
+        icon="ear-outline"
+        height={500}
+      >
+        <View style={[styles.searchRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <Ionicons name="search" size={18} color={colors.textSecondary} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="Search languages..."
+            placeholderTextColor={colors.textSecondary}
+            value={search}
+            onChangeText={setSearch}
+            autoCorrect={false}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <FlatList
+          data={filteredTarget}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => renderLangItem({ item, isSelected: item.id === target, onSelect: handleTargetSelect })}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.langList}
+        />
+      </GlassModal>
     </>
   );
 }
