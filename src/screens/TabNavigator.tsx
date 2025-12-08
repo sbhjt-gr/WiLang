@@ -132,6 +132,9 @@ export default function TabNavigator({ navigation, route }: Props) {
           onPress={() => setShowNotifications(false)}
         >
           <View style={styles.notificationPanelContainer}>
+            <View style={styles.notificationArrowContainer}>
+              <View style={[styles.notificationArrow, { borderBottomColor: colors.surface }]} />
+            </View>
             <Pressable onPress={() => {}}>
               <View style={[styles.notificationPanel, { backgroundColor: colors.surface }]}>
                 <View style={styles.notificationHeader}>
@@ -299,6 +302,19 @@ const styles = StyleSheet.create({
     top: 100,
     right: 16,
     left: 16,
+  },
+  notificationArrowContainer: {
+    alignItems: 'flex-end',
+    paddingRight: 20,
+  },
+  notificationArrow: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
   },
   notificationPanel: {
     borderRadius: 16,
