@@ -25,7 +25,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const [translationTarget, setTranslationTarget] = useState('en');
   const [callTransSource, setCallTransSource] = useState<SourceLangCode>('auto');
   const [callTransTarget, setCallTransTarget] = useState<TargetLangCode>('en-us');
-  const [displayName, setDisplayName] = useState('User');
+  const [displayName, setDisplayName] = useState(' ');
 
   const translationLabel = useMemo(() => {
     if (!translationEnabled) {
@@ -57,12 +57,17 @@ export default function SettingsScreen({ navigation }: Props) {
         } catch (error) {}
         
         if (auth.currentUser?.uid) {
+          console.log('settings_fetch_profile', auth.currentUser.uid);
           try {
             const profile = await UserProfileService.getUserProfile(auth.currentUser.uid);
+            console.log('settings_profile_result', profile?.displayName);
             if (active && profile) {
               setDisplayName(profile.displayName);
+              console.log('settings_display_updated', profile.displayName);
             }
-          } catch (error) {}
+          } catch (error) {
+            console.log('settings_fetch_error', error);
+          }
         }
       };
       load();
