@@ -243,7 +243,7 @@ export default function CallingScreen() {
                   <Animated.View style={[styles.sliderTrack, trackStyle]}>
                     <View style={styles.iconsRow}>
                       <View style={styles.iconLeft}>
-                        <Ionicons name="close" size={24} color="rgba(255,59,48,0.8)" />
+                        <Ionicons name="call" size={24} color="rgba(255,59,48,0.8)" style={{ transform: [{ rotate: '135deg' }] }} />
                       </View>
                       
                       <Animated.View style={[styles.arrowsLeft, leftArrowStyle]}>
@@ -263,7 +263,7 @@ export default function CallingScreen() {
                       </Animated.View>
 
                       <View style={styles.iconRight}>
-                        <Ionicons name="checkmark" size={24} color="rgba(76,217,100,0.8)" />
+                        <Ionicons name="call" size={24} color="rgba(76,217,100,0.8)" />
                       </View>
                     </View>
                   </Animated.View>
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
     width: KNOB_SIZE,
     height: KNOB_SIZE,
     borderRadius: KNOB_SIZE / 2,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: '#4CD964',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
