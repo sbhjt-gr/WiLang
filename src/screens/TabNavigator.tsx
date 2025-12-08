@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform, Text, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Platform, Text, Image, Modal, Pressable } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
@@ -58,6 +58,7 @@ const tabs: TabItem[] = [
 
 export default function TabNavigator({ navigation, route }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('calls');
+  const [showNotifications, setShowNotifications] = useState(false);
   const { colors } = useTheme();
 
   const getHeaderTitle = () => {
@@ -106,7 +107,10 @@ export default function TabNavigator({ navigation, route }: Props) {
               <TouchableOpacity style={styles.headerButton}>
                 <Ionicons name="search-outline" size={20} color="#ffffff" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.headerButton}>
+              <TouchableOpacity 
+                style={styles.headerButton}
+                onPress={() => setShowNotifications(true)}
+              >
                 <Ionicons name="notifications-outline" size={20} color="#ffffff" />
                 <View style={styles.notificationBadge}>
                   <View style={[styles.notificationDot, { backgroundColor: '#dc2626' }]} />
@@ -116,6 +120,35 @@ export default function TabNavigator({ navigation, route }: Props) {
           </View>
         </SafeAreaView>
       </View>
+
+      <Modal
+        visible={showNotifications}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNotifications(false)}
+      >
+        <Pressable 
+          style={styles.notificationOverlay} 
+          onPress={() => setShowNotifications(false)}
+        >
+          <View style={styles.notificationPanelContainer}>
+            <Pressable onPress={() => {}}>
+              <View style={[styles.notificationPanel, { backgroundColor: colors.surface }]}>
+                <View style={styles.notificationHeader}>
+                  <Text style={[styles.notificationTitle, { color: colors.text }]}>Notifications</Text>
+                  <TouchableOpacity onPress={() => setShowNotifications(false)}>
+                    <Ionicons name="close" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.notificationContent}>
+                  <Ionicons name="notifications-off-outline" size={48} color={colors.textTertiary} />
+                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No notifications</Text>
+                </View>
+              </View>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
 
       <View style={[styles.content, { backgroundColor: colors.background }]}>
         {renderTabContent()}
@@ -256,5 +289,44 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   tabLabelActive: {
+  },
+  notificationOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  notificationPanelContainer: {
+    position: 'absolute',
+    top: 100,
+    right: 16,
+    left: 16,
+  },
+  notificationPanel: {
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  notificationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  notificationTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  notificationContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+  },
+  emptyText: {
+    fontSize: 14,
+    marginTop: 12,
   },
 });
