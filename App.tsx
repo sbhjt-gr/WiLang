@@ -50,6 +50,9 @@ export default function App() {
         await initDatabase();
         console.log('database_initialized');
         
+        await pushService.setupNotificationChannel();
+        pushService.setupNotificationHandler();
+        
         const lastResponse = await pushService.getLastNotificationResponse();
         if (lastResponse) {
           const data = lastResponse.notification.request.content.data;

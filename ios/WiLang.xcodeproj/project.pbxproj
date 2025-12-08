@@ -9,12 +9,12 @@
 /* Begin PBXBuildFile section */
 		074A28F86B49F7068FE92D0D /* libPods-WiLang.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2966674B91B26C662BF19627 /* libPods-WiLang.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		2B39894EE11944C2A3924387 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 25E489C446AE40BA904552D3 /* GoogleService-Info.plist */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		DE719C851F8FE75A27F9C9A3 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67F8037F3EB617124211C275 /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 		F284D145350D7227B57C1662 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DFA56384C2E710C382318C01 /* PrivacyInfo.xcprivacy */; };
-		2B39894EE11944C2A3924387 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 25E489C446AE40BA904552D3 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +22,7 @@
 		13B07F961A680F5B00A75B9A /* WiLang.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WiLang.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = WiLang/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = WiLang/Info.plist; sourceTree = "<group>"; };
+		25E489C446AE40BA904552D3 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "WiLang/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		2966674B91B26C662BF19627 /* libPods-WiLang.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-WiLang.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D58F2F48D9766774A760EFF /* Pods-WiLang.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-WiLang.release.xcconfig"; path = "Target Support Files/Pods-WiLang/Pods-WiLang.release.xcconfig"; sourceTree = "<group>"; };
 		67F8037F3EB617124211C275 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-WiLang/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
@@ -31,7 +32,6 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = WiLang/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* WiLang-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "WiLang-Bridging-Header.h"; path = "WiLang/WiLang-Bridging-Header.h"; sourceTree = "<group>"; };
-		25E489C446AE40BA904552D3 /* GoogleService-Info.plist */ = {isa = PBXFileReference; name = "GoogleService-Info.plist"; path = "WiLang/GoogleService-Info.plist"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = text.plist.xml; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -170,6 +170,8 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1250;
+						DevelopmentTeam = "GXKD77CCQ6";
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -421,12 +423,15 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.gorai.wilanger;
-				PRODUCT_NAME = "WiLang";
+				PRODUCT_NAME = WiLang;
 				SWIFT_OBJC_BRIDGING_HEADER = "WiLang/WiLang-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
+				DEVELOPMENT_TEAM = "GXKD77CCQ6";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 			};
 			name = Debug;
 		};
@@ -452,11 +457,14 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.gorai.wilanger;
-				PRODUCT_NAME = "WiLang";
+				PRODUCT_NAME = WiLang;
 				SWIFT_OBJC_BRIDGING_HEADER = "WiLang/WiLang-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
+				DEVELOPMENT_TEAM = "GXKD77CCQ6";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 			};
 			name = Release;
 		};

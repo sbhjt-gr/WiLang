@@ -1,7 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 
 class PushService {
   private fcmToken: string | null = null;
@@ -27,13 +26,9 @@ class PushService {
     }
 
     try {
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-      const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId,
-      });
-      
+      const tokenData = await Notifications.getDevicePushTokenAsync();
       this.fcmToken = tokenData.data;
-      console.log('push_token_obtained');
+      console.log('push_token_obtained', Platform.OS);
       
       this.tokenListeners.forEach(listener => {
         if (this.fcmToken) listener(this.fcmToken);
@@ -66,6 +61,19 @@ class PushService {
     };
   }
 
+  async setupNotificationChannel() {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('calls', {
+        name: 'Incoming Calls',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 500, 200, 500],
+        sound: 'default',
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        bypassDnd: true,
+      });
+    }
+  }
+
   setupNotificationHandler() {
     Notifications.setNotificationHandler({
       handleNotification: async (notification) => {
@@ -73,11 +81,11 @@ class PushService {
         
         if (data?.type === 'incoming_call') {
           return {
-            shouldShowAlert: false,
-            shouldPlaySound: false,
+            shouldShowAlert: true,
+            shouldPlaySound: true,
             shouldSetBadge: false,
-            shouldShowBanner: false,
-            shouldShowList: false,
+            shouldShowBanner: true,
+            shouldShowList: true,
           };
         }
 
