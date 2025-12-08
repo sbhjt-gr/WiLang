@@ -759,13 +759,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             />
 
             <TouchableOpacity
-              style={[styles.controlButton, { backgroundColor: subtitlesEnabled ? '#8b5cf6' : 'rgba(255,255,255,0.15)' }]}
+              style={[styles.controlButton, { backgroundColor: 'rgba(0,0,0,0.6)' }]}
               onPress={handleSubtitlesToggle}
             >
               <Ionicons
                 name="text"
                 size={20}
-                color={subtitlesEnabled ? '#ffffff' : '#8b5cf6'}
+                color="#ffffff"
               />
             </TouchableOpacity>
 
@@ -777,20 +777,20 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.controlButton, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
+              style={[styles.controlButton, { backgroundColor: 'rgba(0,0,0,0.6)' }]}
               onPress={switchCamera}
             >
-              <Ionicons name="camera-reverse" size={20} color="#8b5cf6" />
+              <Ionicons name="camera-reverse" size={20} color="#ffffff" />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.controlButton, { backgroundColor: isMuted ? '#dc2626' : 'rgba(255,255,255,0.15)' }]}
+              style={[styles.controlButton, { backgroundColor: 'rgba(0,0,0,0.6)' }]}
               onPress={toggleMute}
             >
               <Ionicons
                 name={isMuted ? 'mic-off' : 'mic'}
                 size={20}
-                color={isMuted ? '#ffffff' : '#8b5cf6'}
+                color="#ffffff"
               />
             </TouchableOpacity>
           </View>

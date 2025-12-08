@@ -22,17 +22,17 @@ const TranslationControls: React.FC<Props> = ({
 
   return (
     <TouchableOpacity
-      style={[styles.btn, enabled && styles.btnActive]}
+      style={[styles.btn]}
       onPress={onToggle}
       activeOpacity={0.7}
     >
       {isConnecting ? (
-        <ActivityIndicator size="small" color={enabled ? '#fff' : '#8b5cf6'} />
+        <ActivityIndicator size="small" color="#fff" />
       ) : (
         <Ionicons
           name={enabled ? 'language' : 'language-outline'}
           size={20}
-          color={enabled ? '#fff' : '#8b5cf6'}
+          color="#fff"
         />
       )}
     </TouchableOpacity>
@@ -44,12 +44,9 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  btnActive: {
-    backgroundColor: '#8b5cf6',
   },
 });
 
