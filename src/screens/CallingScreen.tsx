@@ -275,8 +275,8 @@ export default function CallingScreen() {
                   onPress={handleCancel}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="close" size={32} color={colors.textInverse} />
-                  <Text style={[styles.cancelLabel, { color: colors.textInverse }]}>Cancel</Text>
+                  <Ionicons name="call" size={24} color={colors.textInverse} style={{ transform: [{ rotate: '135deg' }] }} />
+                  <Text style={[styles.cancelLabel, { color: colors.textInverse }]}>End Call</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -420,22 +420,20 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   cancelButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    paddingHorizontal: 100,
+    height: 70,
+    borderRadius: 28,
     alignSelf: 'center',
+    gap: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    elevation: 2,
   },
   cancelLabel: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '600',
-    marginTop: 4,
   },
   hintContainer: {
     alignItems: 'center',
