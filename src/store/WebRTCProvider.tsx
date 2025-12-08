@@ -408,7 +408,10 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
             });
           }
 
-          navigate('VideoCallScreen', {
+          const isVoiceOnly = data.callType === 'voice';
+          const screenName = isVoiceOnly ? 'VoiceCallScreen' : 'VideoCallScreen';
+          
+          navigate(screenName, {
             id: data.meetingId || data.callId || 'call_' + Date.now(),
             type: 'outgoing',
             callerId: data.recipientId,
