@@ -72,6 +72,24 @@ class PushService {
         bypassDnd: true,
       });
     }
+
+    await Notifications.setNotificationCategoryAsync('incoming_call', [
+      {
+        identifier: 'answer',
+        buttonTitle: 'Answer',
+        options: {
+          opensAppToForeground: true,
+        },
+      },
+      {
+        identifier: 'decline',
+        buttonTitle: 'Decline',
+        options: {
+          opensAppToForeground: false,
+          isDestructive: true,
+        },
+      },
+    ]);
   }
 
   setupNotificationHandler() {
@@ -82,7 +100,7 @@ class PushService {
         if (data?.type === 'incoming_call') {
           return {
             shouldShowAlert: true,
-            shouldPlaySound: true,
+            shouldPlaySound: false,
             shouldSetBadge: false,
             shouldShowBanner: true,
             shouldShowList: true,

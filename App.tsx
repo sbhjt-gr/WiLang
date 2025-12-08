@@ -81,7 +81,18 @@ export default function App() {
     
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
+      const actionId = response.actionIdentifier;
+      
       if (data?.type === 'incoming_call') {
+        if (actionId === 'decline') {
+          const { videoCallService } = require('./src/services/VideoCallService');
+          videoCallService.declineIncomingCall(
+            String(data.callId || ''),
+            String(data.callerSocketId || '')
+          );
+          return;
+        }
+        
         navigate('CallingScreen', {
           callType: 'incoming',
           callerName: String(data.callerName || 'Unknown'),

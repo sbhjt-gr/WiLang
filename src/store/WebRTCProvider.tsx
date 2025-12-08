@@ -346,7 +346,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
               title: 'Incoming Call',
               body: `${callData.callerName || 'Someone'} is calling you`,
               data: { type: 'incoming_call', ...callData },
-              sound: true,
+              sound: false,
+              categoryIdentifier: 'incoming_call',
             },
             trigger: null,
           });
