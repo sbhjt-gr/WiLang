@@ -12,27 +12,14 @@ import * as Clipboard from 'expo-clipboard';
 import {RTCView} from '@livekit/react-native-webrtc';
 import { StatusBar } from 'expo-status-bar';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RouteProp, useFocusEffect } from '@react-navigation/native';
+import { RouteProp } from '@react-navigation/native';
 import { auth } from "../config/firebase";
 import { RootStackParamList } from '../types/navigation';
 import {WebRTCContext} from '../store/WebRTCContext';
 import { Ionicons } from '@expo/vector-icons';
-import { User } from '../store/WebRTCTypes';
 import ParticipantGrid from '../components/ParticipantGrid';
 import GlassModal from '../components/GlassModal';
 import { useTheme } from '../theme';
-import SubtitleOverlay from '../components/SubtitleOverlay';
-import useSubtitleEngine from '../hooks/useSubtitleEngine';
-import { SubtitlePreferences } from '../services/SubtitlePreferences';
-import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
-import type { ExpoSpeechMode } from '../services/SubtitlePreferences';
-import { TranslationPreferences } from '../services/TranslationPreferences';
-import { TranslationService } from '../services/TranslationService';
-import { useTranslation } from '../hooks/useTranslation';
-import { TTSPreferences } from '../services/TTSPreferences';
-import { useTTS } from '../hooks/useTTS';
-import { useRemoteAudioRecorder } from '../hooks/useRemoteAudioRecorder';
-// Palabra real-time translation
 import TranslationControls from '../components/translation-controls';
 import TranscriptionOverlay from '../components/transcription-overlay';
 import { VideoCallTranslation, type TranslationState } from '../services/video-call-translation';
@@ -100,18 +87,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     icon: 'information-circle',
     buttons: [],
   });
-  const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
-  const [subtitleLocale, setSubtitleLocale] = useState('en-US');
-  const [subtitleMode, setSubtitleMode] = useState<ExpoSpeechMode>('cloud');
-  const [translationEnabled, setTranslationEnabled] = useState(false);
-  const [translationAuto, setTranslationAuto] = useState(true);
-  const [translationSource, setTranslationSource] = useState('auto');
-  const [translationTarget, setTranslationTarget] = useState('en');
-  const [ttsEnabled, setTTSEnabled] = useState(false);
-  const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
-  const [subtitleLoading, setSubtitleLoading] = useState(true);
 
-  // Palabra real-time translation state
   const [palabraEnabled, setPalabraEnabled] = useState(false);
   const [palabraState, setPalabraState] = useState<TranslationState>('idle');
   const [palabraSource, setPalabraSource] = useState<SourceLangCode>('auto');
@@ -206,325 +182,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     [participants, peerId],
   );
 
-  const selectedRemoteStream = useMemo(() => {
-    if (!selectedParticipantId) {
-      return null;
-    }
-    return remoteStreams?.get(selectedParticipantId) || null;
-  }, [selectedParticipantId, remoteStreams]);
-
-  const remoteAudioRecorder = useRemoteAudioRecorder({
-    enabled: subtitlesEnabled && !!selectedRemoteStream,
-    remoteStream: selectedRemoteStream,
-  });
-
-  const {
-    subtitle: subtitleData,
-    detectedLanguage: subtitleDetectedLanguage,
-    confidence: subtitleConfidence,
-    isActive: subtitleActive,
-    isInitializing: subtitleEngineInitializing,
-    error: subtitleError,
-    start: subtitleStart,
-    stop: subtitleStop,
-    reset: subtitleReset,
-  } = useSubtitleEngine({
-    enabled: false,
-    locale: subtitleLocale,
-    mode: subtitleMode,
-    detect: false,
-    audioSourceUri: null,
-  });
-
-  const detectedLanguageCode = useMemo(() => {
-    if (!subtitleDetectedLanguage) {
-      return null;
-    }
-    const base = subtitleDetectedLanguage.split('-')[0];
-    if (!base) {
-      return null;
-    }
-    return base.toLowerCase();
-  }, [subtitleDetectedLanguage]);
-
-  const translationSourceLang = useMemo(() => {
-    if (!translationEnabled) {
-      return 'auto';
-    }
-    if (translationAuto) {
-      return detectedLanguageCode || subtitleLocale.split('-')[0].toLowerCase() || 'auto';
-    }
-    return translationSource;
-  }, [detectedLanguageCode, translationAuto, translationEnabled, translationSource, subtitleLocale]);
-
-  const translationAvailable = useMemo(() => TranslationService.isTranslationAvailable(), []);
-
-  const {
-    translate: translateSubtitle,
-    translatedText,
-    isTranslating: translationLoading,
-    error: translationError,
-    isLanguagePackDownloaded: translationPackReady,
-    downloadLanguagePack: requestTranslationPack,
-    setTranslatedText,
-  } = useTranslation({
-    enabled: translationEnabled,
-    sourceLang: translationSourceLang,
-    targetLang: translationTarget || 'en',
-  });
-
-  const ttsHook = useTTS({
-    enabled: ttsEnabled && translationEnabled,
-    targetLanguage: translationTarget || 'en',
-    autoSpeak: true,
-  });
-
-  const ttsReloadRef = useRef(ttsHook.reloadPreferences);
-  ttsReloadRef.current = ttsHook.reloadPreferences;
-
-  const subtitleStatus = useMemo(() => {
-    if (!subtitlesEnabled) {
-      return null;
-    }
-    if (remotePeers.length === 0) {
-      return 'No remote participant';
-    }
-    if (!selectedRemoteStream) {
-      return 'Waiting for stream';
-    }
-    if (remoteAudioRecorder.error) {
-      return remoteAudioRecorder.error;
-    }
-    if (!remoteAudioRecorder.audioFileUri) {
-      return 'Remote audio capture requires native implementation';
-    }
-    if (subtitleError) {
-      return subtitleError;
-    }
-    if (subtitleEngineInitializing) {
-      return 'Starting';
-    }
-    if (subtitleActive) {
-      return 'Listening';
-    }
-    return null;
-  }, [subtitlesEnabled, remotePeers.length, selectedRemoteStream, subtitleActive, subtitleError, subtitleEngineInitializing, remoteAudioRecorder.error, remoteAudioRecorder.audioFileUri]);
-
-  const translationStatus = useMemo(() => {
-    if (!translationEnabled) {
-      return null;
-    }
-    if (!translationAvailable) {
-      return 'Translation unavailable';
-    }
-    if (translationError) {
-      return 'Translation error';
-    }
-    if (!translationPackReady) {
-      return 'Pack needed';
-    }
-    if (translationLoading) {
-      return 'Translating';
-    }
-    return null;
-  }, [translationAvailable, translationEnabled, translationError, translationLoading, translationPackReady]);
-
-  const overlayStatus = useMemo(() => {
-    const parts: string[] = [];
-    if (subtitleStatus) {
-      parts.push(subtitleStatus);
-    }
-    if (translationStatus) {
-      parts.push(translationStatus);
-    }
-    if (!parts.length) {
-      return null;
-    }
-    return parts.join(' • ');
-  }, [subtitleStatus, translationStatus]);
-
-  useEffect(() => {
-    if (!translationEnabled) {
-      return;
-    }
-    if (!subtitleData) {
-      setTranslatedText(null);
-      return;
-    }
-    if (!subtitleData.isFinal) {
-      setTranslatedText(null);
-    }
-  }, [setTranslatedText, subtitleData, translationEnabled]);
-
-  useEffect(() => {
-    if (!translationEnabled) {
-      return;
-    }
-    if (!subtitleData) {
-      return;
-    }
-    if (!subtitleData.isFinal) {
-      return;
-    }
-    if (!translationAvailable) {
-      return;
-    }
-    if (translationSourceLang === 'auto') {
-      return;
-    }
-    if (!translationPackReady) {
-      return;
-    }
-    const text = subtitleData.text.trim();
-    if (!text) {
-      setTranslatedText('');
-      return;
-    }
-    translateSubtitle(text).catch(() => {});
-  }, [setTranslatedText, subtitleData, translationEnabled, translationPackReady, translationSourceLang, translateSubtitle]);
-
-  useEffect(() => {
-    if (!ttsEnabled || !translationEnabled) {
-      return;
-    }
-    if (!translatedText || !translatedText.trim()) {
-      return;
-    }
-    if (!subtitleData || !subtitleData.isFinal) {
-      return;
-    }
-    const text = translatedText.trim();
-    if (!text) {
-      return;
-    }
-    ttsHook.speak(text).catch(() => {});
-  }, [translatedText, subtitleData, ttsEnabled, translationEnabled, ttsHook]);
-
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const [mode, langCode, enabled] = await Promise.all([
-          SubtitlePreferences.getExpoMode(),
-          SubtitlePreferences.getExpoLanguage(),
-          SubtitlePreferences.isEnabled(),
-        ]);
-        const locale = SubtitlePreferences.getLocale(langCode);
-        if (active) {
-          setSubtitleMode(mode);
-          setSubtitleLocale(locale);
-          setSubtitlesEnabled(enabled);
-          setSubtitleLoading(false);
-        }
-      } catch (error) {
-        if (active) {
-          setSubtitleLoading(false);
-        }
-      }
-    };
-    load();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      const load = async () => {
-        try {
-          const [isEnabled, isAuto, src, tgt, ttsEnabledPref, subtitlesEnabledPref] = await Promise.all([
-            TranslationPreferences.isEnabled(),
-            TranslationPreferences.isAutoDetect(),
-            TranslationPreferences.getSource(),
-            TranslationPreferences.getTarget(),
-            TTSPreferences.isEnabled(),
-            SubtitlePreferences.isEnabled(),
-          ]);
-          if (active) {
-            setTranslationEnabled(isEnabled);
-            setTranslationAuto(isAuto);
-            setTranslationSource(src);
-            setTranslationTarget(tgt);
-            setTTSEnabled(ttsEnabledPref);
-            setSubtitlesEnabled(subtitlesEnabledPref);
-            ttsReloadRef.current();
-          }
-        } catch (error) {
-        }
-      };
-      load();
-      return () => {
-        active = false;
-      };
-    }, []),
-  );
-
-  useEffect(() => {
-    if (!subtitlesEnabled || !selectedRemoteStream) {
-      return;
-    }
-    if (remotePeers.length === 0) {
-      setSubtitlesEnabled(false);
-      return;
-    }
-  }, [subtitlesEnabled, selectedRemoteStream, remotePeers]);
-
-  useEffect(() => {
-    if (remotePeers.length > 0 && !selectedParticipantId) {
-      setSelectedParticipantId(remotePeers[0].peerId);
-    } else if (remotePeers.length === 0) {
-      setSelectedParticipantId(null);
-    } else if (selectedParticipantId && !remotePeers.find(p => p.peerId === selectedParticipantId)) {
-      setSelectedParticipantId(remotePeers[0]?.peerId || null);
-    }
-  }, [remotePeers, selectedParticipantId]);
-
-  useEffect(() => {
-    const run = async () => {
-      if (subtitlesEnabled) {
-        if (!subtitleActive) {
-          try {
-            await subtitleStart();
-          } catch (error) {
-          }
-        }
-        return;
-      }
-      if (subtitleActive) {
-        try {
-          await subtitleStop();
-        } catch (error) {
-        }
-      }
-      if (subtitleData || subtitleDetectedLanguage || subtitleConfidence) {
-        try {
-          await subtitleReset();
-        } catch (error) {
-        }
-      }
-    };
-    run();
-  }, [
-    subtitleActive,
-    subtitleConfidence,
-    subtitleData,
-    subtitleDetectedLanguage,
-    subtitleReset,
-    subtitleStart,
-    subtitleStop,
-    subtitlesEnabled,
-  ]);
-
-  useEffect(() => {
-    return () => {
-      subtitleStop();
-      ttsHook.stop();
-    };
-  }, [subtitleStop, ttsHook]);
-
-  // Palabra: Load saved preferences on mount
   useEffect(() => {
     let active = true;
     const loadPalabraPrefs = async () => {
@@ -663,15 +320,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       setPalabraTranscript(null);
       setPalabraTranslation(null);
 
-      await subtitleStop();
-      ttsHook.stop();
       closeCall();
     } catch (err) {
       console.error('call_cleanup_err:', err);
     } finally {
       navigation.navigate('HomeScreen', {});
     }
-  }, [closeCall, navigation, subtitleStop, ttsHook]);
+  }, [closeCall, navigation]);
 
   const handleJoinDeniedClose = useCallback(async () => {
     acknowledgeJoinDenied?.();
@@ -682,15 +337,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       }
       setPalabraEnabled(false);
 
-      await subtitleStop();
-      ttsHook.stop();
       closeCall();
     } catch (err) {
       console.error('denied_cleanup_err:', err);
     } finally {
       navigation.goBack();
     }
-  }, [acknowledgeJoinDenied, closeCall, navigation, subtitleStop, ttsHook]);
+  }, [acknowledgeJoinDenied, closeCall, navigation]);
 
   useEffect(() => {
     if (initializationAttempted.current) {
@@ -1014,24 +667,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               {isGridMode ? "Focus" : "Grid"}
             </Text>
           </TouchableOpacity>
-          {remotePeers.length > 1 && (
-            <TouchableOpacity
-              style={[
-                styles.topControlButton,
-                { backgroundColor: 'rgba(0,0,0,0.7)' },
-              ]}
-              onPress={() => {
-                const currentIndex = remotePeers.findIndex(p => p.peerId === selectedParticipantId);
-                const nextIndex = (currentIndex + 1) % remotePeers.length;
-                setSelectedParticipantId(remotePeers[nextIndex].peerId);
-              }}
-            >
-              <Ionicons name="people" size={20} color="#ffffff" />
-              <Text style={styles.topControlText} numberOfLines={1}>
-                {remotePeers.find(p => p.peerId === selectedParticipantId)?.username?.substring(0, 8) || 'Select'}
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         <View style={styles.topRightControls}>
@@ -1071,22 +706,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      {subtitlesEnabled && (
-        <View style={styles.subtitleContainer}>
-          <SubtitleOverlay
-            text={subtitleData?.text ?? ''}
-            translatedText={translationEnabled ? translatedText : null}
-            language={subtitleDetectedLanguage}
-            targetLanguage={translationEnabled ? translationTarget : null}
-            confidence={subtitleData?.confidence ?? subtitleConfidence}
-            visible={subtitlesEnabled}
-            status={overlayStatus}
-            showBothLanguages
-          />
-        </View>
-      )}
-
-      {/* Palabra real-time translation overlay */}
       <TranscriptionOverlay
         sourceText={palabraTranscript}
         translatedText={palabraTranslation}
@@ -1542,15 +1161,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  subtitleContainer: {
-    position: 'absolute',
-    bottom: 220,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    zIndex: 8,
   },
   securityCodeContent: {
     gap: 14,
