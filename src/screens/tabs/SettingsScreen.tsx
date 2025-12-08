@@ -7,9 +7,12 @@ import { auth } from '../../config/firebase';
 import { useTheme } from '../../theme';
 import { SubtitlePreferences, type SubtitleLang } from '../../services/SubtitlePreferences';
 import { TranslationPreferences } from '../../services/TranslationPreferences';
+import { CallTranslationPrefs } from '../../services/call-translation-prefs';
 import { getTranslationOptionLabel } from '../../constants/translation';
+import { getSourceLabel, getTargetLabel } from '../../constants/palabra-langs';
 import { useFocusEffect } from '@react-navigation/native';
 import PalabraTranslationDemoModal from '../../components/PalabraTranslationDemoModal';
+import type { SourceLangCode, TargetLangCode } from '../../services/palabra/types';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -24,6 +27,8 @@ export default function SettingsScreen({ navigation }: Props) {
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translationTarget, setTranslationTarget] = useState('en');
   const [palabraDemoOpen, setPalabraDemoOpen] = useState(false);
+  const [callTransSource, setCallTransSource] = useState<SourceLangCode>('auto');
+  const [callTransTarget, setCallTransTarget] = useState<TargetLangCode>('en-us');
 
   const langOpts = useMemo<Array<{ id: SubtitleLang; label: string }>>(
     () => [
@@ -54,6 +59,10 @@ export default function SettingsScreen({ navigation }: Props) {
     return `To ${getTranslationOptionLabel(translationTarget)}`;
   }, [translationEnabled, translationTarget]);
 
+  const callTransLabel = useMemo(() => {
+    return `${getSourceLabel(callTransSource)} → ${getTargetLabel(callTransTarget)}`;
+  }, [callTransSource, callTransTarget]);
+
   useEffect(() => {
     let active = true;
     SubtitlePreferences.getExpoLanguage().then(value => {
@@ -71,13 +80,16 @@ export default function SettingsScreen({ navigation }: Props) {
       let active = true;
       const load = async () => {
         try {
-          const [isEnabled, target] = await Promise.all([
+          const [isEnabled, target, callPrefs] = await Promise.all([
             TranslationPreferences.isEnabled(),
             TranslationPreferences.getTarget(),
+            CallTranslationPrefs.getAll(),
           ]);
           if (active) {
             setTranslationEnabled(isEnabled);
             setTranslationTarget(target);
+            setCallTransSource(callPrefs.source);
+            setCallTransTarget(callPrefs.target);
           }
         } catch (error) {}
       };
@@ -142,6 +154,14 @@ export default function SettingsScreen({ navigation }: Props) {
       onPress: () => navigation.navigate('TranslationSettingsScreen'),
     },
     {
+      id: 'call-translation',
+      title: 'Call Translation',
+      subtitle: callTransLabel,
+      icon: 'call-outline' as const,
+      color: '#8b5cf6',
+      onPress: () => navigation.navigate('CallTranslationSettings'),
+    },
+    {
       id: 'palabra-demo',
       title: 'Palabra AI Demo',
       subtitle: 'Real-time speech-to-speech translation',
@@ -181,7 +201,7 @@ export default function SettingsScreen({ navigation }: Props) {
       color: '#8b5cf6',
       onPress: () => {},
     },
-  ]), [langLabel, navigation, translationLabel]);
+  ]), [callTransLabel, langLabel, navigation, translationLabel]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

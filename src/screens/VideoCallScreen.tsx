@@ -35,7 +35,6 @@ import { useRemoteAudioRecorder } from '../hooks/useRemoteAudioRecorder';
 // Palabra real-time translation
 import TranslationControls from '../components/translation-controls';
 import TranscriptionOverlay from '../components/transcription-overlay';
-import LanguageSelector from '../components/language-selector';
 import { VideoCallTranslation, type TranslationState } from '../services/video-call-translation';
 import { CallTranslationPrefs } from '../services/call-translation-prefs';
 import type { SourceLangCode, TargetLangCode } from '../services/palabra/types';
@@ -118,8 +117,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [palabraTarget, setPalabraTarget] = useState<TargetLangCode>('en-us');
   const [palabraTranscript, setPalabraTranscript] = useState<string | null>(null);
   const [palabraTranslation, setPalabraTranslation] = useState<string | null>(null);
-  const [showPalabraSourceLang, setShowPalabraSourceLang] = useState(false);
-  const [showPalabraTargetLang, setShowPalabraTargetLang] = useState(false);
   const palabraServiceRef = useRef<VideoCallTranslation | null>(null);
 
   const initializationAttempted = useRef(false);
@@ -659,22 +656,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     setPalabraEnabled((prev) => !prev);
   }, []);
 
-  // Palabra: Open settings modal
-  const handlePalabraSettings = useCallback(() => {
-    setShowPalabraSourceLang(true);
-  }, []);
-
-  // Palabra: Language selection handlers
-  const handlePalabraSourceSelect = useCallback((code: string) => {
-    setPalabraSource(code as SourceLangCode);
-    setShowPalabraSourceLang(false);
-    setShowPalabraTargetLang(true);
-  }, []);
-
-  const handlePalabraTargetSelect = useCallback((code: string) => {
-    setPalabraTarget(code as TargetLangCode);
-  }, []);
-
   const handleCloseCall = useCallback(async () => {
     try {
       if (palabraServiceRef.current) {
@@ -1126,10 +1107,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             <TranslationControls
               state={palabraState}
               enabled={palabraEnabled}
-              sourceLang={palabraSource}
-              targetLang={palabraTarget}
               onToggle={handlePalabraToggle}
-              onSettings={handlePalabraSettings}
             />
 
             <TouchableOpacity
@@ -1299,21 +1277,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         </View>
       </GlassModal>
 
-      {/* Palabra Language Selector Modals */}
-      <LanguageSelector
-        visible={showPalabraSourceLang}
-        mode="source"
-        currentCode={palabraSource}
-        onSelect={handlePalabraSourceSelect}
-        onClose={() => setShowPalabraSourceLang(false)}
-      />
-      <LanguageSelector
-        visible={showPalabraTargetLang}
-        mode="target"
-        currentCode={palabraTarget}
-        onSelect={handlePalabraTargetSelect}
-        onClose={() => setShowPalabraTargetLang(false)}
-      />
     </View>
   );
 }

@@ -11,16 +11,12 @@ interface Props {
   state: TranslationState;
   enabled: boolean;
   onToggle: () => void;
-  onSettings: () => void;
-  sourceLang?: string;
-  targetLang?: string;
 }
 
 const TranslationControls: React.FC<Props> = ({
   state,
   enabled,
   onToggle,
-  onSettings,
 }) => {
   const isConnecting = state === 'connecting';
 
@@ -28,7 +24,6 @@ const TranslationControls: React.FC<Props> = ({
     <TouchableOpacity
       style={[styles.btn, enabled && styles.btnActive]}
       onPress={onToggle}
-      onLongPress={onSettings}
       activeOpacity={0.7}
     >
       {isConnecting ? (
