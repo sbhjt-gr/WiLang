@@ -49,7 +49,7 @@ const themeOptions: ThemeItem[] = [
 ];
 
 export default function ThemeSettingsScreen({ navigation, route }: Props) {
-  const { colors, theme, setTheme, usePitchBlack, setUsePitchBlack } = useTheme();
+  const { colors, theme, setTheme } = useTheme();
   const [isPitchBlackEnabled, setIsPitchBlackEnabled] = useState(false);
 
   useEffect(() => {
@@ -61,7 +61,7 @@ export default function ThemeSettingsScreen({ navigation, route }: Props) {
       const saved = await AsyncStorage.getItem(PITCH_BLACK_KEY);
       setIsPitchBlackEnabled(saved === 'true');
     } catch (error) {
-      console.error('pitch_black_load_error', error);
+      console.log('pitch_black_load_error');
     }
   };
 
@@ -73,11 +73,8 @@ export default function ThemeSettingsScreen({ navigation, route }: Props) {
     try {
       await AsyncStorage.setItem(PITCH_BLACK_KEY, value.toString());
       setIsPitchBlackEnabled(value);
-      if (setUsePitchBlack) {
-        setUsePitchBlack(value);
-      }
     } catch (error) {
-      console.error('pitch_black_save_error', error);
+      console.log('pitch_black_save_error');
     }
   };
 

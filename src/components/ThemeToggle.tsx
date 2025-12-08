@@ -12,22 +12,22 @@ interface ThemeOption {
 
 const themeOptions: ThemeOption[] = [
   {
+    mode: 'system',
+    label: 'System',
+    icon: 'phone-portrait-outline',
+    description: 'Follow device settings',
+  },
+  {
     mode: 'light',
     label: 'Light',
     icon: 'sunny-outline',
-    description: 'Default light theme',
+    description: 'Light theme',
   },
   {
     mode: 'dark',
     label: 'Dark',
     icon: 'moon-outline',
-    description: 'Dark mode for low light',
-  },
-  {
-    mode: 'pitchBlack',
-    label: 'Pitch Black',
-    icon: 'moon',
-    description: 'True black for OLED screens',
+    description: 'Dark theme',
   },
 ];
 

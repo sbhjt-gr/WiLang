@@ -37,8 +37,7 @@ export default function GlassModal({
   showGradient = true,
   headerActions,
 }: GlassModalProps) {
-  const { colors, theme } = useTheme();
-  const isDark = theme === 'dark' || theme === 'pitchBlack';
+  const { colors, isDark } = useTheme();
 
   return (
     <AnimatePresence>

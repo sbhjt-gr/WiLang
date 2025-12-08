@@ -1,130 +1,92 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Appearance, ColorSchemeName } from 'react-native';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useColorScheme, Appearance, Platform, ColorSchemeName } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ThemeMode, ThemePreference, ThemeColors, getColors } from './colors';
+import { ThemeColors, getColors } from './colors';
+
+export type ThemeMode = 'light' | 'dark' | 'system';
 
 interface ThemeContextType {
-  theme: ThemePreference;
+  theme: ThemeMode;
+  resolvedTheme: 'light' | 'dark';
+  setTheme: (theme: ThemeMode) => Promise<void>;
+  isDark: boolean;
   colors: ThemeColors;
-  setTheme: (theme: ThemePreference) => Promise<void>;
-  toggleTheme: () => Promise<void>;
-  usePitchBlack?: boolean;
-  setUsePitchBlack?: (value: boolean) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const THEME_STORAGE_KEY = '@app_theme_preference';
 
-const THEME_STORAGE_KEY = '@whisperlang_theme';
-const PITCH_BLACK_KEY = '@whisperlang_pitch_black';
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const systemColorScheme = useColorScheme();
+  const [theme, setThemeState] = useState<ThemeMode>('system');
+  const [isLoaded, setIsLoaded] = useState(false);
 
-interface ThemeProviderProps {
-  children: ReactNode;
-}
-
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const [themePreference, setThemePreferenceState] = useState<ThemePreference>('system');
-  const [usePitchBlack, setUsePitchBlackState] = useState<boolean>(false);
-  const [colors, setColors] = useState<ThemeColors>(getColors('dark'));
-
-  const getSystemTheme = (): ThemeMode => {
-    const colorScheme = Appearance.getColorScheme();
-    return colorScheme === 'dark' ? 'dark' : 'light';
-  };
-
-  const getActualTheme = (preference: ThemePreference, isPitchBlack: boolean): ThemeMode => {
-    let baseTheme: ThemeMode;
-    if (preference === 'system') {
-      baseTheme = getSystemTheme();
-    } else {
-      baseTheme = preference;
+  const getResolvedTheme = useCallback((themeMode: ThemeMode, systemScheme: ColorSchemeName): 'light' | 'dark' => {
+    if (themeMode === 'system') {
+      return systemScheme === 'dark' ? 'dark' : 'light';
     }
+    return themeMode;
+  }, []);
 
-    // If dark mode and pitch black is enabled, use pitch black
-    if (baseTheme === 'dark' && isPitchBlack) {
-      return 'pitchBlack';
-    }
-
-    return baseTheme;
-  };
-
-  const updateColors = (preference: ThemePreference, isPitchBlack: boolean = usePitchBlack) => {
-    const actualTheme = getActualTheme(preference, isPitchBlack);
-    setColors(getColors(actualTheme));
-  };
+  const resolvedTheme = getResolvedTheme(theme, systemColorScheme);
+  const isDark = resolvedTheme === 'dark';
+  const colors = getColors(resolvedTheme);
 
   useEffect(() => {
+    const loadTheme = async () => {
+      try {
+        const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+        if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
+          setThemeState(savedTheme as ThemeMode);
+          if (Platform.OS === 'android') {
+            Appearance.setColorScheme(savedTheme === 'system' ? null : (savedTheme as 'light' | 'dark'));
+          }
+        }
+      } catch (error) {
+        console.log('theme_load_error');
+      } finally {
+        setIsLoaded(true);
+      }
+    };
     loadTheme();
   }, []);
 
   useEffect(() => {
-    if (themePreference === 'system') {
-      const subscription = Appearance.addChangeListener(() => {
-        updateColors('system', usePitchBlack);
-      });
-      return () => subscription.remove();
-    }
-  }, [themePreference, usePitchBlack]);
-
-  useEffect(() => {
-    // Update colors when pitch black preference changes
-    updateColors(themePreference, usePitchBlack);
-  }, [usePitchBlack]);
-
-  const loadTheme = async () => {
-    try {
-      const [savedTheme, savedPitchBlack] = await Promise.all([
-        AsyncStorage.getItem(THEME_STORAGE_KEY),
-        AsyncStorage.getItem(PITCH_BLACK_KEY),
-      ]);
-
-      const isPitchBlack = savedPitchBlack === 'true';
-      setUsePitchBlackState(isPitchBlack);
-
-      if (savedTheme && (savedTheme === 'system' || savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'pitchBlack')) {
-        const preference = savedTheme as ThemePreference;
-        setThemePreferenceState(preference);
-        updateColors(preference, isPitchBlack);
-      } else {
-        updateColors('system', isPitchBlack);
+    const listener = Appearance.addChangeListener(({ colorScheme }) => {
+      if (theme === 'system') {
+        setThemeState('system');
       }
-    } catch (error) {
-      console.error('theme_load_error', error);
-      updateColors('system', false);
-    }
-  };
+    });
+    return () => listener.remove();
+  }, [theme]);
 
-  const setTheme = async (newTheme: ThemePreference) => {
+  const setTheme = useCallback(async (newTheme: ThemeMode) => {
     try {
       await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
-      setThemePreferenceState(newTheme);
-      updateColors(newTheme, usePitchBlack);
+      setThemeState(newTheme);
+      if (Platform.OS === 'android') {
+        Appearance.setColorScheme(newTheme === 'system' ? null : newTheme);
+      }
     } catch (error) {
-      console.error('theme_save_error', error);
+      console.log('theme_save_error');
     }
-  };
+  }, []);
 
-  const setUsePitchBlack = (value: boolean) => {
-    setUsePitchBlackState(value);
-  };
-
-  const toggleTheme = async () => {
-    const themeOrder: ThemePreference[] = ['system', 'light', 'dark'];
-    const currentIndex = themeOrder.indexOf(themePreference);
-    const nextIndex = (currentIndex + 1) % themeOrder.length;
-    await setTheme(themeOrder[nextIndex]);
-  };
+  if (!isLoaded) {
+    return null;
+  }
 
   return (
-    <ThemeContext.Provider value={{ theme: themePreference, colors, setTheme, toggleTheme, usePitchBlack, setUsePitchBlack }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, isDark, colors }}>
       {children}
     </ThemeContext.Provider>
   );
-};
+}
 
-export const useTheme = (): ThemeContextType => {
+export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
+  if (context === undefined) {
+    throw new Error('useTheme must be used within a ThemeProvider');
   }
   return context;
-};
+}
