@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator, Text } from 'react-native';
+import React, { useState, useCallback, useContext } from 'react';
+import { View, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator, Text, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { callHistoryService, CallHistoryEntry } from '../../services/CallHistoryService';
@@ -7,12 +7,15 @@ import { auth } from '../../config/firebase';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
+import { videoCallService } from '../../services/VideoCallService';
+import { WebRTCContext } from '../../store/WebRTCContext';
 
 type HistoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
 export default function HistoryScreen() {
   const { colors } = useTheme();
   const navigation = useNavigation<HistoryScreenNavigationProp>();
+  const webRTCContext = useContext(WebRTCContext);
   const [callHistory, setCallHistory] = useState<CallHistoryEntry[]>([]);
   const [stats, setStats] = useState({
     totalCalls: 0,
@@ -99,14 +102,22 @@ export default function HistoryScreen() {
     return date.toLocaleDateString();
   };
 
-  const handleCall = (call: CallHistoryEntry) => {
-    if (call.contactId || call.contactPhone) {
-      navigation.navigate('CallingScreen', {
-        callType: 'outgoing',
-        callerName: call.contactName,
-        callerPhone: call.contactPhone,
-        callerId: call.contactId,
-      });
+  const handleCall = async (call: CallHistoryEntry) => {
+    if (call.contactId && call.contactPhone) {
+      try {
+        if (!webRTCContext) {
+          Alert.alert('Error', 'Service not available.');
+          return;
+        }
+        videoCallService.setNavigationRef({ current: navigation });
+        await videoCallService.startVideoCallWithPhone(
+          call.contactId,
+          call.contactPhone,
+          call.contactName
+        );
+      } catch {
+        Alert.alert('Error', 'Failed to start call.');
+      }
     } else {
       const meetingId = call.meetingId || `REDIAL_${Date.now()}`;
       navigation.navigate('VideoCallScreen', {
