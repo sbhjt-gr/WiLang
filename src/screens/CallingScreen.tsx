@@ -34,15 +34,13 @@ export default function CallingScreen() {
   const [callDuration, setCallDuration] = useState(0);
 
   useEffect(() => {
+    console.log('call_type', params.callType);
     if (params.callType === 'incoming') {
       InCallManager.startRingtone('_DEFAULT_', [0, 500, 200, 500], 'playback', 60);
-    } else if (params.callType === 'outgoing') {
-      InCallManager.start({ media: 'video', ringback: '_DEFAULT_' });
     }
 
     return () => {
       InCallManager.stopRingtone();
-      InCallManager.stopRingback();
       InCallManager.stop();
     };
   }, [params.callType]);
@@ -65,7 +63,6 @@ export default function CallingScreen() {
 
   const stopRingtone = () => {
     InCallManager.stopRingtone();
-    InCallManager.stopRingback();
   };
 
   const handleAccept = () => {
