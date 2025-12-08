@@ -96,7 +96,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [palabraTarget, setPalabraTarget] = useState<TargetLangCode>('en-us');
   const [palabraTranscript, setPalabraTranscript] = useState<string | null>(null);
   const [palabraTranslation, setPalabraTranslation] = useState<string | null>(null);
-  const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
+  const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const palabraServiceRef = useRef<VideoCallTranslation | null>(null);
 
   const initializationAttempted = useRef(false);
