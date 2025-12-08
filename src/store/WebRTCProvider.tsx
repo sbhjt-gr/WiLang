@@ -900,12 +900,18 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   };
 
   const toggleMute = () => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach((track) => {
-        track.enabled = !track.enabled;
-        setIsMuted(!track.enabled);
-      });
+    if (!localStream) {
+      return;
     }
+    const audioTracks = localStream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      return;
+    }
+    const newMutedState = !isMuted;
+    audioTracks.forEach((track) => {
+      track.enabled = !newMutedState;
+    });
+    setIsMuted(newMutedState);
   };
 
   const approveJoinRequest = (requestId: string) => {
