@@ -59,14 +59,14 @@ export class VideoCallService {
   async startVideoCall(contact: Contact): Promise<void> {
     try {
       if (!this.webRTCContext) {
-        Alert.alert('Error', 'Video calling is not initialized. Please try again.');
+        Alert.alert('Unable to Call', 'Something went wrong. Please restart the app and try again.');
         return;
       }
 
       if (!this.webRTCContext.localStream) {
         const initialized = await this.initializeVideoCall();
         if (!initialized) {
-          Alert.alert('Error', 'Failed to initialize camera and microphone.');
+          Alert.alert('Camera Access Required', 'Please allow camera and microphone access to make video calls.');
           return;
         }
       }
@@ -83,34 +83,34 @@ export class VideoCallService {
         ]
       );
     } catch (_error) {
-      Alert.alert('Error', 'Failed to start video call. Please try again.');
+      Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
     }
   }
 
   async startVideoCallWithPhone(userId: string, phone: string, name: string): Promise<void> {
     try {
       if (!this.webRTCContext) {
-        Alert.alert('Error', 'Video calling is not initialized. Please try again.');
+        Alert.alert('Unable to Call', 'Something went wrong. Please restart the app and try again.');
         return;
       }
 
       if (!this.webRTCContext.localStream) {
         const initialized = await this.initializeVideoCall();
         if (!initialized) {
-          Alert.alert('Error', 'Failed to initialize camera and microphone.');
+          Alert.alert('Camera Access Required', 'Please allow camera and microphone access to make video calls.');
           return;
         }
       }
 
       const currentUser = getCurrentUser();
       if (!currentUser) {
-        Alert.alert('Error', 'User not authenticated.');
+        Alert.alert('Sign In Required', 'Please sign in to make calls.');
         return;
       }
 
       const socketManager = this.webRTCContext.socketManager?.current;
       if (!socketManager) {
-        Alert.alert('Error', 'Socket not connected. Please try again.');
+        Alert.alert('Connection Issue', 'Unable to connect. Please check your internet and try again.');
         return;
       }
 
@@ -147,7 +147,7 @@ export class VideoCallService {
         if (this.navigationRef?.current) {
           this.navigationRef.current.goBack();
         }
-        Alert.alert('Error', result.error === 'timeout' ? 'Call timed out. User may be offline.' : 'Failed to initiate call.');
+        Alert.alert('Call Failed', result.error === 'timeout' ? 'No answer. The person may be busy or offline.' : 'Unable to reach this person right now.');
       }
 
       console.log('call_initiated', result);
@@ -156,7 +156,81 @@ export class VideoCallService {
       if (this.navigationRef?.current) {
         this.navigationRef.current.goBack();
       }
-      Alert.alert('Error', 'Failed to start video call. Please try again.');
+      Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
+    }
+  }
+
+  async startVoiceCallWithPhone(userId: string, phone: string, name: string): Promise<void> {
+    try {
+      if (!this.webRTCContext) {
+        Alert.alert('Unable to Call', 'Something went wrong. Please restart the app and try again.');
+        return;
+      }
+
+      if (!this.webRTCContext.localStream) {
+        const initialized = await this.initializeVideoCall();
+        if (!initialized) {
+          Alert.alert('Microphone Access Required', 'Please allow microphone access to make voice calls.');
+          return;
+        }
+      }
+
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        Alert.alert('Sign In Required', 'Please sign in to make calls.');
+        return;
+      }
+
+      const socketManager = this.webRTCContext.socketManager?.current;
+      if (!socketManager) {
+        Alert.alert('Connection Issue', 'Unable to connect. Please check your internet and try again.');
+        return;
+      }
+
+      if (this.navigationRef?.current) {
+        this.navigationRef.current.navigate('CallingScreen', {
+          callType: 'outgoing',
+          callerName: name,
+          callerPhone: phone,
+          callerId: userId,
+          isVoiceOnly: true
+        });
+      }
+
+      const callId = `call_${Date.now()}`;
+      
+      this.pendingCall = {
+        callId,
+        recipientPhone: phone,
+        recipientUserId: userId
+      };
+
+      const callData = {
+        recipientUserId: userId,
+        recipientPhone: phone,
+        callerId: currentUser.uid,
+        callerName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Unknown',
+        callerPhone: currentUser.phoneNumber,
+        callType: 'voice'
+      };
+
+      const result = await socketManager.initiateCall(callData);
+      
+      if (!result.success) {
+        this.pendingCall = null;
+        if (this.navigationRef?.current) {
+          this.navigationRef.current.goBack();
+        }
+        Alert.alert('Call Failed', result.error === 'timeout' ? 'No answer. The person may be busy or offline.' : 'Unable to reach this person right now.');
+      }
+
+      console.log('voice_call_initiated', result);
+    } catch (_error) {
+      this.pendingCall = null;
+      if (this.navigationRef?.current) {
+        this.navigationRef.current.goBack();
+      }
+      Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
     }
   }
 

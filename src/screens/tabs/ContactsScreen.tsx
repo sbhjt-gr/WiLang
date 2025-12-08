@@ -234,12 +234,16 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
     const actions = [
       { text: 'Cancel', style: 'cancel' as const },
       {
-        text: 'Voice Call',
-        onPress: () => handleVoiceCall(phoneNumber)
+        text: 'Phone Call',
+        onPress: () => handlePhoneCall(phoneNumber)
       }
     ];
 
     if (contact.registeredUserId && contact.registeredPhone) {
+      actions.push({
+        text: 'Voice Call',
+        onPress: () => handleVoiceCall(contact)
+      });
       actions.push({
         text: 'Video Call',
         onPress: () => handleVideoCall(contact)
@@ -253,20 +257,46 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
     );
   };
 
-  const handleVoiceCall = (phoneNumber: string) => {
+  const handlePhoneCall = (phoneNumber: string) => {
     const cleanNumber = phoneNumber.replace(/[^0-9+]/g, '');
     Linking.openURL(`tel:${cleanNumber}`);
+  };
+
+  const handleVoiceCall = async (contact: Contact) => {
+    try {
+      if (!contact.registeredUserId || !contact.registeredPhone) {
+        Alert.alert('Not Available', 'This contact is not on WiLang yet.');
+        return;
+      }
+
+      if (!webRTCContext) {
+        Alert.alert('Unable to Call', 'Something went wrong. Please restart the app and try again.');
+        return;
+      }
+
+      if (navigationHook) {
+        videoCallService.setNavigationRef({ current: navigationHook });
+      }
+
+      await videoCallService.startVoiceCallWithPhone(
+        contact.registeredUserId,
+        contact.registeredPhone,
+        contact.name
+      );
+    } catch {
+      Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
+    }
   };
 
   const handleVideoCall = async (contact: Contact) => {
     try {
       if (!contact.registeredUserId || !contact.registeredPhone) {
-        Alert.alert('Not Available', 'This contact is not registered on WiLang.');
+        Alert.alert('Not Available', 'This contact is not on WiLang yet.');
         return;
       }
 
       if (!webRTCContext) {
-        Alert.alert('Error', 'WebRTC service not available.');
+        Alert.alert('Unable to Call', 'Something went wrong. Please restart the app and try again.');
         return;
       }
 
@@ -280,7 +310,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
         contact.name
       );
     } catch {
-      Alert.alert('Error', 'Failed to start video call. Please try again.');
+      Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
     }
   };
 

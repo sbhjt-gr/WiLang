@@ -106,7 +106,7 @@ export default function HistoryScreen() {
     if (call.contactId && call.contactPhone) {
       try {
         if (!webRTCContext) {
-          Alert.alert('Error', 'Service not available.');
+          Alert.alert('Unable to Call', 'Something went wrong. Please restart the app and try again.');
           return;
         }
         videoCallService.setNavigationRef({ current: navigation });
@@ -116,7 +116,7 @@ export default function HistoryScreen() {
           call.contactName
         );
       } catch {
-        Alert.alert('Error', 'Failed to start call.');
+        Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
       }
     } else {
       const meetingId = call.meetingId || `REDIAL_${Date.now()}`;
