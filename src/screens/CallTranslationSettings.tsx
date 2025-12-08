@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,17 @@ import {
   TouchableOpacity,
   Switch,
   StatusBar,
+  TextInput,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 import { CallTranslationPrefs } from '../services/call-translation-prefs';
-import { getSourceLabel, getTargetLabel } from '../constants/palabra-langs';
+import { SOURCE_LANGS, TARGET_LANGS, getSourceLabel, getTargetLabel } from '../constants/palabra-langs';
 import type { SourceLangCode, TargetLangCode } from '../services/palabra/types';
-import LanguageSelector from '../components/language-selector';
+import GlassModal from '../components/GlassModal';
 
 export default function CallTranslationSettings() {
   const { colors } = useTheme();
@@ -25,6 +27,17 @@ export default function CallTranslationSettings() {
   const [target, setTarget] = useState<TargetLangCode>('en-us');
   const [showSource, setShowSource] = useState(false);
   const [showTarget, setShowTarget] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filteredSource = useMemo(() => {
+    if (!search.trim()) return SOURCE_LANGS;
+    return SOURCE_LANGS.filter(l => l.label.toLowerCase().includes(search.toLowerCase()));
+  }, [search]);
+
+  const filteredTarget = useMemo(() => {
+    if (!search.trim()) return TARGET_LANGS;
+    return TARGET_LANGS.filter(l => l.label.toLowerCase().includes(search.toLowerCase()));
+  }, [search]);
 
   useEffect(() => {
     let active = true;
@@ -50,14 +63,39 @@ export default function CallTranslationSettings() {
   const handleSourceSelect = useCallback(async (code: string) => {
     setSource(code as SourceLangCode);
     setShowSource(false);
+    setSearch('');
     await CallTranslationPrefs.setSource(code as SourceLangCode);
   }, []);
 
   const handleTargetSelect = useCallback(async (code: string) => {
     setTarget(code as TargetLangCode);
     setShowTarget(false);
+    setSearch('');
     await CallTranslationPrefs.setTarget(code as TargetLangCode);
   }, []);
+
+  const handleCloseSource = useCallback(() => {
+    setShowSource(false);
+    setSearch('');
+  }, []);
+
+  const handleCloseTarget = useCallback(() => {
+    setShowTarget(false);
+    setSearch('');
+  }, []);
+
+  const renderLangItem = useCallback(({ item, isSelected, onSelect }: { item: { id: string; label: string }; isSelected: boolean; onSelect: (id: string) => void }) => (
+    <TouchableOpacity
+      style={[styles.langItem, isSelected && styles.langItemSelected]}
+      onPress={() => onSelect(item.id)}
+      activeOpacity={0.7}
+    >
+      <Text style={[styles.langText, { color: colors.text }, isSelected && styles.langTextSelected]}>
+        {item.label}
+      </Text>
+      {isSelected && <Ionicons name="checkmark" size={20} color="#8b5cf6" />}
+    </TouchableOpacity>
+  ), [colors.text]);
 
   return (
     <>
@@ -80,99 +118,150 @@ export default function CallTranslationSettings() {
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
           >
-        <View style={[styles.card, { backgroundColor: colors.surface }]}>
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <Ionicons name="language" size={24} color="#8b5cf6" />
-              <View style={styles.rowText}>
-                <Text style={[styles.rowTitle, { color: colors.text }]}>
-                  Enable Translation
-                </Text>
-                <Text style={[styles.rowSub, { color: colors.textSecondary }]}>
-                  Translate your speech in real-time during calls
-                </Text>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <View style={styles.row}>
+                <View style={styles.rowLeft}>
+                  <Ionicons name="language" size={24} color="#8b5cf6" />
+                  <View style={styles.rowText}>
+                    <Text style={[styles.rowTitle, { color: colors.text }]}>
+                      Enable Translation
+                    </Text>
+                    <Text style={[styles.rowSub, { color: colors.textSecondary }]}>
+                      Translate your speech in real-time during calls
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={enabled}
+                  onValueChange={handleToggle}
+                  trackColor={{ false: colors.border, true: '#8b5cf6' }}
+                  thumbColor="#fff"
+                />
               </View>
             </View>
-            <Switch
-              value={enabled}
-              onValueChange={handleToggle}
-              trackColor={{ false: colors.border, true: '#8b5cf6' }}
-              thumbColor="#fff"
-            />
-          </View>
-        </View>
 
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Language Settings
-        </Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Language Settings
+            </Text>
 
-        <View style={[styles.card, { backgroundColor: colors.surface }]}>
-          <TouchableOpacity style={styles.row} onPress={() => setShowSource(true)}>
-            <View style={styles.rowLeft}>
-              <Ionicons name="mic-outline" size={24} color="#8b5cf6" />
-              <View style={styles.rowText}>
-                <Text style={[styles.rowTitle, { color: colors.text }]}>
-                  Your Language
-                </Text>
-                <Text style={[styles.rowSub, { color: colors.textSecondary }]}>
-                  The language you speak
-                </Text>
-              </View>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <TouchableOpacity style={styles.row} onPress={() => setShowSource(true)}>
+                <View style={styles.rowLeft}>
+                  <Ionicons name="mic-outline" size={24} color="#8b5cf6" />
+                  <View style={styles.rowText}>
+                    <Text style={[styles.rowTitle, { color: colors.text }]}>
+                      Your Language
+                    </Text>
+                    <Text style={[styles.rowSub, { color: colors.textSecondary }]}>
+                      The language you speak
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.rowRight}>
+                  <Text style={[styles.rowValue, { color: '#8b5cf6' }]}>
+                    {getSourceLabel(source)}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                </View>
+              </TouchableOpacity>
+
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              <TouchableOpacity style={styles.row} onPress={() => setShowTarget(true)}>
+                <View style={styles.rowLeft}>
+                  <Ionicons name="ear-outline" size={24} color="#8b5cf6" />
+                  <View style={styles.rowText}>
+                    <Text style={[styles.rowTitle, { color: colors.text }]}>
+                      Translate To
+                    </Text>
+                    <Text style={[styles.rowSub, { color: colors.textSecondary }]}>
+                      Language for translation output
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.rowRight}>
+                  <Text style={[styles.rowValue, { color: '#8b5cf6' }]}>
+                    {getTargetLabel(target)}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                </View>
+              </TouchableOpacity>
             </View>
-            <View style={styles.rowRight}>
-              <Text style={[styles.rowValue, { color: '#8b5cf6' }]}>
-                {getSourceLabel(source)}
+
+            <View style={[styles.infoCard, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+              <Ionicons name="information-circle" size={20} color="#8b5cf6" />
+              <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                During a video call, tap the translation button to start translating your speech. 
+                Your words will be transcribed and translated in real-time.
               </Text>
-              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
             </View>
-          </TouchableOpacity>
-
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          <TouchableOpacity style={styles.row} onPress={() => setShowTarget(true)}>
-            <View style={styles.rowLeft}>
-              <Ionicons name="ear-outline" size={24} color="#8b5cf6" />
-              <View style={styles.rowText}>
-                <Text style={[styles.rowTitle, { color: colors.text }]}>
-                  Translate To
-                </Text>
-                <Text style={[styles.rowSub, { color: colors.textSecondary }]}>
-                  Language for translation output
-                </Text>
-              </View>
-            </View>
-            <View style={styles.rowRight}>
-              <Text style={[styles.rowValue, { color: '#8b5cf6' }]}>
-                {getTargetLabel(target)}
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.infoCard, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
-          <Ionicons name="information-circle" size={20} color="#8b5cf6" />
-          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-            During a video call, tap the translation button to start translating your speech. 
-            Your words will be transcribed and translated in real-time.
-          </Text>
-        </View>
           </ScrollView>
 
-          <LanguageSelector
-            visible={showSource}
-            mode="source"
-            currentCode={source}
-            onSelect={handleSourceSelect}
-            onClose={() => setShowSource(false)}
-          />
-          <LanguageSelector
-            visible={showTarget}
-            mode="target"
-            currentCode={target}
-            onSelect={handleTargetSelect}
-            onClose={() => setShowTarget(false)}
-          />
+          <GlassModal
+            isVisible={showSource}
+            onClose={handleCloseSource}
+            title="Your Language"
+            subtitle="Select the language you speak"
+            icon="mic-outline"
+            height={500}
+          >
+            <View style={[styles.searchRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <Ionicons name="search" size={18} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder="Search languages..."
+                placeholderTextColor={colors.textSecondary}
+                value={search}
+                onChangeText={setSearch}
+                autoCorrect={false}
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+            <FlatList
+              data={filteredSource}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => renderLangItem({ item, isSelected: item.id === source, onSelect: handleSourceSelect })}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.langList}
+            />
+          </GlassModal>
+
+          <GlassModal
+            isVisible={showTarget}
+            onClose={handleCloseTarget}
+            title="Translate To"
+            subtitle="Select the output language"
+            icon="ear-outline"
+            height={500}
+          >
+            <View style={[styles.searchRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <Ionicons name="search" size={18} color={colors.textSecondary} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder="Search languages..."
+                placeholderTextColor={colors.textSecondary}
+                value={search}
+                onChangeText={setSearch}
+                autoCorrect={false}
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+            <FlatList
+              data={filteredTarget}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => renderLangItem({ item, isSelected: item.id === target, onSelect: handleTargetSelect })}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.langList}
+            />
+          </GlassModal>
         </View>
       </SafeAreaView>
     </>
@@ -278,5 +367,45 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     lineHeight: 18,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    padding: 0,
+  },
+  langList: {
+    paddingBottom: 20,
+  },
+  langItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  langItemSelected: {
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    borderRadius: 8,
+    marginHorizontal: -4,
+    paddingHorizontal: 8,
+  },
+  langText: {
+    fontSize: 16,
+  },
+  langTextSelected: {
+    color: '#8b5cf6',
+    fontWeight: '600',
   },
 });
