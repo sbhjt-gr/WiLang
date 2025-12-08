@@ -11,7 +11,6 @@ import { CallTranslationPrefs } from '../../services/call-translation-prefs';
 import { getTranslationOptionLabel } from '../../constants/translation';
 import { getSourceLabel, getTargetLabel } from '../../constants/palabra-langs';
 import { useFocusEffect } from '@react-navigation/native';
-import PalabraTranslationDemoModal from '../../components/PalabraTranslationDemoModal';
 import type { SourceLangCode, TargetLangCode } from '../../services/palabra/types';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
@@ -26,7 +25,6 @@ export default function SettingsScreen({ navigation }: Props) {
   const [langOpen, setLangOpen] = useState(false);
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translationTarget, setTranslationTarget] = useState('en');
-  const [palabraDemoOpen, setPalabraDemoOpen] = useState(false);
   const [callTransSource, setCallTransSource] = useState<SourceLangCode>('auto');
   const [callTransTarget, setCallTransTarget] = useState<TargetLangCode>('en-us');
 
@@ -162,14 +160,6 @@ export default function SettingsScreen({ navigation }: Props) {
       onPress: () => navigation.navigate('CallTranslationSettings'),
     },
     {
-      id: 'palabra-demo',
-      title: 'Palabra AI Demo',
-      subtitle: 'Real-time speech-to-speech translation',
-      icon: 'language-outline' as const,
-      color: '#8b5cf6',
-      onPress: () => setPalabraDemoOpen(true),
-    },
-    {
       id: 'notifications',
       title: 'Notifications',
       subtitle: 'Manage call notifications',
@@ -255,9 +245,7 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
       </ScrollView>
 
-  <PalabraTranslationDemoModal visible={palabraDemoOpen} onClose={() => setPalabraDemoOpen(false)} />
-
-  <Modal transparent visible={langOpen} animationType="fade">
+      <Modal transparent visible={langOpen} animationType="fade">
         <View style={styles.modalBackdrop}>
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setLangOpen(false)} />
           <View style={[styles.modalCard, { backgroundColor: colors.surface }]}
