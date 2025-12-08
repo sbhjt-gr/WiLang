@@ -761,6 +761,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={[styles.controlButton, styles.endCallButton, { backgroundColor: '#dc2626' }]}
+              onPress={handleCloseCall}
+            >
+              <Ionicons name="call" size={26} color="#ffffff" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[styles.controlButton, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
               onPress={switchCamera}
             >
@@ -776,13 +783,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
                 size={20}
                 color={isMuted ? '#ffffff' : '#8b5cf6'}
               />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.controlButton, styles.endCallButton, { backgroundColor: '#dc2626' }]}
-              onPress={handleCloseCall}
-            >
-              <Ionicons name="call" size={24} color="#ffffff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -1173,9 +1173,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   endCallButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   modalMessage: {
     fontSize: 16,
