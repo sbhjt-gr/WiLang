@@ -84,6 +84,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [isGridMode, setIsGridMode] = useState(true);
   const [isInstantCall, setIsInstantCall] = useState(false);
   const [showJoinCodeUI, setShowJoinCodeUI] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [isDirectCall, setIsDirectCall] = useState(false);
   const [showSecurityCodeModal, setShowSecurityCodeModal] = useState(false);
   const [modalConfig, setModalConfig] = useState<{
@@ -832,6 +833,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           if (!newMeetingId) {
             throw new Error('Call creation returned empty call ID');
           }
+
+          setShowShareModal(true);
           
         } else if (!route.params.type || route.params.type === 'create') {
           try {
@@ -852,12 +855,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               throw new Error('Call creation returned empty call ID');
             }
             setShowJoinCodeUI(true);
-
-            showModal(
-              'Call Created',
-              `Your call ID is: ${meetingId}\n\nShare this ID with participants to join the call.`,
-              'checkmark-circle'
-            );
+            setShowShareModal(true);
           } catch (meetingError) {
             showModal(
               'Call Creation Failed',
@@ -1221,6 +1219,43 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             onPress={handleJoinDeniedClose}
           >
             <Text style={styles.modalButtonText}>Leave Call</Text>
+          </TouchableOpacity>
+        </View>
+      </GlassModal>
+
+      <GlassModal
+        isVisible={showShareModal && !!currentMeetingId && !isDirectCall}
+        onClose={() => setShowShareModal(false)}
+        title="Share Call"
+        subtitle="Invite others to join"
+        icon="people"
+        height={360}
+      >
+        <View style={styles.shareModalContent}>
+          <Text style={[styles.shareModalLabel, { color: colors.textSecondary }]}>
+            Call ID
+          </Text>
+          <TouchableOpacity
+            style={[styles.shareModalCodeBox, { backgroundColor: colors.background, borderColor: colors.border }]}
+            onPress={copyJoinCode}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.shareModalCode, { color: colors.text }]}>{currentMeetingId}</Text>
+            <Ionicons name="copy-outline" size={22} color="#8b5cf6" />
+          </TouchableOpacity>
+          <Text style={[styles.shareModalHint, { color: colors.textSecondary }]}>
+            Share this code with participants to join your call
+          </Text>
+          <TouchableOpacity
+            style={styles.shareModalButton}
+            onPress={() => {
+              shareJoinCode();
+              setShowShareModal(false);
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="share-outline" size={20} color="#fff" />
+            <Text style={styles.shareModalButtonText}>Share Code</Text>
           </TouchableOpacity>
         </View>
       </GlassModal>
@@ -1608,5 +1643,47 @@ const styles = StyleSheet.create({
   },
   approvalDetails: {
     fontSize: 14,
+  },
+  shareModalContent: {
+    alignItems: 'center',
+    gap: 16,
+    width: '100%',
+  },
+  shareModalLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+  },
+  shareModalCodeBox: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    width: '100%',
+    alignItems: 'center',
+  },
+  shareModalCode: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 4,
+  },
+  shareModalHint: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+  },
+  shareModalButton: {
+    backgroundColor: '#8b5cf6',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  shareModalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });
