@@ -1,5 +1,5 @@
 import React, {useState, useRef, useEffect} from 'react';
-import {mediaDevices, MediaStream} from '@livekit/react-native-webrtc';
+import {mediaDevices, MediaStream} from '@sbhjt-gr/react-native-webrtc';
 import { setAudioModeAsync } from 'expo-audio';
 import {WebRTCContext} from './WebRTCContext';
 import {User, WebRTCContextType, E2EStatus, JoinRequest} from './WebRTCTypes';
@@ -1118,6 +1118,12 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     isMeetingOwner,
     joinDeniedReason,
     acknowledgeJoinDenied,
+    replaceAudioTrack: async (track: MediaStreamTrack) => {
+      return peerManager.current?.replaceAudioTrack(track) ?? false;
+    },
+    restoreOriginalAudioTrack: async () => {
+      return peerManager.current?.restoreOriginalAudioTrack() ?? false;
+    },
   };
 
   return (

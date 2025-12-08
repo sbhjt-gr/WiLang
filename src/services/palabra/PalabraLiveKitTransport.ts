@@ -92,7 +92,16 @@ export class PalabraLiveKitTransport extends EventEmitter {
   constructor(config: PalabraLiveKitTransportConfig) {
     super();
 
-    this.room = new Room();
+    this.room = new Room({
+      audioCaptureDefaults: {
+        autoGainControl: true,
+        echoCancellation: true,
+        noiseSuppression: true,
+      },
+      audioOutput: {
+        deviceId: 'default',
+      },
+    });
     this.streamUrl = config.streamUrl;
     this.accessToken = config.accessToken;
     this.sourceLanguage = config.sourceLanguage;
@@ -116,6 +125,9 @@ export class PalabraLiveKitTransport extends EventEmitter {
       await this.room.connect(this.streamUrl, this.accessToken, {
         autoSubscribe: true,
       });
+
+      await this.room.startAudio();
+      console.log('[PalabraTransport] Audio session started');
 
       console.log('[PalabraTransport] Connected, publishing audio track');
 
@@ -295,8 +307,13 @@ export class PalabraLiveKitTransport extends EventEmitter {
         participant: participant.identity,
       });
 
-      track.mediaStreamTrack.enabled = false;
-      console.log('[PalabraTransport] Muted remote audio (own translated voice)');
+      track.mediaStreamTrack.enabled = true;
+      
+      this.room.startAudio().then(() => {
+        console.log('[PalabraTransport] Audio playback started for translated track');
+      }).catch((err) => {
+        console.log('[PalabraTransport] startAudio error:', err);
+      });
 
       const language = publication.trackName?.split('_')[1] || 'unknown';
 

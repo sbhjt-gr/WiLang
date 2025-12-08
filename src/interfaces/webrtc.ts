@@ -1,4 +1,4 @@
-import {MediaStream} from '@livekit/react-native-webrtc';
+import {MediaStream} from '@sbhjt-gr/react-native-webrtc';
 
 export interface User {
   username: string;

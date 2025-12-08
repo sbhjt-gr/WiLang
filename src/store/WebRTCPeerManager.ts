@@ -1,4 +1,4 @@
-import {MediaStream, RTCPeerConnection} from '@livekit/react-native-webrtc';
+import {MediaStream, MediaStreamTrack as RNMediaStreamTrack, RTCPeerConnection} from '@sbhjt-gr/react-native-webrtc';
 import {User} from './WebRTCTypes';
 import {ICE_SERVERS} from './WebRTCConfig';
 import {WebRTCSocketManager} from './WebRTCSocketManager';
@@ -284,6 +284,37 @@ export class WebRTCPeerManager {
       }
     });
     return active;
+  }
+
+  async replaceAudioTrack(newTrack: MediaStreamTrack | RNMediaStreamTrack): Promise<boolean> {
+    let success = false;
+    for (const [peerId, pc] of this.peerConnections.entries()) {
+      try {
+        const senders = pc.getSenders();
+        const audioSender = senders.find(
+          (s: any) => s.track && s.track.kind === 'audio'
+        );
+        if (audioSender) {
+          await audioSender.replaceTrack(newTrack as any);
+          console.log('[PeerManager] replaced_audio_track', peerId);
+          success = true;
+        }
+      } catch (err) {
+        console.error('[PeerManager] replace_track_error', peerId, err);
+      }
+    }
+    return success;
+  }
+
+  async restoreOriginalAudioTrack(): Promise<boolean> {
+    if (!this.localStream) {
+      return false;
+    }
+    const originalTrack = this.localStream.getAudioTracks()[0];
+    if (!originalTrack) {
+      return false;
+    }
+    return this.replaceAudioTrack(originalTrack);
   }
 
   setE2EEnabled(enabled: boolean): void {

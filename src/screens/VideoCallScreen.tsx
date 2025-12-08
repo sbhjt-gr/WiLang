@@ -9,7 +9,7 @@ import {
   Share,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import {RTCView} from '@livekit/react-native-webrtc';
+import {RTCView} from '@sbhjt-gr/react-native-webrtc';
 import { StatusBar } from 'expo-status-bar';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -66,6 +66,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     joinDeniedReason,
     acknowledgeJoinDenied,
     isMeetingOwner,
+    restoreOriginalAudioTrack,
   } = useContext(WebRTCContext);
 
   const [isGridMode, setIsGridMode] = useState(true);
@@ -216,6 +217,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         setPalabraTranscript(null);
         setPalabraTranslation(null);
       }
+      
+      restoreOriginalAudioTrack?.();
       return;
     }
 
@@ -234,34 +237,35 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     };
 
     const handleTranscription = (data: { text: string; isFinal?: boolean }) => {
-      console.log('[VideoCall] Palabra transcription:', data.text, 'isFinal:', data.isFinal);
       setPalabraTranscript(data.text);
     };
 
     const handleTranslation = (data: { text: string; isFinal?: boolean }) => {
-      console.log('[VideoCall] Palabra translation:', data.text, 'isFinal:', data.isFinal);
       setPalabraTranslation(data.text);
+    };
+
+    const handleRemoteTrack = (tracks: Array<{ trackId: string; track: MediaStreamTrack; language: string }>) => {
+      console.log('[VideoCall] Palabra remote tracks:', tracks.length);
     };
 
     const handleError = (err: Error) => {
       console.error('[Palabra] err:', err);
-      showModal('Translation Error', err.message || 'An error occurred', 'alert-circle');
     };
 
-    console.log('[VideoCall] Setting up Palabra event handlers');
     service.on('stateChange', handleStateChange);
     service.on('transcription', handleTranscription);
     service.on('translation', handleTranslation);
+    service.on('remoteTrack', handleRemoteTrack);
     service.on('error', handleError);
 
     return () => {
-      console.log('[VideoCall] Cleaning up Palabra event handlers');
       service.off('stateChange', handleStateChange);
       service.off('transcription', handleTranscription);
       service.off('translation', handleTranslation);
+      service.off('remoteTrack', handleRemoteTrack);
       service.off('error', handleError);
     };
-  }, [palabraEnabled, palabraSource, palabraTarget, showModal]);
+  }, [palabraEnabled, palabraSource, palabraTarget]);
 
   useEffect(() => {
     if (!palabraEnabled || !palabraServiceRef.current) {
@@ -320,13 +324,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       setPalabraTranscript(null);
       setPalabraTranslation(null);
 
+      await restoreOriginalAudioTrack?.();
       closeCall();
     } catch (err) {
       console.error('call_cleanup_err:', err);
     } finally {
       navigation.navigate('HomeScreen', {});
     }
-  }, [closeCall, navigation]);
+  }, [closeCall, navigation, restoreOriginalAudioTrack]);
 
   const handleJoinDeniedClose = useCallback(async () => {
     acknowledgeJoinDenied?.();
@@ -337,13 +342,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       }
       setPalabraEnabled(false);
 
+      await restoreOriginalAudioTrack?.();
       closeCall();
     } catch (err) {
       console.error('denied_cleanup_err:', err);
     } finally {
       navigation.goBack();
     }
-  }, [acknowledgeJoinDenied, closeCall, navigation]);
+  }, [acknowledgeJoinDenied, closeCall, navigation, restoreOriginalAudioTrack]);
 
   useEffect(() => {
     if (initializationAttempted.current) {

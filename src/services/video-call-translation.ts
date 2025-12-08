@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
-import { mediaDevices, MediaStream } from '@livekit/react-native-webrtc';
+import { mediaDevices, MediaStream } from '@sbhjt-gr/react-native-webrtc';
+import { registerGlobals } from '@sbhjt-gr/react-native';
 import {
   PalabraTranslationService,
   PalabraTranslationServiceConfig,
@@ -18,6 +19,8 @@ import {
   PALABRA_CLIENT_SECRET,
   PALABRA_API_BASE_URL,
 } from '@env';
+
+registerGlobals();
 
 export type TranslationState = 'idle' | 'connecting' | 'active' | 'error';
 
@@ -90,6 +93,7 @@ export class VideoCallTranslation extends EventEmitter {
     this.setState('connecting');
 
     try {
+      console.log('[VideoCallTranslation] using_local_mic');
       const stream = await mediaDevices.getUserMedia({
         audio: true,
         video: false,
@@ -100,7 +104,6 @@ export class VideoCallTranslation extends EventEmitter {
       if (audioTracks.length === 0) {
         throw new Error('No audio track available');
       }
-
       const audioTrack = audioTracks[0] as unknown as MediaStreamTrack;
 
       const config: PalabraTranslationServiceConfig = {

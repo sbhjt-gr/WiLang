@@ -35,6 +35,8 @@ export const initialValues: WebRTCContextType = {
   isMeetingOwner: false,
   joinDeniedReason: null,
   acknowledgeJoinDenied: () => {},
+  replaceAudioTrack: () => Promise.resolve(false),
+  restoreOriginalAudioTrack: () => Promise.resolve(false),
 };
 
 export const WebRTCContext = createContext<WebRTCContextType>({
@@ -71,4 +73,6 @@ export const WebRTCContext = createContext<WebRTCContextType>({
   isMeetingOwner: false,
   joinDeniedReason: null,
   acknowledgeJoinDenied: () => {},
+  replaceAudioTrack: async () => false,
+  restoreOriginalAudioTrack: async () => false,
 });

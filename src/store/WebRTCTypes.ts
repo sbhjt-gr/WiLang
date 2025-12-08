@@ -1,4 +1,4 @@
-import {MediaStream} from '@livekit/react-native-webrtc';
+import {MediaStream} from '@sbhjt-gr/react-native-webrtc';
 
 export interface User {
   id: string;
@@ -64,4 +64,6 @@ export interface WebRTCContextType {
   isMeetingOwner?: boolean;
   joinDeniedReason?: string | null;
   acknowledgeJoinDenied?: () => void;
+  replaceAudioTrack?: (track: MediaStreamTrack) => Promise<boolean>;
+  restoreOriginalAudioTrack?: () => Promise<boolean>;
 }
