@@ -16,6 +16,7 @@ import UsersScreen from './src/screens/UsersScreen';
 import { initializeFirebase } from './src/services/FirebaseService';
 import { initDatabase } from './src/utils/database';
 import VideoCallScreen from './src/screens/VideoCallScreen';
+import VoiceCallScreen from './src/screens/VoiceCallScreen';
 import CallingScreen from './src/screens/CallingScreen';
 import EnvironmentConfig from './src/screens/EnvironmentConfig';
 import ThemeSettingsScreen from './src/screens/ThemeSettingsScreen';
@@ -67,7 +68,7 @@ export default function App() {
                 callId: data.callId ? String(data.callId) : undefined,
                 meetingId: data.meetingId ? String(data.meetingId) : undefined,
                 meetingToken: data.meetingToken ? String(data.meetingToken) : undefined,
-                fromPush: true,
+                isVoiceOnly: data.callType === 'voice',
               });
             }, 1000);
           }
@@ -102,7 +103,7 @@ export default function App() {
           callId: data.callId ? String(data.callId) : undefined,
           meetingId: data.meetingId ? String(data.meetingId) : undefined,
           meetingToken: data.meetingToken ? String(data.meetingToken) : undefined,
-          fromPush: true,
+          isVoiceOnly: data.callType === 'voice',
         });
       }
     });
@@ -151,6 +152,10 @@ export default function App() {
                 <Stack.Screen
                   name="VideoCallScreen"
                   component={VideoCallScreen}
+                />
+                <Stack.Screen
+                  name="VoiceCallScreen"
+                  component={VoiceCallScreen}
                 />
                 <Stack.Screen
                   name="CallingScreen"

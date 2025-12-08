@@ -102,7 +102,7 @@ export default function HistoryScreen() {
     return date.toLocaleDateString();
   };
 
-  const handleCall = async (call: CallHistoryEntry) => {
+  const handleCall = async (call: CallHistoryEntry, isVoiceOnly: boolean = false) => {
     if (call.contactId && call.contactPhone) {
       try {
         if (!webRTCContext) {
@@ -110,21 +110,48 @@ export default function HistoryScreen() {
           return;
         }
         videoCallService.setNavigationRef({ current: navigation });
-        await videoCallService.startVideoCallWithPhone(
-          call.contactId,
-          call.contactPhone,
-          call.contactName
-        );
+        
+        if (isVoiceOnly) {
+          await videoCallService.startVoiceCallWithPhone(
+            call.contactId,
+            call.contactPhone,
+            call.contactName
+          );
+        } else {
+          await videoCallService.startVideoCallWithPhone(
+            call.contactId,
+            call.contactPhone,
+            call.contactName
+          );
+        }
       } catch {
         Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
       }
     } else {
       const meetingId = call.meetingId || `REDIAL_${Date.now()}`;
-      navigation.navigate('VideoCallScreen', {
+      const screenName = isVoiceOnly ? 'VoiceCallScreen' : 'VideoCallScreen';
+      navigation.navigate(screenName, {
         id: meetingId,
         type: 'instant',
       });
     }
+  };
+
+  const showCallOptions = (call: CallHistoryEntry) => {
+    if (!call.contactId || !call.contactPhone) {
+      handleCall(call, false);
+      return;
+    }
+
+    Alert.alert(
+      call.contactName,
+      'Choose call type',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Voice Call', onPress: () => handleCall(call, true) },
+        { text: 'Video Call', onPress: () => handleCall(call, false) },
+      ]
+    );
   };
 
   const getCallIcon = (type: string): keyof typeof Ionicons.glyphMap => {
@@ -191,7 +218,7 @@ export default function HistoryScreen() {
                 <TouchableOpacity
                   key={call.id}
                   style={[styles.callCard, { backgroundColor: colors.surface }]}
-                  onPress={() => handleCall(call)}
+                  onPress={() => showCallOptions(call)}
                   activeOpacity={0.7}
                 >
                   <View style={styles.callInfo}>
@@ -223,7 +250,7 @@ export default function HistoryScreen() {
                     </Text>
                     <TouchableOpacity
                       style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}
-                      onPress={() => handleCall(call)}
+                      onPress={() => showCallOptions(call)}
                     >
                       <Ionicons name="call" size={18} color="#8b5cf6" />
                     </TouchableOpacity>

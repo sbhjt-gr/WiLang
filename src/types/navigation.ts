@@ -29,6 +29,7 @@ export type RootStackParamList = {
     callId?: string;
     meetingId?: string;
     meetingToken?: string;
+    isVoiceOnly?: boolean;
   };
   UsersScreen: undefined;
   EnvironmentConfig: undefined;

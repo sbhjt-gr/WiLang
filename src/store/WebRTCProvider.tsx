@@ -347,9 +347,11 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           }
           callContactPhoneRef.current = normalizePhoneNumber(callData.callerPhone);
           
+          const isVoiceOnly = callData.callType === 'voice';
+          
           Notifications.scheduleNotificationAsync({
             content: {
-              title: 'Incoming Call',
+              title: isVoiceOnly ? 'Incoming Voice Call' : 'Incoming Call',
               body: `${callData.callerName || 'Someone'} is calling you`,
               data: { type: 'incoming_call', ...callData },
               sound: true,
@@ -368,7 +370,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
               callerSocketId: callData.callerSocketId,
               callId: callData.callId,
               meetingId: callData.meetingId,
-              meetingToken: callData.meetingToken
+              meetingToken: callData.meetingToken,
+              isVoiceOnly
             });
           } else {
             console.log('navigation_not_ready');
@@ -383,7 +386,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
                   callerSocketId: callData.callerSocketId,
                   callId: callData.callId,
                   meetingId: callData.meetingId,
-                  meetingToken: callData.meetingToken
+                  meetingToken: callData.meetingToken,
+                  isVoiceOnly
                 });
               }
             }, 500);

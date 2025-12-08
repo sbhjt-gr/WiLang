@@ -31,6 +31,7 @@ interface CallingScreenProps {
   callId?: string;
   meetingId?: string;
   meetingToken?: string;
+  isVoiceOnly?: boolean;
 }
 
 const { width } = Dimensions.get('window');
@@ -107,11 +108,14 @@ export default function CallingScreen() {
         params.meetingToken
       );
     }
-    (navigation as any).navigate('VideoCallScreen', {
+    
+    const screenName = params.isVoiceOnly ? 'VoiceCallScreen' : 'VideoCallScreen';
+    (navigation as any).navigate(screenName, {
       id: params.meetingId || `call_${params.callerId || Date.now()}`,
       type: 'incoming',
       joinCode: params.meetingId,
-      meetingToken: params.meetingToken
+      meetingToken: params.meetingToken,
+      callerName: params.callerName
     });
   };
 
@@ -284,7 +288,7 @@ export default function CallingScreen() {
             <View style={styles.hintContainer}>
               <Text style={[styles.hintText, { color: colors.textInverse }]}>
                 {params.callType === 'incoming' 
-                  ? 'Video call'
+                  ? (params.isVoiceOnly ? 'Voice call' : 'Video call')
                   : 'Connecting...'}
               </Text>
             </View>
