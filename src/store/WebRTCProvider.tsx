@@ -17,6 +17,9 @@ import { callKeepService } from '../services/callkeep-service';
 import {navigationRef, navigate, goBack} from '../utils/navigationRef';
 import {getCurrentUser} from '../services/FirebaseService';
 import {firestore, auth} from '../config/firebase';
+import {VideoCallService} from '../services/VideoCallService';
+
+const videoCallService = VideoCallService.getInstance();
 
 interface Props {
   children: React.ReactNode;
@@ -388,6 +391,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         },
         onCallAccepted: (data: any) => {
           console.log('call_accepted_notification', data);
+          
+          videoCallService.clearPendingCall();
 
           if (data.accepterSocketId) {
             prepareDirectCall({
@@ -413,6 +418,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         onCallDeclined: (data: any) => {
           console.log('call_declined_notification', data);
           
+          videoCallService.clearPendingCall();
           logCallHistory('declined');
           endDirectCall();
           

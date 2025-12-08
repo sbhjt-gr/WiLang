@@ -13,6 +13,7 @@ export class VideoCallService {
   private static instance: VideoCallService;
   private webRTCContext: any = null;
   private navigationRef: any = null;
+  private pendingCall: { callId: string; recipientPhone: string; recipientUserId: string } | null = null;
 
   static getInstance(): VideoCallService {
     if (!VideoCallService.instance) {
@@ -122,6 +123,14 @@ export class VideoCallService {
         });
       }
 
+      const callId = `call_${Date.now()}`;
+      
+      this.pendingCall = {
+        callId,
+        recipientPhone: phone,
+        recipientUserId: userId
+      };
+
       const callData = {
         recipientUserId: userId,
         recipientPhone: phone,
@@ -134,6 +143,7 @@ export class VideoCallService {
       const result = await socketManager.initiateCall(callData);
       
       if (!result.success) {
+        this.pendingCall = null;
         if (this.navigationRef?.current) {
           this.navigationRef.current.goBack();
         }
@@ -142,6 +152,7 @@ export class VideoCallService {
 
       console.log('call_initiated', result);
     } catch (_error) {
+      this.pendingCall = null;
       if (this.navigationRef?.current) {
         this.navigationRef.current.goBack();
       }
@@ -256,10 +267,20 @@ export class VideoCallService {
       return;
     }
 
+    if (!this.pendingCall) {
+      console.log('no_pending_call');
+      if (this.navigationRef?.current) {
+        this.navigationRef.current.goBack();
+      }
+      return;
+    }
+
     socketManager.cancelCall({
-      callId: 'temp',
-      recipientSocketId: undefined
+      callId: this.pendingCall.callId,
+      recipientPhone: this.pendingCall.recipientPhone
     });
+
+    this.pendingCall = null;
 
     if (this.navigationRef?.current) {
       this.navigationRef.current.goBack();
@@ -268,7 +289,12 @@ export class VideoCallService {
     console.log('call_cancelled');
   }
 
+  clearPendingCall() {
+    this.pendingCall = null;
+  }
+
   endCall() {
+    this.pendingCall = null;
     if (this.webRTCContext) {
       this.webRTCContext.closeCall();
     }
