@@ -608,9 +608,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     };
   }, [palabraEnabled, palabraSource, palabraTarget, showModal]);
 
-  // Palabra: Start when remote stream becomes available (translate remote participant)
   useEffect(() => {
-    if (!palabraEnabled || !selectedRemoteStream || !palabraServiceRef.current) {
+    if (!palabraEnabled || !localStream || !palabraServiceRef.current) {
       return;
     }
 
@@ -619,14 +618,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return;
     }
 
-    const audioTrack = selectedRemoteStream.getAudioTracks()[0];
+    const audioTrack = localStream.getAudioTracks()[0];
     if (audioTrack) {
-      console.log('[Palabra] Starting with remote audio track');
+      console.log('[Palabra] starting_with_local_audio');
       service.start(audioTrack as unknown as MediaStreamTrack).catch((err) => {
         console.error('[Palabra] start_failed:', err);
       });
     }
-  }, [palabraEnabled, selectedRemoteStream]);
+  }, [palabraEnabled, localStream]);
 
   // Palabra: Cleanup on unmount
   useEffect(() => {
@@ -1120,21 +1119,18 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         visible={palabraEnabled && palabraState !== 'idle' && palabraState !== 'error'}
       />
 
-      {/* Palabra translation controls */}
-      <View style={styles.palabraControlsContainer}>
-        <TranslationControls
-          state={palabraState}
-          enabled={palabraEnabled}
-          sourceLang={palabraSource}
-          targetLang={palabraTarget}
-          onToggle={handlePalabraToggle}
-          onSettings={handlePalabraSettings}
-        />
-      </View>
-
       <View style={styles.bottomControls}>
         <View style={styles.controlsBackground}>
           <View style={styles.controlButtonsRow}>
+            <TranslationControls
+              state={palabraState}
+              enabled={palabraEnabled}
+              sourceLang={palabraSource}
+              targetLang={palabraTarget}
+              onToggle={handlePalabraToggle}
+              onSettings={handlePalabraSettings}
+            />
+
             <TouchableOpacity
               style={[styles.controlButton, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
               onPress={switchCamera}
@@ -1500,12 +1496,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
     marginTop: 2,
-  },
-  palabraControlsContainer: {
-    position: 'absolute',
-    bottom: 140,
-    left: 16,
-    zIndex: 15,
   },
   bottomControls: {
     position: 'absolute',
