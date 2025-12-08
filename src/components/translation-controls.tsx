@@ -31,7 +31,7 @@ const TranslationControls: React.FC<Props> = ({
       ) : (
         <Ionicons
           name={enabled ? 'language' : 'language-outline'}
-          size={24}
+          size={20}
           color={enabled ? '#fff' : '#8b5cf6'}
         />
       )}
@@ -41,9 +41,9 @@ const TranslationControls: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   btn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',

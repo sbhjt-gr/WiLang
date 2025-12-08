@@ -755,7 +755,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             >
               <Ionicons
                 name="text"
-                size={24}
+                size={20}
                 color={subtitlesEnabled ? '#ffffff' : '#8b5cf6'}
               />
             </TouchableOpacity>
@@ -764,7 +764,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               style={[styles.controlButton, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
               onPress={switchCamera}
             >
-              <Ionicons name="camera-reverse" size={24} color="#8b5cf6" />
+              <Ionicons name="camera-reverse" size={20} color="#8b5cf6" />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -773,7 +773,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             >
               <Ionicons
                 name={isMuted ? 'mic-off' : 'mic'}
-                size={24}
+                size={20}
                 color={isMuted ? '#ffffff' : '#8b5cf6'}
               />
             </TouchableOpacity>
@@ -782,7 +782,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               style={[styles.controlButton, styles.endCallButton, { backgroundColor: '#dc2626' }]}
               onPress={handleCloseCall}
             >
-              <Ionicons name="call" size={28} color="#ffffff" />
+              <Ionicons name="call" size={24} color="#ffffff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -1155,28 +1155,27 @@ const styles = StyleSheet.create({
     right: 0,
   },
   controlsBackground: {
-    paddingTop: 40,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 32,
+    paddingHorizontal: 12,
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   controlButtonsRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-evenly',
     alignItems: 'center',
-    gap: 30,
   },
   controlButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
   },
   endCallButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   modalMessage: {
     fontSize: 16,
