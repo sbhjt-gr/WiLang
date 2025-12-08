@@ -11,6 +11,7 @@ import { getTranslationOptionLabel } from '../../constants/translation';
 import { getSourceLabel, getTargetLabel } from '../../constants/palabra-langs';
 import { useFocusEffect } from '@react-navigation/native';
 import type { SourceLangCode, TargetLangCode } from '../../services/palabra/types';
+import { UserProfileService } from '../../services/UserProfileService';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -24,6 +25,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const [translationTarget, setTranslationTarget] = useState('en');
   const [callTransSource, setCallTransSource] = useState<SourceLangCode>('auto');
   const [callTransTarget, setCallTransTarget] = useState<TargetLangCode>('en-us');
+  const [displayName, setDisplayName] = useState('User');
 
   const translationLabel = useMemo(() => {
     if (!translationEnabled) {
@@ -53,6 +55,15 @@ export default function SettingsScreen({ navigation }: Props) {
             setCallTransTarget(callPrefs.target);
           }
         } catch (error) {}
+        
+        if (auth.currentUser?.uid) {
+          try {
+            const profile = await UserProfileService.getUserProfile(auth.currentUser.uid);
+            if (active && profile) {
+              setDisplayName(profile.displayName);
+            }
+          } catch (error) {}
+        }
       };
       load();
       return () => {
@@ -152,9 +163,9 @@ export default function SettingsScreen({ navigation }: Props) {
         <View style={styles.profileSection}>
           <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
             <View style={[styles.avatarContainer, { backgroundColor: 'transparent', borderColor: '#8b5cf6', borderWidth: 2 }]}>
-              <Text style={[styles.avatarText, { color: '#8b5cf6' }]}>U</Text>
+              <Text style={[styles.avatarText, { color: '#8b5cf6' }]}>{displayName[0].toUpperCase()}</Text>
             </View>
-            <Text style={[styles.userName, { color: colors.text }]}>User Name</Text>
+            <Text style={[styles.userName, { color: colors.text }]}>{displayName}</Text>
             <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{auth.currentUser?.email || 'user@example.com'}</Text>
           </View>
         </View>
