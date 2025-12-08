@@ -437,7 +437,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           endDirectCall();
           
           goBack();
-          Alert.alert('Call Cancelled', 'The caller cancelled the call.');
         },
         onJoinRequest: (request) => {
           if (!isMeetingOwnerRef.current) {
