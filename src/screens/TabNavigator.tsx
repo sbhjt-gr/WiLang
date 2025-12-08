@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Platform, Text, Image } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
@@ -94,7 +94,11 @@ export default function TabNavigator({ navigation, route }: Props) {
           <View style={styles.headerContent}>
             <View style={styles.headerLeft}>
               <View style={styles.logoContainer}>
-                <Ionicons name="videocam" size={20} color="#ffffff" />
+                <Image 
+                  source={require('../../assets/icon.png')} 
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
               </View>
               <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
             </View>
@@ -180,10 +184,15 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   headerTitle: {
     fontSize: 20,
