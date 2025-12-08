@@ -8,6 +8,8 @@ import {WebRTCPeerManager} from './WebRTCPeerManager';
 import {WebRTCMeetingManager} from './WebRTCMeetingManager';
 import { keyManager, sessionManager } from '../crypto';
 import { callHistoryService } from '../services/CallHistoryService';
+import { pushService } from '../services/push-service';
+import { callKeepService } from '../services/callkeep-service';
 
 interface Props {
   children: React.ReactNode;
@@ -798,6 +800,14 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
               console.log('key_bundle_upload_failed', error);
             }
 
+            pushService.init().then(fcmToken => {
+              if (fcmToken && socketManager.current) {
+                socketManager.current.updateFcmToken(currentUser.uid, fcmToken);
+              }
+            });
+
+            callKeepService.init();
+
             console.log('socket_auto_connected', { uid: currentUser.uid, phone: phoneNumber, socketId: io.id });
           } else {
             console.log('no_user_logged_in');
@@ -904,6 +914,12 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         } catch (error) {
           console.log('key_bundle_upload_failed', error);
         }
+
+        pushService.getToken().then(fcmToken => {
+          if (fcmToken && socketManager.current) {
+            socketManager.current.updateFcmToken(currentUser.uid, fcmToken);
+          }
+        });
 
         console.log('user_registered', currentUser.uid, phoneNumber);
       } else if (socketManager.current) {
