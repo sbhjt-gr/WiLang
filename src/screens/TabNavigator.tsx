@@ -299,8 +299,8 @@ const styles = StyleSheet.create({
   },
   notificationPanelContainer: {
     position: 'absolute',
-    top: 100,
-    right: 16,
+    top: 50,
+    right: 10,
     left: 16,
   },
   notificationArrowContainer: {
