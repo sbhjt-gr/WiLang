@@ -59,9 +59,19 @@ const tabs: TabItem[] = [
 export default function TabNavigator({ navigation, route }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('calls');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
   const { colors } = useTheme();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const openNotifications = () => {
+    setModalVisible(true);
+    setShowNotifications(true);
+  };
+
+  const closeNotifications = () => {
+    setShowNotifications(false);
+  };
 
   useEffect(() => {
     if (showNotifications) {
@@ -78,7 +88,7 @@ export default function TabNavigator({ navigation, route }: Props) {
           useNativeDriver: true,
         }),
       ]).start();
-    } else {
+    } else if (modalVisible) {
       Animated.parallel([
         Animated.timing(scaleAnim, {
           toValue: 0,
@@ -90,9 +100,11 @@ export default function TabNavigator({ navigation, route }: Props) {
           duration: 100,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(() => {
+        setModalVisible(false);
+      });
     }
-  }, [showNotifications, scaleAnim, fadeAnim]);
+  }, [showNotifications, modalVisible, scaleAnim, fadeAnim]);
 
   const getHeaderTitle = () => {
     switch (activeTab) {
@@ -142,12 +154,9 @@ export default function TabNavigator({ navigation, route }: Props) {
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.headerButton}
-                onPress={() => setShowNotifications(true)}
+                onPress={openNotifications}
               >
                 <Ionicons name="notifications-outline" size={20} color="#ffffff" />
-                <View style={styles.notificationBadge}>
-                  <View style={[styles.notificationDot, { backgroundColor: '#dc2626' }]} />
-                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -155,15 +164,15 @@ export default function TabNavigator({ navigation, route }: Props) {
       </View>
 
       <Modal
-        visible={showNotifications}
+        visible={modalVisible}
         transparent
         animationType="none"
-        onRequestClose={() => setShowNotifications(false)}
+        onRequestClose={closeNotifications}
       >
         <Animated.View style={[styles.notificationOverlay, { opacity: fadeAnim }]}>
           <Pressable 
             style={StyleSheet.absoluteFill} 
-            onPress={() => setShowNotifications(false)}
+            onPress={closeNotifications}
           />
           <Animated.View 
             style={[
@@ -183,7 +192,7 @@ export default function TabNavigator({ navigation, route }: Props) {
               <View style={[styles.notificationPanel, { backgroundColor: colors.surface }]}>
                 <View style={styles.notificationHeader}>
                   <Text style={[styles.notificationTitle, { color: colors.text }]}>Notifications</Text>
-                  <TouchableOpacity onPress={() => setShowNotifications(false)}>
+                  <TouchableOpacity onPress={closeNotifications}>
                     <Ionicons name="close" size={20} color={colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
