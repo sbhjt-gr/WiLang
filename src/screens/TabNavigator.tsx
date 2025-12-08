@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform, Text, Image, Modal, Pressable } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, TouchableOpacity, Platform, Text, Image, Modal, Pressable, Animated } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
@@ -60,6 +60,39 @@ export default function TabNavigator({ navigation, route }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('calls');
   const [showNotifications, setShowNotifications] = useState(false);
   const { colors } = useTheme();
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (showNotifications) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 80,
+          friction: 8,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(scaleAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showNotifications, scaleAnim, fadeAnim]);
 
   const getHeaderTitle = () => {
     switch (activeTab) {
@@ -124,14 +157,25 @@ export default function TabNavigator({ navigation, route }: Props) {
       <Modal
         visible={showNotifications}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={() => setShowNotifications(false)}
       >
-        <Pressable 
-          style={styles.notificationOverlay} 
-          onPress={() => setShowNotifications(false)}
-        >
-          <View style={styles.notificationPanelContainer}>
+        <Animated.View style={[styles.notificationOverlay, { opacity: fadeAnim }]}>
+          <Pressable 
+            style={StyleSheet.absoluteFill} 
+            onPress={() => setShowNotifications(false)}
+          />
+          <Animated.View 
+            style={[
+              styles.notificationPanelContainer,
+              { 
+                transform: [
+                  { scale: scaleAnim },
+                ],
+                opacity: scaleAnim,
+              }
+            ]}
+          >
             <View style={styles.notificationArrowContainer}>
               <View style={[styles.notificationArrow, { borderBottomColor: colors.surface }]} />
             </View>
@@ -149,8 +193,8 @@ export default function TabNavigator({ navigation, route }: Props) {
                 </View>
               </View>
             </Pressable>
-          </View>
-        </Pressable>
+          </Animated.View>
+        </Animated.View>
       </Modal>
 
       <View style={[styles.content, { backgroundColor: colors.background }]}>
@@ -302,6 +346,7 @@ const styles = StyleSheet.create({
     top: 50,
     right: 10,
     left: 16,
+    transformOrigin: 'top right',
   },
   notificationArrowContainer: {
     alignItems: 'flex-end',
