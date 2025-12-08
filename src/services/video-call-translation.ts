@@ -128,22 +128,22 @@ export class VideoCallTranslation extends EventEmitter {
         this.setState('active');
         return true;
       } else {
-        this.cleanupStream();
+        this.cleanup();
         this.setState('error');
         return false;
       }
     } catch (err) {
       console.log('[VideoCallTranslation] start_err', err);
-      this.cleanupStream();
+      this.cleanup();
       this.setState('error');
       this.emit('error', err instanceof Error ? err : new Error('Start failed'));
       return false;
     }
   }
 
-  private cleanupStream(): void {
+  private cleanup(): void {
     if (this.audioStream) {
-      this.audioStream.getTracks().forEach((track) => track.stop());
+      this.audioStream.getTracks().forEach((t) => t.stop());
       this.audioStream = null;
     }
   }
@@ -153,7 +153,7 @@ export class VideoCallTranslation extends EventEmitter {
       await this.service.cleanup();
       this.service = null;
     }
-    this.cleanupStream();
+    this.cleanup();
     this.setState('idle');
   }
 

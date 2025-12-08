@@ -295,7 +295,9 @@ export class PalabraLiveKitTransport extends EventEmitter {
         participant: participant.identity,
       });
 
-      // Extract language from track name (format: "audio_es" or similar)
+      track.mediaStreamTrack.enabled = false;
+      console.log('[PalabraTransport] Muted remote audio (own translated voice)');
+
       const language = publication.trackName?.split('_')[1] || 'unknown';
 
       const trackInfo: RemoteTrackInfo = {

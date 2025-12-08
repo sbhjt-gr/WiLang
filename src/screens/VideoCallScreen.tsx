@@ -1145,7 +1145,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         onClose={handleDenyJoinRequest}
         title="Approve Participant"
         icon="person-add"
-        height={280}
+        height={230}
       >
         {pendingJoinRequest && (
           <View style={styles.approvalModalContent}>
@@ -1176,7 +1176,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         onClose={closeModal}
         title={modalConfig.title}
         icon={modalConfig.icon}
-        height={300}
+        height={280}
       >
         <Text style={[styles.modalMessage, { color: colors.text }]}>
           {modalConfig.message}
@@ -1202,7 +1202,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         onClose={handleJoinDeniedClose}
         title="Access Denied"
         icon="shield-outline"
-        height={260}
+        height={220}
       >
         <Text style={[styles.modalMessage, { color: colors.text }]}
         >
@@ -1260,7 +1260,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         onClose={toggleSecurityCodeModal}
         title="End-to-End Encryption"
         icon="shield-checkmark"
-        height={480}
+        height={430}
       >
         <View style={styles.securityCodeContent}>
           <View style={styles.securityBadge}>
