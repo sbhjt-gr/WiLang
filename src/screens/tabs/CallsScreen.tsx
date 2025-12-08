@@ -159,19 +159,6 @@ export default function CallsScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
         </View>
-
-        <View style={styles.languageBanner}>
-          <View style={[styles.languageContainer, { backgroundColor: colors.surface }]}>
-            <Ionicons name="globe-outline" size={24} color="#8b5cf6" />
-            <View style={styles.languageContent}>
-              <Text style={[styles.languageTitle, { color: colors.text }]}>30+ Languages Supported</Text>
-              <Text style={[styles.languageSubtitle, { color: colors.textSecondary }]}>Real-time translation powered by AI</Text>
-            </View>
-            <TouchableOpacity style={styles.languageButton}>
-              <Ionicons name="arrow-forward" size={16} color="#8b5cf6" />
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
 
       <GlassModal

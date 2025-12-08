@@ -123,7 +123,7 @@ export class WebRTCMeetingManager {
           this.onMeetingJoined?.(meetingId, participants);
 
           if (participants.length > 0) {
-            this.participantManager.createPeerConnectionsWithExistingParticipants(
+            this.participantManager.connectExisting(
               participants,
               socket.id
             );
@@ -177,7 +177,7 @@ export class WebRTCMeetingManager {
     this.awaitingApproval = false;
     this.onMeetingJoined?.(meetingId, participants);
     if (participants.length > 0) {
-      this.participantManager.createPeerConnectionsWithExistingParticipants(participants, socket.id);
+      this.participantManager.connectExisting(participants, socket.id);
     } else {
       this.participantManager.setParticipants([]);
     }

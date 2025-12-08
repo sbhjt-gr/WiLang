@@ -72,7 +72,7 @@ export class WebRTCParticipantManager {
     return this.participants.find(p => p.peerId === peerId) || null;
   }
 
-  createPeerConnectionsWithExistingParticipants(serverParticipants: User[], currentSocketId: string) {
+  connectExisting(serverParticipants: User[], currentSocketId: string) {
     const otherParticipants = serverParticipants.filter(p => p.peerId !== currentSocketId);
     this.setParticipants(otherParticipants);
     otherParticipants.forEach(participant => {

@@ -94,7 +94,7 @@ export default function SettingsScreen({ navigation }: Props) {
     },
     {
       id: 'translation',
-      title: 'Translation',
+      title: 'Local Translation',
       subtitle: translationLabel,
       icon: 'globe-outline' as const,
       color: '#8b5cf6',
@@ -102,7 +102,7 @@ export default function SettingsScreen({ navigation }: Props) {
     },
     {
       id: 'call-translation',
-      title: 'Call Translation',
+      title: 'Cloud Translation',
       subtitle: callTransLabel,
       icon: 'call-outline' as const,
       color: '#8b5cf6',

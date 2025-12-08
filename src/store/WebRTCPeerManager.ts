@@ -57,8 +57,12 @@ export class WebRTCPeerManager {
     const existingPc = this.peerConnections.get(user.peerId);
     if (existingPc) {
       if (existingPc.connectionState === 'connected' ||
-          existingPc.connectionState === 'connecting' ||
-          existingPc.connectionState === 'new') {
+          existingPc.connectionState === 'connecting') {
+        return existingPc;
+      } else if (existingPc.connectionState === 'new') {
+        if (isInitiator && existingPc.signalingState === 'stable') {
+          this.signalingHandler.createAndSendOffer(existingPc, user);
+        }
         return existingPc;
       } else {
         existingPc.close();
@@ -222,6 +226,13 @@ export class WebRTCPeerManager {
   }
 
   async handleOffer(data: any): Promise<void> {
+    const pc = this.peerConnections.get(data.from);
+    
+    if (!pc) {
+      console.log('offer_queued_no_pc', data.from);
+      return;
+    }
+    
     return this.signalingHandler.handleOffer(data);
   }
 
