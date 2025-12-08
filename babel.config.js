@@ -14,5 +14,12 @@ module.exports = function(api) {
         verbose: false,
       }],
     ],
+    env: {
+      production: {
+        plugins: [
+          'transform-remove-console'
+        ],
+      },
+    },
   };
 };
