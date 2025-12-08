@@ -1,5 +1,6 @@
 import React, {useState, useRef, useEffect} from 'react';
 import {mediaDevices, MediaStream} from '@livekit/react-native-webrtc';
+import { setAudioModeAsync } from 'expo-audio';
 import {WebRTCContext} from './WebRTCContext';
 import {User, WebRTCContextType, E2EStatus, JoinRequest} from './WebRTCTypes';
 import {WebRTCSocketManager} from './WebRTCSocketManager';
@@ -586,6 +587,13 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     const finalUsername = currentUsername || username || 'User';
     setUsername(finalUsername);
     setCurrentUser(finalUsername);
+
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      shouldRouteThroughEarpiece: false,
+      interruptionMode: 'doNotMix',
+    });
     
     const constraints = {
       audio: true,
