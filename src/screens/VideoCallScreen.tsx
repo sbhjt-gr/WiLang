@@ -68,9 +68,10 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     isMeetingOwner,
     replaceAudioTrack,
     restoreOriginalAudio,
+    isDirectCallActive,
   } = useContext(WebRTCContext);
 
-  const [isGridMode, setIsGridMode] = useState(true);
+  const [isGridMode, setIsGridMode] = useState(!isDirectCallActive);
   const [isInstantCall, setIsInstantCall] = useState(false);
   const [showJoinCodeUI, setShowJoinCodeUI] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
