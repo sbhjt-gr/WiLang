@@ -96,6 +96,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [palabraTarget, setPalabraTarget] = useState<TargetLangCode>('en-us');
   const [palabraTranscript, setPalabraTranscript] = useState<string | null>(null);
   const [palabraTranslation, setPalabraTranslation] = useState<string | null>(null);
+  const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
   const palabraServiceRef = useRef<VideoCallTranslation | null>(null);
 
   const initializationAttempted = useRef(false);
@@ -325,9 +326,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     CallTranslationPrefs.setTarget(palabraTarget);
   }, [palabraTarget]);
 
-  // Palabra: Toggle handler
   const handlePalabraToggle = useCallback(() => {
     setPalabraEnabled((prev) => !prev);
+  }, []);
+
+  const handleSubtitlesToggle = useCallback(() => {
+    setSubtitlesEnabled((prev) => !prev);
   }, []);
 
   const handleCloseCall = useCallback(async () => {
@@ -732,7 +736,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       <TranscriptionOverlay
         sourceText={palabraTranscript}
         translatedText={palabraTranslation}
-        visible={palabraEnabled && palabraState !== 'idle' && palabraState !== 'error'}
+        visible={subtitlesEnabled && palabraEnabled && palabraState !== 'idle' && palabraState !== 'error'}
         isConnecting={palabraState === 'connecting'}
       />
 
@@ -744,6 +748,17 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               enabled={palabraEnabled}
               onToggle={handlePalabraToggle}
             />
+
+            <TouchableOpacity
+              style={[styles.controlButton, { backgroundColor: subtitlesEnabled ? '#8b5cf6' : 'rgba(255,255,255,0.15)' }]}
+              onPress={handleSubtitlesToggle}
+            >
+              <Ionicons
+                name="text"
+                size={24}
+                color={subtitlesEnabled ? '#ffffff' : '#8b5cf6'}
+              />
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.controlButton, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
