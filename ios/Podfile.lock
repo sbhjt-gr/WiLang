@@ -169,7 +169,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - livekit-react-native-webrtc (137.0.4):
+  - livekit-react-native-webrtc (137.0.5):
     - React-Core
     - WebRTC-SDK (= 137.7151.09)
   - PromisesObjC (2.4.0)
@@ -2639,7 +2639,7 @@ SPEC CHECKSUMS:
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
   hermes-engine: 44bb6fe76a6eb400d3a992e2d0b21946ae999fa9
   livekit-react-native: 45ae03a414801f4434bd9091f5b4c890869681d3
-  livekit-react-native-webrtc: e9ba12dc0492a3647b670ad30322cd73bc6f1190
+  livekit-react-native-webrtc: 7ed607b536a0c09eb5cf8375c81b2a105b9d44bc
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RCT-Folly: e78785aa9ba2ed998ea4151e314036f6c49e6d82
   RCTDeprecation: 9bc64754b40b86fa5e32f293ab3ea8eea2248339
