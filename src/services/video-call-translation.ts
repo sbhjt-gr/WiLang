@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { mediaDevices, MediaStream } from '@livekit/react-native-webrtc';
 import {
   PalabraTranslationService,
   PalabraTranslationServiceConfig,
@@ -33,7 +34,7 @@ export class VideoCallTranslation extends EventEmitter {
   private state: TranslationState = 'idle';
   private sourceLang: SourceLangCode = 'auto';
   private targetLang: TargetLangCode = 'en-us';
-  private audioTrack: MediaStreamTrack | null = null;
+  private audioStream: MediaStream | null = null;
 
   constructor() {
     super();
@@ -74,22 +75,34 @@ export class VideoCallTranslation extends EventEmitter {
     }
   }
 
-  async start(audioTrack: MediaStreamTrack): Promise<boolean> {
+  async start(): Promise<boolean> {
     if (this.state === 'active' || this.state === 'connecting') {
-      console.log('translation_already_active');
+      console.log('[VideoCallTranslation] already_active');
       return false;
     }
 
     if (!PALABRA_CLIENT_ID || !PALABRA_CLIENT_SECRET) {
-      console.log('palabra_not_configured');
+      console.log('[VideoCallTranslation] not_configured');
       this.emit('error', new Error('Palabra not configured'));
       return false;
     }
 
-    this.audioTrack = audioTrack;
     this.setState('connecting');
 
     try {
+      const stream = await mediaDevices.getUserMedia({
+        audio: true,
+        video: false,
+      });
+      this.audioStream = stream as MediaStream;
+
+      const audioTracks = this.audioStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        throw new Error('No audio track available');
+      }
+
+      const audioTrack = audioTracks[0] as unknown as MediaStreamTrack;
+
       const config: PalabraTranslationServiceConfig = {
         auth: {
           clientId: PALABRA_CLIENT_ID,
@@ -115,14 +128,23 @@ export class VideoCallTranslation extends EventEmitter {
         this.setState('active');
         return true;
       } else {
+        this.cleanupStream();
         this.setState('error');
         return false;
       }
     } catch (err) {
-      console.log('translation_start_err', err);
+      console.log('[VideoCallTranslation] start_err', err);
+      this.cleanupStream();
       this.setState('error');
       this.emit('error', err instanceof Error ? err : new Error('Start failed'));
       return false;
+    }
+  }
+
+  private cleanupStream(): void {
+    if (this.audioStream) {
+      this.audioStream.getTracks().forEach((track) => track.stop());
+      this.audioStream = null;
     }
   }
 
@@ -131,7 +153,7 @@ export class VideoCallTranslation extends EventEmitter {
       await this.service.cleanup();
       this.service = null;
     }
-    this.audioTrack = null;
+    this.cleanupStream();
     this.setState('idle');
   }
 

@@ -607,7 +607,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, [palabraEnabled, palabraSource, palabraTarget, showModal]);
 
   useEffect(() => {
-    if (!palabraEnabled || !localStream || !palabraServiceRef.current) {
+    if (!palabraEnabled || !palabraServiceRef.current) {
       return;
     }
 
@@ -616,16 +616,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return;
     }
 
-    const audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack) {
-      console.log('[Palabra] starting_with_local_audio');
-      service.start(audioTrack as unknown as MediaStreamTrack).catch((err) => {
-        console.error('[Palabra] start_failed:', err);
-      });
-    }
-  }, [palabraEnabled, localStream]);
+    console.log('[Palabra] starting_translation');
+    service.start().catch((err) => {
+      console.error('[Palabra] start_failed:', err);
+    });
+  }, [palabraEnabled]);
 
-  // Palabra: Cleanup on unmount
   useEffect(() => {
     return () => {
       if (palabraServiceRef.current) {
@@ -635,7 +631,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     };
   }, []);
 
-  // Palabra: Save preferences when they change
   useEffect(() => {
     CallTranslationPrefs.setEnabled(palabraEnabled);
   }, [palabraEnabled]);
