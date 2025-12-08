@@ -347,4 +347,23 @@ export class WebRTCPeerManager {
   hasOriginalAudioTrack(): boolean {
     return this.originalAudioTrack !== null;
   }
+
+  async replaceVideoTrack(newTrack: MediaStreamTrack): Promise<boolean> {
+    try {
+      let replaced = false;
+      for (const [peerId, pc] of this.peerConnections) {
+        const senders = pc.getSenders();
+        const videoSender = senders.find((s: any) => s.track?.kind === 'video');
+        if (videoSender) {
+          await videoSender.replaceTrack(newTrack as any);
+          replaced = true;
+          console.log('video_track_replaced', peerId);
+        }
+      }
+      return replaced;
+    } catch (error) {
+      console.log('replace_video_failed', error);
+      return false;
+    }
+  }
 }

@@ -48,6 +48,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   const callTypeRef = useRef<'outgoing' | 'incoming' | null>(null);
   const callContactPhoneRef = useRef<string | null>(null);
   const callHistoryLoggedRef = useRef(false);
+  const facingModeRef = useRef<'user' | 'environment'>('user');
 
   const socketManager = useRef<WebRTCSocketManager | null>(null);
   const peerManager = useRef<WebRTCPeerManager | null>(null);
@@ -896,14 +897,51 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     }
   };
 
-  const switchCamera = () => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach((track) => {
-        const trackWithSwitch = track as typeof track & {_switchCamera?: () => void};
-        if (typeof trackWithSwitch._switchCamera === 'function') {
-          trackWithSwitch._switchCamera();
-        }
-      });
+  const switchCamera = async () => {
+    if (!localStream) return;
+    
+    const newFacingMode = facingModeRef.current === 'user' ? 'environment' : 'user';
+    
+    try {
+      const constraints = {
+        audio: false,
+        video: {
+          facingMode: newFacingMode,
+          width: { ideal: 640, min: 320, max: 1280 },
+          height: { ideal: 480, min: 240, max: 720 },
+          frameRate: { ideal: 30, min: 15, max: 60 },
+        },
+      };
+      
+      const newVideoStream = await mediaDevices.getUserMedia(constraints);
+      const newVideoTrack = newVideoStream.getVideoTracks()[0];
+      
+      if (!newVideoTrack) return;
+      
+      if (peerManager.current) {
+        await peerManager.current.replaceVideoTrack(newVideoTrack);
+      }
+      
+      const oldVideoTracks = localStream.getVideoTracks();
+      const audioTracks = localStream.getAudioTracks();
+      
+      oldVideoTracks.forEach(track => track.stop());
+      
+      const updatedStream = new MediaStream([
+        ...audioTracks,
+        newVideoTrack,
+      ]);
+      
+      setLocalStream(updatedStream);
+      localStreamRef.current = updatedStream;
+      
+      if (peerManager.current) {
+        peerManager.current.setLocalStream(updatedStream);
+      }
+      
+      facingModeRef.current = newFacingMode;
+    } catch (err) {
+      console.log('switch_camera_error', err);
     }
   };
 
