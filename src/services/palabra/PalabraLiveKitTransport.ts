@@ -295,6 +295,8 @@ export class PalabraLiveKitTransport extends EventEmitter {
         participant: participant.identity,
       });
 
+      track.mediaStreamTrack.enabled = true;
+
       const language = publication.trackName?.split('_')[1] || 'unknown';
 
       const trackInfo: RemoteTrackInfo = {

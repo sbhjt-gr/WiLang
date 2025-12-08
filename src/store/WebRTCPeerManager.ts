@@ -334,11 +334,11 @@ export class WebRTCPeerManager {
 
   async restoreOriginalAudio(): Promise<boolean> {
     if (!this.originalAudioTrack) {
-      console.log('no_original_track');
       return false;
     }
     const restored = await this.replaceAudioTrack(this.originalAudioTrack);
     if (restored) {
+      console.log('original_audio_restored');
       this.originalAudioTrack = null;
     }
     return restored;

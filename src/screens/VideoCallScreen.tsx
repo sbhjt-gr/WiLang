@@ -208,7 +208,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     };
   }, []);
 
-  // Palabra: Initialize or cleanup service when enabled/disabled
+  const replaceAudioTrackRef = useRef(replaceAudioTrack);
+  const restoreOriginalAudioRef = useRef(restoreOriginalAudio);
+
+  useEffect(() => {
+    replaceAudioTrackRef.current = replaceAudioTrack;
+    restoreOriginalAudioRef.current = restoreOriginalAudio;
+  });
+
   useEffect(() => {
     if (!palabraEnabled) {
       if (palabraServiceRef.current) {
@@ -217,8 +224,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         setPalabraState('idle');
         setPalabraTranscript(null);
         setPalabraTranslation(null);
+        restoreOriginalAudioRef.current?.();
       }
-      restoreOriginalAudio?.();
       return;
     }
 
@@ -247,10 +254,10 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     };
 
     const handleRemoteTrack = (tracks: Array<{ track: MediaStreamTrack }>) => {
-      if (tracks.length > 0 && replaceAudioTrack) {
+      if (tracks.length > 0) {
         const translatedTrack = tracks[0].track;
         console.log('replacing_with_translated_track');
-        replaceAudioTrack(translatedTrack).then((success) => {
+        replaceAudioTrackRef.current?.(translatedTrack).then((success) => {
           console.log('track_replaced', success);
         });
       }
@@ -261,7 +268,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       showModal('Translation Error', err.message || 'An error occurred', 'alert-circle');
     };
 
-    console.log('palabra_handlers_setup');
     service.on('stateChange', handleStateChange);
     service.on('transcription', handleTranscription);
     service.on('translation', handleTranslation);
@@ -269,14 +275,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     service.on('error', handleError);
 
     return () => {
-      console.log('palabra_handlers_cleanup');
       service.off('stateChange', handleStateChange);
       service.off('transcription', handleTranscription);
       service.off('translation', handleTranslation);
       service.off('remoteTrack', handleRemoteTrack);
       service.off('error', handleError);
     };
-  }, [palabraEnabled, palabraSource, palabraTarget, showModal, replaceAudioTrack, restoreOriginalAudio]);
+  }, [palabraEnabled, palabraSource, palabraTarget, showModal]);
 
   useEffect(() => {
     if (!palabraEnabled || !palabraServiceRef.current) {
@@ -300,9 +305,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         palabraServiceRef.current.stop();
         palabraServiceRef.current = null;
       }
-      restoreOriginalAudio?.();
+      restoreOriginalAudioRef.current?.();
     };
-  }, [restoreOriginalAudio]);
+  }, []);
 
   useEffect(() => {
     CallTranslationPrefs.setEnabled(palabraEnabled);
@@ -331,7 +336,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         await palabraServiceRef.current.stop();
         palabraServiceRef.current = null;
       }
-      await restoreOriginalAudio?.();
+      await restoreOriginalAudioRef.current?.();
       setPalabraEnabled(false);
       setPalabraState('idle');
       setPalabraTranscript(null);
@@ -343,7 +348,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     } finally {
       navigation.navigate('HomeScreen', {});
     }
-  }, [closeCall, navigation, restoreOriginalAudio]);
+  }, [closeCall, navigation]);
 
   const handleJoinDeniedClose = useCallback(async () => {
     acknowledgeJoinDenied?.();
@@ -352,7 +357,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         await palabraServiceRef.current.stop();
         palabraServiceRef.current = null;
       }
-      await restoreOriginalAudio?.();
+      await restoreOriginalAudioRef.current?.();
       setPalabraEnabled(false);
 
       closeCall();
@@ -361,7 +366,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     } finally {
       navigation.goBack();
     }
-  }, [acknowledgeJoinDenied, closeCall, navigation, restoreOriginalAudio]);
+  }, [acknowledgeJoinDenied, closeCall, navigation]);
 
   useEffect(() => {
     if (initializationAttempted.current) {
