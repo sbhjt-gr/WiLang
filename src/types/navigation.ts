@@ -11,6 +11,14 @@ export type RootStackParamList = {
     meetingToken?: string;
     autoJoinHandled?: boolean;
   };
+  VoiceCallScreen: { 
+    id: string; 
+    type?: 'join' | 'create' | 'incoming' | 'outgoing' | 'instant'; 
+    joinCode?: string;
+    meetingToken?: string;
+    autoJoinHandled?: boolean;
+    callerName?: string;
+  };
   CallingScreen: { 
     callType: 'outgoing' | 'incoming';
     callerName: string;
