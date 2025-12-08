@@ -4,10 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { callHistoryService, CallHistoryEntry } from '../../services/CallHistoryService';
 import { auth } from '../../config/firebase';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../types/navigation';
+
+type HistoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
 export default function HistoryScreen() {
   const { colors } = useTheme();
+  const navigation = useNavigation<HistoryScreenNavigationProp>();
   const [callHistory, setCallHistory] = useState<CallHistoryEntry[]>([]);
   const [stats, setStats] = useState({
     totalCalls: 0,
@@ -94,6 +99,23 @@ export default function HistoryScreen() {
     return date.toLocaleDateString();
   };
 
+  const handleCall = (call: CallHistoryEntry) => {
+    if (call.contactId || call.contactPhone) {
+      navigation.navigate('CallingScreen', {
+        callType: 'outgoing',
+        callerName: call.contactName,
+        callerPhone: call.contactPhone,
+        callerId: call.contactId,
+      });
+    } else {
+      const meetingId = call.meetingId || `REDIAL_${Date.now()}`;
+      navigation.navigate('VideoCallScreen', {
+        id: meetingId,
+        type: 'instant',
+      });
+    }
+  };
+
   const getCallIcon = (type: string): keyof typeof Ionicons.glyphMap => {
     switch (type) {
       case 'outgoing': return 'call-outline';
@@ -155,9 +177,11 @@ export default function HistoryScreen() {
               </View>
             ) : (
               callHistory.map((call) => (
-                <View
+                <TouchableOpacity
                   key={call.id}
                   style={[styles.callCard, { backgroundColor: colors.surface }]}
+                  onPress={() => handleCall(call)}
+                  activeOpacity={0.7}
                 >
                   <View style={styles.callInfo}>
                     <View style={styles.callIcon}>
@@ -186,8 +210,14 @@ export default function HistoryScreen() {
                     <Text style={[styles.duration, { color: colors.textSecondary }]}>
                       {formatDuration(call.duration)}
                     </Text>
+                    <TouchableOpacity
+                      style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}
+                      onPress={() => handleCall(call)}
+                    >
+                      <Ionicons name="call" size={18} color="#8b5cf6" />
+                    </TouchableOpacity>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))
             )}
           </View>
@@ -299,13 +329,13 @@ const styles = StyleSheet.create({
   },
   callMeta: {
     alignItems: 'flex-end',
+    gap: 8,
   },
   duration: {
     fontSize: 12,
-    marginBottom: 4,
   },
   redialButton: {
-    padding: 6,
-    borderRadius: 6,
+    padding: 8,
+    borderRadius: 8,
   },
 });
