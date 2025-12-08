@@ -248,12 +248,35 @@ export default function HistoryScreen() {
                     <Text style={[styles.duration, { color: colors.textSecondary }]}>
                       {formatDuration(call.duration)}
                     </Text>
-                    <TouchableOpacity
-                      style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}
-                      onPress={() => showCallOptions(call)}
-                    >
-                      <Ionicons name="call" size={18} color="#8b5cf6" />
-                    </TouchableOpacity>
+                    {call.contactId && call.contactPhone ? (
+                      <View style={styles.callButtons}>
+                        <TouchableOpacity
+                          style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleCall(call, true);
+                          }}
+                        >
+                          <Ionicons name="call" size={16} color="#8b5cf6" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleCall(call, false);
+                          }}
+                        >
+                          <Ionicons name="videocam" size={16} color="#8b5cf6" />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}
+                        onPress={() => handleCall(call, false)}
+                      >
+                        <Ionicons name="videocam" size={16} color="#8b5cf6" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </TouchableOpacity>
               ))
@@ -371,6 +394,10 @@ const styles = StyleSheet.create({
   },
   duration: {
     fontSize: 12,
+  },
+  callButtons: {
+    flexDirection: 'row',
+    gap: 8,
   },
   redialButton: {
     padding: 8,

@@ -389,15 +389,26 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
         </View>
       </View>
       {contact.registeredUserId && contact.registeredPhone && (
-        <TouchableOpacity
-          style={[styles.callButton, { backgroundColor: colors.primaryLight }]}
-          onPress={(e) => {
-            e.stopPropagation();
-            handleVideoCall(contact);
-          }}
-        >
-          <Ionicons name="videocam-outline" size={20} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.callButtons}>
+          <TouchableOpacity
+            style={[styles.callButton, { backgroundColor: colors.primaryLight }]}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleVoiceCall(contact);
+            }}
+          >
+            <Ionicons name="call-outline" size={18} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.callButton, { backgroundColor: colors.primaryLight }]}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleVideoCall(contact);
+            }}
+          >
+            <Ionicons name="videocam-outline" size={18} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -687,9 +698,13 @@ const styles = StyleSheet.create({
   phoneNumber: {
     fontSize: 14,
   },
+  callButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   callButton: {
-    padding: 12,
-    borderRadius: 12,
+    padding: 10,
+    borderRadius: 10,
   },
   separator: {
     height: 12,
