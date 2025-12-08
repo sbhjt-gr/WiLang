@@ -1,8 +1,10 @@
 import React, {useState, useRef, useEffect, useCallback} from 'react';
-import {Platform} from 'react-native';
+import {Platform, Alert} from 'react-native';
 import {mediaDevices, MediaStream, MediaStreamTrack} from '@livekit/react-native-webrtc';
 import { setAudioModeAsync } from 'expo-audio';
 import * as Notifications from 'expo-notifications';
+import InCallManager from 'react-native-incall-manager';
+import {doc, getDoc} from 'firebase/firestore';
 import {WebRTCContext} from './WebRTCContext';
 import {User, WebRTCContextType, E2EStatus, JoinRequest, DirectCallConfig} from './WebRTCTypes';
 import {WebRTCSocketManager} from './WebRTCSocketManager';
@@ -12,6 +14,9 @@ import { keyManager, sessionManager } from '../crypto';
 import { callHistoryService } from '../services/CallHistoryService';
 import { pushService } from '../services/push-service';
 import { callKeepService } from '../services/callkeep-service';
+import {navigationRef, navigate, goBack} from '../utils/navigationRef';
+import {getCurrentUser} from '../services/FirebaseService';
+import {firestore, auth} from '../config/firebase';
 
 interface Props {
   children: React.ReactNode;
@@ -157,7 +162,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           .catch((error: Error) => {
             console.log('direct_call_peer_connection_failed', { peerId: remoteParticipant.peerId, error: error.message });
             if (error.message === 'encryption_required_but_failed' || error.message === 'encryption_required_but_no_userid') {
-              const { Alert } = require('react-native');
               Alert.alert(
                 'Encryption Error',
                 `Unable to establish a secure connection with ${remoteParticipant.username}.`,
@@ -224,7 +228,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     callerJoinInProgressRef.current = true;
 
     try {
-      const { auth } = require('../config/firebase');
       const currentUser = auth.currentUser;
 
       if (!currentUser) {
@@ -346,13 +349,11 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
               title: 'Incoming Call',
               body: `${callData.callerName || 'Someone'} is calling you`,
               data: { type: 'incoming_call', ...callData },
-              sound: false,
+              sound: true,
               categoryIdentifier: 'incoming_call',
             },
             trigger: null,
           });
-          
-          const { navigationRef, navigate } = require('../utils/navigationRef');
           
           if (navigationRef.isReady()) {
             console.log('navigating_to_calling_screen');
@@ -398,17 +399,14 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
             });
           }
 
-          const { navigationRef } = require('../utils/navigationRef');
-          if (navigationRef.current) {
-            navigationRef.current.navigate('VideoCallScreen', {
-              id: data.meetingId || data.callId || 'call_' + Date.now(),
-              type: 'outgoing',
-              callerId: data.recipientId,
-              joinCode: data.meetingId,
-              meetingToken: data.meetingToken,
-              autoJoinHandled: true
-            });
-          }
+          navigate('VideoCallScreen', {
+            id: data.meetingId || data.callId || 'call_' + Date.now(),
+            type: 'outgoing',
+            callerId: data.recipientId,
+            joinCode: data.meetingId,
+            meetingToken: data.meetingToken,
+            autoJoinHandled: true
+          });
 
           autoJoinCallerMeeting(data.meetingId, data.meetingToken);
         },
@@ -418,24 +416,21 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           logCallHistory('declined');
           endDirectCall();
           
-          const { navigationRef } = require('../utils/navigationRef');
-          const { Alert } = require('react-native');
-          if (navigationRef.current) {
-            navigationRef.current.goBack();
-          }
+          goBack();
           Alert.alert('Call Declined', 'The recipient declined your call.');
         },
         onCallCancelled: (data: any) => {
           console.log('call_cancelled_notification', data);
           
+          InCallManager.stopRingtone();
+          InCallManager.stop();
+          
+          Notifications.dismissAllNotificationsAsync();
+          
           logCallHistory('missed');
           endDirectCall();
           
-          const { navigationRef } = require('../utils/navigationRef');
-          const { Alert } = require('react-native');
-          if (navigationRef.current) {
-            navigationRef.current.goBack();
-          }
+          goBack();
           Alert.alert('Call Cancelled', 'The caller cancelled the call.');
         },
         onJoinRequest: (request) => {
@@ -626,7 +621,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
                 .catch((error) => {
                   console.log('direct_call_peer_connection_failed', { participant: participant.username, error: error.message });
                   if (error.message === 'encryption_required_but_failed' || error.message === 'encryption_required_but_no_userid') {
-                    const { Alert } = require('react-native');
                     Alert.alert(
                       'Encryption Error',
                       `Unable to establish secure connection with ${participant.username}.`,
@@ -664,14 +658,12 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
               .catch((error) => {
                 console.log('peer_connection_failed', { participant: participant.username, error: error.message });
                 if (error.message === 'encryption_required_but_failed') {
-                  const { Alert } = require('react-native');
                   Alert.alert(
                     'Encryption Failed',
                     `Unable to establish secure connection with ${participant.username}. The call cannot proceed without encryption.`,
                     [{ text: 'OK' }]
                   );
                 } else if (error.message === 'encryption_required_but_no_userid') {
-                  const { Alert } = require('react-native');
                   Alert.alert(
                     'Encryption Required',
                     `Cannot connect to ${participant.username}. Encryption is required but user is not authenticated.`,
@@ -757,10 +749,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         console.log('auto_connect_start', { hasSocketManager: !!socketManager.current, hasSocket: !!socket });
         
         try {
-          const { getCurrentUser } = require('../services/FirebaseService');
-          const { doc, getDoc } = require('firebase/firestore');
-          const { firestore } = require('../config/firebase');
-          
           const currentUser = getCurrentUser();
           
           if (currentUser) {
@@ -893,10 +881,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       (io as any).localStream = newStream;
       (io as any).currentPeerId = io.id;
 
-      const { getCurrentUser } = require('../services/FirebaseService');
-      const { doc, getDoc } = require('firebase/firestore');
-      const { firestore } = require('../config/firebase');
-      
       const currentUser = getCurrentUser();
       
       if (currentUser && socketManager.current) {
@@ -1051,7 +1035,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   };
 
   const logCallHistory = async (status: 'completed' | 'missed' | 'declined' | 'failed', contactOverride?: User) => {
-    const { getCurrentUser } = require('../services/FirebaseService');
     const currentUser = getCurrentUser();
     
     if (callHistoryLoggedRef.current) {
@@ -1141,14 +1124,12 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         .catch((error) => {
           console.log('direct_call_failed', { user: user.username, error: error.message });
           if (error.message === 'encryption_required_but_failed') {
-            const { Alert } = require('react-native');
             Alert.alert(
               'Encryption Failed',
               `Unable to establish secure connection with ${user.username}. The call cannot proceed without encryption.`,
               [{ text: 'OK' }]
             );
           } else if (error.message === 'encryption_required_but_no_userid') {
-            const { Alert } = require('react-native');
             Alert.alert(
               'Encryption Required',
               `Cannot connect to ${user.username}. Encryption is required but user is not authenticated.`,
@@ -1343,7 +1324,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           .catch((error) => {
             console.log('refresh_participant_failed', { participant: participant.username, error: error.message });
             if (error.message === 'encryption_required_but_failed' || error.message === 'encryption_required_but_no_userid') {
-              const { Alert } = require('react-native');
               Alert.alert(
                 'Reconnection Failed',
                 `Unable to re-establish secure connection with ${participant.username}. Encryption is required.`,
