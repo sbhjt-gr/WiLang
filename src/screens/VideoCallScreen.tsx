@@ -564,25 +564,27 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return;
     }
 
-    // Skip if already running
-    if (palabraServiceRef.current) {
-      return;
+    let service = palabraServiceRef.current;
+    
+    if (!service) {
+      service = new VideoCallTranslation();
+      palabraServiceRef.current = service;
     }
-
-    const service = new VideoCallTranslation();
-    palabraServiceRef.current = service;
     
     service.setLanguages(palabraSource, palabraTarget);
 
     const handleStateChange = (state: TranslationState) => {
+      console.log('[VideoCall] Palabra state changed:', state);
       setPalabraState(state);
     };
 
     const handleTranscription = (data: { text: string; isFinal?: boolean }) => {
+      console.log('[VideoCall] Palabra transcription:', data.text, 'isFinal:', data.isFinal);
       setPalabraTranscript(data.text);
     };
 
     const handleTranslation = (data: { text: string; isFinal?: boolean }) => {
+      console.log('[VideoCall] Palabra translation:', data.text, 'isFinal:', data.isFinal);
       setPalabraTranslation(data.text);
     };
 
@@ -591,12 +593,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       showModal('Translation Error', err.message || 'An error occurred', 'alert-circle');
     };
 
+    console.log('[VideoCall] Setting up Palabra event handlers');
     service.on('stateChange', handleStateChange);
     service.on('transcription', handleTranscription);
     service.on('translation', handleTranslation);
     service.on('error', handleError);
 
     return () => {
+      console.log('[VideoCall] Cleaning up Palabra event handlers');
       service.off('stateChange', handleStateChange);
       service.off('transcription', handleTranscription);
       service.off('translation', handleTranslation);
@@ -604,9 +608,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     };
   }, [palabraEnabled, palabraSource, palabraTarget, showModal]);
 
-  // Palabra: Start when localStream becomes available
+  // Palabra: Start when remote stream becomes available (translate remote participant)
   useEffect(() => {
-    if (!palabraEnabled || !localStream || !palabraServiceRef.current) {
+    if (!palabraEnabled || !selectedRemoteStream || !palabraServiceRef.current) {
       return;
     }
 
@@ -615,13 +619,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return;
     }
 
-    const audioTrack = localStream.getAudioTracks()[0];
+    const audioTrack = selectedRemoteStream.getAudioTracks()[0];
     if (audioTrack) {
+      console.log('[Palabra] Starting with remote audio track');
       service.start(audioTrack as unknown as MediaStreamTrack).catch((err) => {
         console.error('[Palabra] start_failed:', err);
       });
     }
-  }, [palabraEnabled, localStream]);
+  }, [palabraEnabled, selectedRemoteStream]);
 
   // Palabra: Cleanup on unmount
   useEffect(() => {
@@ -1112,7 +1117,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       <TranscriptionOverlay
         sourceText={palabraTranscript}
         translatedText={palabraTranslation}
-        visible={palabraEnabled && palabraState === 'active'}
+        visible={palabraEnabled && palabraState !== 'idle' && palabraState !== 'error'}
       />
 
       {/* Palabra translation controls */}

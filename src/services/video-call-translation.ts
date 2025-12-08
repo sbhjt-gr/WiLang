@@ -142,12 +142,11 @@ export class VideoCallTranslation extends EventEmitter {
         break;
       case 'connecting':
       case 'reconnecting':
-        this.setState('connecting');
+        if (this.state !== 'active') {
+          this.setState('connecting');
+        }
         break;
       case 'disconnected':
-        if (this.state === 'active') {
-          this.setState('idle');
-        }
         break;
     }
   }
