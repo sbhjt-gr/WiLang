@@ -2,6 +2,7 @@ import React, {useState, useRef, useEffect, useCallback} from 'react';
 import {Platform} from 'react-native';
 import {mediaDevices, MediaStream, MediaStreamTrack} from '@livekit/react-native-webrtc';
 import { setAudioModeAsync } from 'expo-audio';
+import * as Notifications from 'expo-notifications';
 import {WebRTCContext} from './WebRTCContext';
 import {User, WebRTCContextType, E2EStatus, JoinRequest, DirectCallConfig} from './WebRTCTypes';
 import {WebRTCSocketManager} from './WebRTCSocketManager';
@@ -339,6 +340,16 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
             callHistoryLoggedRef.current = false;
           }
           callContactPhoneRef.current = normalizePhoneNumber(callData.callerPhone);
+          
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: 'Incoming Call',
+              body: `${callData.callerName || 'Someone'} is calling you`,
+              data: { type: 'incoming_call', ...callData },
+              sound: true,
+            },
+            trigger: null,
+          });
           
           const { navigationRef, navigate } = require('../utils/navigationRef');
           
