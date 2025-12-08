@@ -217,7 +217,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         setPalabraTranscript(null);
         setPalabraTranslation(null);
       }
-      
       restoreOriginalAudioTrack?.();
       return;
     }
@@ -230,6 +229,22 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     }
     
     service.setLanguages(palabraSource, palabraTarget);
+
+    if (remoteStreams && remoteStreams.size > 0) {
+      const firstStream = Array.from(remoteStreams.values())[0];
+      const audioTracks = firstStream?.getAudioTracks();
+      if (audioTracks && audioTracks.length > 0) {
+        const remoteAudioTrack = audioTracks[0] as any;
+        console.log('[VideoCall] Using remote audio track for translation:', remoteAudioTrack.id);
+        service.setRemoteAudioTrack(remoteAudioTrack);
+      } else {
+        console.log('[VideoCall] No remote audio track, using local mic');
+        service.setRemoteAudioTrack(null);
+      }
+    } else {
+      console.log('[VideoCall] No remote streams yet');
+      service.setRemoteAudioTrack(null);
+    }
 
     const handleStateChange = (state: TranslationState) => {
       console.log('[VideoCall] Palabra state changed:', state);
@@ -245,7 +260,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     };
 
     const handleRemoteTrack = (tracks: Array<{ trackId: string; track: MediaStreamTrack; language: string }>) => {
-      console.log('[VideoCall] Palabra remote tracks:', tracks.length);
+      console.log('[VideoCall] Palabra translated tracks:', tracks.length);
     };
 
     const handleError = (err: Error) => {
@@ -277,11 +292,26 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return;
     }
 
-    console.log('[Palabra] starting_translation');
+    if (!remoteStreams || remoteStreams.size === 0) {
+      console.log('[Palabra] waiting_for_remote_streams');
+      return;
+    }
+
+    const firstStream = Array.from(remoteStreams.values())[0];
+    const audioTracks = firstStream?.getAudioTracks();
+    if (!audioTracks || audioTracks.length === 0) {
+      console.log('[Palabra] waiting_for_remote_audio');
+      return;
+    }
+
+    const remoteAudioTrack = audioTracks[0] as any;
+    console.log('[Palabra] starting_with_remote_track:', remoteAudioTrack.id);
+    service.setRemoteAudioTrack(remoteAudioTrack);
+    
     service.start().catch((err) => {
       console.error('[Palabra] start_failed:', err);
     });
-  }, [palabraEnabled]);
+  }, [palabraEnabled, remoteStreams]);
 
   useEffect(() => {
     return () => {

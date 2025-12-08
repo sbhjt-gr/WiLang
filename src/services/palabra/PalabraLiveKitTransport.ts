@@ -98,9 +98,6 @@ export class PalabraLiveKitTransport extends EventEmitter {
         echoCancellation: true,
         noiseSuppression: true,
       },
-      audioOutput: {
-        deviceId: 'default',
-      },
     });
     this.streamUrl = config.streamUrl;
     this.accessToken = config.accessToken;

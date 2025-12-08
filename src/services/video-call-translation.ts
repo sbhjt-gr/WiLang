@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { mediaDevices, MediaStream } from '@sbhjt-gr/react-native-webrtc';
+import { mediaDevices, MediaStream, MediaStreamTrack as RNMediaStreamTrack } from '@sbhjt-gr/react-native-webrtc';
 import { registerGlobals } from '@sbhjt-gr/react-native';
 import {
   PalabraTranslationService,
@@ -38,6 +38,7 @@ export class VideoCallTranslation extends EventEmitter {
   private sourceLang: SourceLangCode = 'auto';
   private targetLang: TargetLangCode = 'en-us';
   private audioStream: MediaStream | null = null;
+  private remoteAudioTrack: RNMediaStreamTrack | null = null;
 
   constructor() {
     super();
@@ -78,6 +79,11 @@ export class VideoCallTranslation extends EventEmitter {
     }
   }
 
+  setRemoteAudioTrack(track: RNMediaStreamTrack | null): void {
+    this.remoteAudioTrack = track;
+    console.log('[VideoCallTranslation] remote_track_set:', track ? track.id : 'null');
+  }
+
   async start(): Promise<boolean> {
     if (this.state === 'active' || this.state === 'connecting') {
       console.log('[VideoCallTranslation] already_active');
@@ -93,18 +99,27 @@ export class VideoCallTranslation extends EventEmitter {
     this.setState('connecting');
 
     try {
-      console.log('[VideoCallTranslation] using_local_mic');
-      const stream = await mediaDevices.getUserMedia({
-        audio: true,
-        video: false,
-      });
-      this.audioStream = stream as MediaStream;
+      let audioTrack: MediaStreamTrack;
 
-      const audioTracks = this.audioStream.getAudioTracks();
-      if (audioTracks.length === 0) {
-        throw new Error('No audio track available');
+      const publishableTrack = this.getPublishableRemoteTrack();
+
+      if (publishableTrack) {
+        console.log('[VideoCallTranslation] using_remote_audio_track');
+        audioTrack = publishableTrack;
+      } else {
+        console.log('[VideoCallTranslation] using_local_mic (fallback)');
+        const stream = await mediaDevices.getUserMedia({
+          audio: true,
+          video: false,
+        });
+        this.audioStream = stream as MediaStream;
+
+        const audioTracks = this.audioStream.getAudioTracks();
+        if (audioTracks.length === 0) {
+          throw new Error('No audio track available');
+        }
+        audioTrack = audioTracks[0] as unknown as MediaStreamTrack;
       }
-      const audioTrack = audioTracks[0] as unknown as MediaStreamTrack;
 
       const config: PalabraTranslationServiceConfig = {
         auth: {
@@ -182,6 +197,20 @@ export class VideoCallTranslation extends EventEmitter {
 
   isConfigured(): boolean {
     return Boolean(PALABRA_CLIENT_ID && PALABRA_CLIENT_SECRET);
+  }
+
+  private getPublishableRemoteTrack(): MediaStreamTrack | null {
+    if (!this.remoteAudioTrack) {
+      return null;
+    }
+
+    const track = this.remoteAudioTrack as RNMediaStreamTrack & { remote?: boolean };
+    if (track.remote) {
+      console.log('[VideoCallTranslation] remote_track_receive_only');
+      return null;
+    }
+
+    return this.remoteAudioTrack as unknown as MediaStreamTrack;
   }
 }
 
