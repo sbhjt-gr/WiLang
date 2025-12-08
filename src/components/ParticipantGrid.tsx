@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
-import { RTCView } from '@sbhjt-gr/react-native-webrtc';
+import { RTCView } from '@livekit/react-native-webrtc';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { User } from '../store/WebRTCTypes';

@@ -9,7 +9,7 @@ import {
   Share,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import {RTCView} from '@sbhjt-gr/react-native-webrtc';
+import {RTCView} from '@livekit/react-native-webrtc';
 import { StatusBar } from 'expo-status-bar';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -66,7 +66,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     joinDeniedReason,
     acknowledgeJoinDenied,
     isMeetingOwner,
-    restoreOriginalAudioTrack,
+    replaceAudioTrack,
+    restoreOriginalAudio,
   } = useContext(WebRTCContext);
 
   const [isGridMode, setIsGridMode] = useState(true);
@@ -217,7 +218,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         setPalabraTranscript(null);
         setPalabraTranslation(null);
       }
-      restoreOriginalAudioTrack?.();
+      restoreOriginalAudio?.();
       return;
     }
 
@@ -230,43 +231,37 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     
     service.setLanguages(palabraSource, palabraTarget);
 
-    if (remoteStreams && remoteStreams.size > 0) {
-      const firstStream = Array.from(remoteStreams.values())[0];
-      const audioTracks = firstStream?.getAudioTracks();
-      if (audioTracks && audioTracks.length > 0) {
-        const remoteAudioTrack = audioTracks[0] as any;
-        console.log('[VideoCall] Using remote audio track for translation:', remoteAudioTrack.id);
-        service.setRemoteAudioTrack(remoteAudioTrack);
-      } else {
-        console.log('[VideoCall] No remote audio track, using local mic');
-        service.setRemoteAudioTrack(null);
-      }
-    } else {
-      console.log('[VideoCall] No remote streams yet');
-      service.setRemoteAudioTrack(null);
-    }
-
     const handleStateChange = (state: TranslationState) => {
-      console.log('[VideoCall] Palabra state changed:', state);
+      console.log('palabra_state', state);
       setPalabraState(state);
     };
 
     const handleTranscription = (data: { text: string; isFinal?: boolean }) => {
+      console.log('palabra_transcription', data.isFinal);
       setPalabraTranscript(data.text);
     };
 
     const handleTranslation = (data: { text: string; isFinal?: boolean }) => {
+      console.log('palabra_translation', data.isFinal);
       setPalabraTranslation(data.text);
     };
 
-    const handleRemoteTrack = (tracks: Array<{ trackId: string; track: MediaStreamTrack; language: string }>) => {
-      console.log('[VideoCall] Palabra translated tracks:', tracks.length);
+    const handleRemoteTrack = (tracks: Array<{ track: MediaStreamTrack }>) => {
+      if (tracks.length > 0 && replaceAudioTrack) {
+        const translatedTrack = tracks[0].track;
+        console.log('replacing_with_translated_track');
+        replaceAudioTrack(translatedTrack).then((success) => {
+          console.log('track_replaced', success);
+        });
+      }
     };
 
     const handleError = (err: Error) => {
-      console.error('[Palabra] err:', err);
+      console.log('palabra_err', err.message);
+      showModal('Translation Error', err.message || 'An error occurred', 'alert-circle');
     };
 
+    console.log('palabra_handlers_setup');
     service.on('stateChange', handleStateChange);
     service.on('transcription', handleTranscription);
     service.on('translation', handleTranslation);
@@ -274,13 +269,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     service.on('error', handleError);
 
     return () => {
+      console.log('palabra_handlers_cleanup');
       service.off('stateChange', handleStateChange);
       service.off('transcription', handleTranscription);
       service.off('translation', handleTranslation);
       service.off('remoteTrack', handleRemoteTrack);
       service.off('error', handleError);
     };
-  }, [palabraEnabled, palabraSource, palabraTarget]);
+  }, [palabraEnabled, palabraSource, palabraTarget, showModal, replaceAudioTrack, restoreOriginalAudio]);
 
   useEffect(() => {
     if (!palabraEnabled || !palabraServiceRef.current) {
@@ -292,26 +288,11 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       return;
     }
 
-    if (!remoteStreams || remoteStreams.size === 0) {
-      console.log('[Palabra] waiting_for_remote_streams');
-      return;
-    }
-
-    const firstStream = Array.from(remoteStreams.values())[0];
-    const audioTracks = firstStream?.getAudioTracks();
-    if (!audioTracks || audioTracks.length === 0) {
-      console.log('[Palabra] waiting_for_remote_audio');
-      return;
-    }
-
-    const remoteAudioTrack = audioTracks[0] as any;
-    console.log('[Palabra] starting_with_remote_track:', remoteAudioTrack.id);
-    service.setRemoteAudioTrack(remoteAudioTrack);
-    
+    console.log('palabra_starting');
     service.start().catch((err) => {
-      console.error('[Palabra] start_failed:', err);
+      console.log('palabra_start_failed', err);
     });
-  }, [palabraEnabled, remoteStreams]);
+  }, [palabraEnabled]);
 
   useEffect(() => {
     return () => {
@@ -319,8 +300,9 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         palabraServiceRef.current.stop();
         palabraServiceRef.current = null;
       }
+      restoreOriginalAudio?.();
     };
-  }, []);
+  }, [restoreOriginalAudio]);
 
   useEffect(() => {
     CallTranslationPrefs.setEnabled(palabraEnabled);
@@ -349,19 +331,19 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         await palabraServiceRef.current.stop();
         palabraServiceRef.current = null;
       }
+      await restoreOriginalAudio?.();
       setPalabraEnabled(false);
       setPalabraState('idle');
       setPalabraTranscript(null);
       setPalabraTranslation(null);
 
-      await restoreOriginalAudioTrack?.();
       closeCall();
     } catch (err) {
-      console.error('call_cleanup_err:', err);
+      console.log('call_cleanup_err', err);
     } finally {
       navigation.navigate('HomeScreen', {});
     }
-  }, [closeCall, navigation, restoreOriginalAudioTrack]);
+  }, [closeCall, navigation, restoreOriginalAudio]);
 
   const handleJoinDeniedClose = useCallback(async () => {
     acknowledgeJoinDenied?.();
@@ -370,16 +352,16 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         await palabraServiceRef.current.stop();
         palabraServiceRef.current = null;
       }
+      await restoreOriginalAudio?.();
       setPalabraEnabled(false);
 
-      await restoreOriginalAudioTrack?.();
       closeCall();
     } catch (err) {
-      console.error('denied_cleanup_err:', err);
+      console.log('denied_cleanup_err', err);
     } finally {
       navigation.goBack();
     }
-  }, [acknowledgeJoinDenied, closeCall, navigation, restoreOriginalAudioTrack]);
+  }, [acknowledgeJoinDenied, closeCall, navigation, restoreOriginalAudio]);
 
   useEffect(() => {
     if (initializationAttempted.current) {

@@ -92,13 +92,7 @@ export class PalabraLiveKitTransport extends EventEmitter {
   constructor(config: PalabraLiveKitTransportConfig) {
     super();
 
-    this.room = new Room({
-      audioCaptureDefaults: {
-        autoGainControl: true,
-        echoCancellation: true,
-        noiseSuppression: true,
-      },
-    });
+    this.room = new Room();
     this.streamUrl = config.streamUrl;
     this.accessToken = config.accessToken;
     this.sourceLanguage = config.sourceLanguage;
@@ -122,9 +116,6 @@ export class PalabraLiveKitTransport extends EventEmitter {
       await this.room.connect(this.streamUrl, this.accessToken, {
         autoSubscribe: true,
       });
-
-      await this.room.startAudio();
-      console.log('[PalabraTransport] Audio session started');
 
       console.log('[PalabraTransport] Connected, publishing audio track');
 
@@ -298,18 +289,10 @@ export class PalabraLiveKitTransport extends EventEmitter {
   ): void {
     try {
       const trackId = track.sid || publication.trackSid;
-      console.log('[PalabraTransport] Remote audio track received:', {
+      console.log('palabra_remote_track', {
         trackId,
         trackName: publication.trackName,
         participant: participant.identity,
-      });
-
-      track.mediaStreamTrack.enabled = true;
-      
-      this.room.startAudio().then(() => {
-        console.log('[PalabraTransport] Audio playback started for translated track');
-      }).catch((err) => {
-        console.log('[PalabraTransport] startAudio error:', err);
       });
 
       const language = publication.trackName?.split('_')[1] || 'unknown';
@@ -325,7 +308,7 @@ export class PalabraLiveKitTransport extends EventEmitter {
       this.onRemoteTrack?.(this.getRemoteTracks());
       this.emit(PalabraEventTypes.REMOTE_TRACKS_UPDATE, this.getRemoteTracks());
     } catch (error) {
-      console.error('[PalabraTransport] Failed to handle remote track:', error);
+      console.log('palabra_track_err', error);
     }
   }
 

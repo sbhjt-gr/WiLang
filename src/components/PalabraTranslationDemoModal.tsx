@@ -21,8 +21,8 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { registerGlobals } from '@sbhjt-gr/react-native';
-import { mediaDevices, MediaStream } from '@sbhjt-gr/react-native-webrtc';
+import { registerGlobals } from '@livekit/react-native';
+import { mediaDevices, MediaStream } from '@livekit/react-native-webrtc';
 
 import { useTheme } from '../theme';
 import {

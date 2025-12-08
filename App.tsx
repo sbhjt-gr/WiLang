@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { registerGlobals } from '@sbhjt-gr/react-native';
+import { registerGlobals } from '@livekit/react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, StyleSheet } from 'react-native';

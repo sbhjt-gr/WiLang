@@ -1,4 +1,4 @@
-import {MediaStream, MediaStreamTrack as RNMediaStreamTrack, RTCPeerConnection} from '@sbhjt-gr/react-native-webrtc';
+import {MediaStream, RTCPeerConnection, MediaStreamTrack} from '@livekit/react-native-webrtc';
 import {User} from './WebRTCTypes';
 import {ICE_SERVERS} from './WebRTCConfig';
 import {WebRTCSocketManager} from './WebRTCSocketManager';
@@ -286,37 +286,6 @@ export class WebRTCPeerManager {
     return active;
   }
 
-  async replaceAudioTrack(newTrack: MediaStreamTrack | RNMediaStreamTrack): Promise<boolean> {
-    let success = false;
-    for (const [peerId, pc] of this.peerConnections.entries()) {
-      try {
-        const senders = pc.getSenders();
-        const audioSender = senders.find(
-          (s: any) => s.track && s.track.kind === 'audio'
-        );
-        if (audioSender) {
-          await audioSender.replaceTrack(newTrack as any);
-          console.log('[PeerManager] replaced_audio_track', peerId);
-          success = true;
-        }
-      } catch (err) {
-        console.error('[PeerManager] replace_track_error', peerId, err);
-      }
-    }
-    return success;
-  }
-
-  async restoreOriginalAudioTrack(): Promise<boolean> {
-    if (!this.localStream) {
-      return false;
-    }
-    const originalTrack = this.localStream.getAudioTracks()[0];
-    if (!originalTrack) {
-      return false;
-    }
-    return this.replaceAudioTrack(originalTrack);
-  }
-
   setE2EEnabled(enabled: boolean): void {
     this.e2eEnabled = enabled;
     frameEncryptor.setEnabled(enabled);
@@ -337,5 +306,45 @@ export class WebRTCPeerManager {
 
   getSecurityCode(peerId: string): string | undefined {
     return sessionManager.getSecurityCode(peerId);
+  }
+
+  private originalAudioTrack: MediaStreamTrack | null = null;
+
+  async replaceAudioTrack(newTrack: MediaStreamTrack | null): Promise<boolean> {
+    try {
+      let replaced = false;
+      for (const [peerId, pc] of this.peerConnections) {
+        const senders = pc.getSenders();
+        const audioSender = senders.find((s: any) => s.track?.kind === 'audio');
+        if (audioSender) {
+          if (!this.originalAudioTrack && audioSender.track) {
+            this.originalAudioTrack = audioSender.track;
+          }
+          await audioSender.replaceTrack(newTrack as any);
+          replaced = true;
+          console.log('audio_track_replaced', peerId);
+        }
+      }
+      return replaced;
+    } catch (error) {
+      console.log('replace_track_failed', error);
+      return false;
+    }
+  }
+
+  async restoreOriginalAudio(): Promise<boolean> {
+    if (!this.originalAudioTrack) {
+      console.log('no_original_track');
+      return false;
+    }
+    const restored = await this.replaceAudioTrack(this.originalAudioTrack);
+    if (restored) {
+      this.originalAudioTrack = null;
+    }
+    return restored;
+  }
+
+  hasOriginalAudioTrack(): boolean {
+    return this.originalAudioTrack !== null;
   }
 }

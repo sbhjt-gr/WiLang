@@ -28,6 +28,8 @@ export const initialValues: WebRTCContextType = {
   closeCall: () => {},
   switchCamera: () => {},
   toggleMute: () => {},
+  replaceAudioTrack: () => Promise.resolve(false),
+  restoreOriginalAudio: () => Promise.resolve(false),
   pendingJoinRequests: [],
   approveJoinRequest: () => {},
   denyJoinRequest: () => {},
@@ -35,8 +37,6 @@ export const initialValues: WebRTCContextType = {
   isMeetingOwner: false,
   joinDeniedReason: null,
   acknowledgeJoinDenied: () => {},
-  replaceAudioTrack: () => Promise.resolve(false),
-  restoreOriginalAudioTrack: () => Promise.resolve(false),
 };
 
 export const WebRTCContext = createContext<WebRTCContextType>({
@@ -66,6 +66,8 @@ export const WebRTCContext = createContext<WebRTCContextType>({
   closeCall: () => {},
   switchCamera: () => {},
   toggleMute: () => {},
+  replaceAudioTrack: async () => false,
+  restoreOriginalAudio: async () => false,
   pendingJoinRequests: [],
   approveJoinRequest: () => {},
   denyJoinRequest: () => {},
@@ -73,6 +75,4 @@ export const WebRTCContext = createContext<WebRTCContextType>({
   isMeetingOwner: false,
   joinDeniedReason: null,
   acknowledgeJoinDenied: () => {},
-  replaceAudioTrack: async () => false,
-  restoreOriginalAudioTrack: async () => false,
 });

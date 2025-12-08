@@ -1,5 +1,5 @@
 import React, {useState, useRef, useEffect} from 'react';
-import {mediaDevices, MediaStream} from '@sbhjt-gr/react-native-webrtc';
+import {mediaDevices, MediaStream, MediaStreamTrack} from '@livekit/react-native-webrtc';
 import { setAudioModeAsync } from 'expo-audio';
 import {WebRTCContext} from './WebRTCContext';
 import {User, WebRTCContextType, E2EStatus, JoinRequest} from './WebRTCTypes';
@@ -1059,6 +1059,22 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     return sessionManager.getSecurityCode(peerId);
   };
 
+  const replaceAudioTrack = async (track: any): Promise<boolean> => {
+    if (!peerManager.current) {
+      console.log('replace_track_no_manager');
+      return false;
+    }
+    return peerManager.current.replaceAudioTrack(track);
+  };
+
+  const restoreOriginalAudio = async (): Promise<boolean> => {
+    if (!peerManager.current) {
+      console.log('restore_audio_no_manager');
+      return false;
+    }
+    return peerManager.current.restoreOriginalAudio();
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       const activeSessions = sessionManager.getActiveSessions();
@@ -1111,6 +1127,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     switchCamera,
     toggleMute,
     getSecurityCode,
+    replaceAudioTrack,
+    restoreOriginalAudio,
     pendingJoinRequests,
     approveJoinRequest,
     denyJoinRequest,
@@ -1118,12 +1136,6 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     isMeetingOwner,
     joinDeniedReason,
     acknowledgeJoinDenied,
-    replaceAudioTrack: async (track: MediaStreamTrack) => {
-      return peerManager.current?.replaceAudioTrack(track) ?? false;
-    },
-    restoreOriginalAudioTrack: async () => {
-      return peerManager.current?.restoreOriginalAudioTrack() ?? false;
-    },
   };
 
   return (
