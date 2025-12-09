@@ -164,14 +164,16 @@ class CallNotesStorageService {
   ): Promise<void> {
     const finalTranscripts = transcripts.filter(t => t.isFinal);
     
-    for (const t of finalTranscripts) {
+    for (let i = 0; i < finalTranscripts.length; i++) {
+      const t = finalTranscripts[i];
+      const transcriptId = `${noteId}_t_${i}_${Date.now()}`;
       await db.runAsync(
-        `INSERT INTO call_transcripts (
+        `INSERT OR REPLACE INTO call_transcripts (
           id, note_id, timestamp, speaker, speaker_name, source_text,
           translated_text, source_lang, target_lang, is_final
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          t.id,
+          transcriptId,
           noteId,
           t.timestamp,
           t.speaker,

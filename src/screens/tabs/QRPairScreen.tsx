@@ -22,39 +22,8 @@ import QRScanner from '../../components/qr-scanner';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
 import type { SourceLangCode, TargetLangCode } from '../../services/palabra/types';
+import { SOURCE_LANGS, TARGET_LANGS, getSourceLabel, getTargetLabel } from '../../constants/palabra-langs';
 import GlassModal from '../../components/GlassModal';
-
-const SOURCE_LANGUAGES = [
-    { code: 'auto', label: 'Auto Detect', icon: 'flash-outline' },
-    { code: 'en', label: 'English', icon: 'language-outline' },
-    { code: 'es', label: 'Spanish', icon: 'language-outline' },
-    { code: 'fr', label: 'French', icon: 'language-outline' },
-    { code: 'de', label: 'German', icon: 'language-outline' },
-    { code: 'hi', label: 'Hindi', icon: 'language-outline' },
-    { code: 'ja', label: 'Japanese', icon: 'language-outline' },
-    { code: 'ko', label: 'Korean', icon: 'language-outline' },
-    { code: 'zh', label: 'Chinese', icon: 'language-outline' },
-    { code: 'pt', label: 'Portuguese', icon: 'language-outline' },
-    { code: 'ar', label: 'Arabic', icon: 'language-outline' },
-];
-
-const TARGET_LANGUAGES = [
-    { code: 'en-us', label: 'English (US)', icon: 'language-outline' },
-    { code: 'en-gb', label: 'English (UK)', icon: 'language-outline' },
-    { code: 'es', label: 'Spanish', icon: 'language-outline' },
-    { code: 'es-mx', label: 'Spanish (Mexico)', icon: 'language-outline' },
-    { code: 'fr', label: 'French', icon: 'language-outline' },
-    { code: 'fr-ca', label: 'French (Canada)', icon: 'language-outline' },
-    { code: 'de', label: 'German', icon: 'language-outline' },
-    { code: 'hi', label: 'Hindi', icon: 'language-outline' },
-    { code: 'ja', label: 'Japanese', icon: 'language-outline' },
-    { code: 'ko', label: 'Korean', icon: 'language-outline' },
-    { code: 'zh', label: 'Chinese', icon: 'language-outline' },
-    { code: 'zh-tw', label: 'Chinese (Taiwan)', icon: 'language-outline' },
-    { code: 'pt-br', label: 'Portuguese (Brazil)', icon: 'language-outline' },
-    { code: 'pt-pt', label: 'Portuguese (Portugal)', icon: 'language-outline' },
-    { code: 'ar-sa', label: 'Arabic', icon: 'language-outline' },
-];
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -77,7 +46,7 @@ export default function QRPairScreen({ navigation }: Props) {
     const [search, setSearch] = useState('');
 
     const filteredLanguages = useMemo(() => {
-        const langs = langSelectType === 'source' ? SOURCE_LANGUAGES : TARGET_LANGUAGES;
+        const langs = langSelectType === 'source' ? SOURCE_LANGS : TARGET_LANGS;
         if (!search.trim()) return langs;
         return langs.filter(l => l.label.toLowerCase().includes(search.toLowerCase()));
     }, [search, langSelectType]);
@@ -126,10 +95,9 @@ export default function QRPairScreen({ navigation }: Props) {
     }, []);
 
     const getLangLabel = (code: string) => {
-        const sourceLangMatch = SOURCE_LANGUAGES.find(l => l.code === code);
-        if (sourceLangMatch) return sourceLangMatch.label;
-        const targetLangMatch = TARGET_LANGUAGES.find(l => l.code === code);
-        return targetLangMatch?.label || code;
+        return getSourceLabel(code as SourceLangCode) !== code 
+            ? getSourceLabel(code as SourceLangCode) 
+            : getTargetLabel(code as TargetLangCode);
     };
 
     const startTranslationCall = useCallback((peer: QRPeerInfo) => {
@@ -213,20 +181,21 @@ export default function QRPairScreen({ navigation }: Props) {
         setShowLangModal(false);
     };
 
-    const renderLangItem = ({ item }: { item: { code: string; label: string; icon: string } }) => {
-        const isSelected = (langSelectType === 'source' ? sourceLang : targetLang) === item.code;
+    const renderLangItem = ({ item }: { item: { id: string; label: string } }) => {
+        const isSelected = (langSelectType === 'source' ? sourceLang : targetLang) === item.id;
+        const isAuto = item.id === 'auto';
         return (
             <TouchableOpacity
                 style={[
                     styles.langItem,
                     { backgroundColor: isSelected ? 'rgba(139,92,246,0.12)' : 'transparent' },
                 ]}
-                onPress={() => handleLangSelect(item.code)}
+                onPress={() => handleLangSelect(item.id)}
                 activeOpacity={0.7}
             >
                 <View style={styles.langItemLeft}>
                     <View style={[styles.langIcon, { backgroundColor: isSelected ? '#8b5cf6' : colors.backgroundTertiary }]}>
-                        <Ionicons name={item.icon as any} size={16} color={isSelected ? '#fff' : colors.textSecondary} />
+                        <Ionicons name={isAuto ? 'flash-outline' : 'language-outline'} size={16} color={isSelected ? '#fff' : colors.textSecondary} />
                     </View>
                     <Text style={[styles.langItemText, { color: isSelected ? '#8b5cf6' : colors.text }]}>
                         {item.label}
@@ -466,7 +435,7 @@ export default function QRPairScreen({ navigation }: Props) {
                 </View>
                 <FlatList
                     data={filteredLanguages}
-                    keyExtractor={(item) => item.code}
+                    keyExtractor={(item) => item.id}
                     renderItem={renderLangItem}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.langList}
