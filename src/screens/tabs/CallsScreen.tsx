@@ -342,25 +342,26 @@ export default function CallsScreen({ navigation }: Props) {
                   onPress={() => showCallOptions(call)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.callAvatar, { backgroundColor: colors.primaryLight }]}>
+                  <View style={[styles.callAvatar, { backgroundColor: getCallColor(call.type) + '20' }]}>
                     <Ionicons
-                      name="person"
+                      name={getCallTypeIcon(call.type)}
                       size={18}
-                      color="#8b5cf6"
+                      color={getCallColor(call.type)}
+                      style={{ transform: [{ rotate: call.type === 'outgoing' ? '45deg' : call.type === 'missed' ? '135deg' : '-45deg' }] }}
                     />
                   </View>
                   <View style={styles.callInfo}>
-                    <View style={styles.callNameRow}>
-                      <Text style={[styles.callName, { color: colors.text }]} numberOfLines={1}>
-                        {call.contactName}
-                      </Text>
-                      {call.encrypted && (
-                        <Ionicons name="lock-closed" size={10} color="#10b981" />
-                      )}
-                    </View>
-                    <Text style={[styles.callMeta, { color: colors.textSecondary }]}>
-                      {formatTimeAgo(call.timestamp)} · {formatDuration(call.duration)}
+                    <Text style={[styles.callName, { color: colors.text }]} numberOfLines={1}>
+                      {call.contactName}
                     </Text>
+                    <View style={styles.callMetaRow}>
+                      <Text style={[styles.callTypeLabel, { color: getCallColor(call.type) }]}>
+                        {call.type === 'outgoing' ? 'Outgoing' : call.type === 'incoming' ? 'Incoming' : 'Missed'}
+                      </Text>
+                      <Text style={[styles.callMeta, { color: colors.textSecondary }]}>
+                        · {formatTimeAgo(call.timestamp)} · {formatDuration(call.duration)}
+                      </Text>
+                    </View>
                   </View>
                   <View style={styles.callActions}>
                     {call.contactId && call.contactPhone ? (
@@ -574,18 +575,21 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
-  callNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
   callName: {
     fontSize: 15,
     fontWeight: '600',
   },
+  callMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  callTypeLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
   callMeta: {
     fontSize: 12,
-    marginTop: 2,
   },
   callActions: {
     flexDirection: 'row',
