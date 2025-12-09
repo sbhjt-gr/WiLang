@@ -38,7 +38,7 @@ export class VideoCallService {
 
       const user = getCurrentUser();
       const username = user?.displayName || user?.email?.split('@')[0] || `user_${Date.now()}`;
-      
+
       await this.webRTCContext.initialize(username);
       return true;
     } catch (_error) {
@@ -49,7 +49,7 @@ export class VideoCallService {
   convertContactToUser(contact: Contact): User {
     return {
       username: contact.name,
-      peerId: '', 
+      peerId: '',
       id: contact.id,
       name: contact.name,
       phoneNumbers: contact.phoneNumbers,
@@ -115,16 +115,21 @@ export class VideoCallService {
       }
 
       if (this.navigationRef?.current) {
-        this.navigationRef.current.navigate('CallingScreen', {
-          callType: 'outgoing',
-          callerName: name,
-          callerPhone: phone,
-          callerId: userId
+        this.navigationRef.current.reset({
+          index: 0,
+          routes: [{
+            name: 'CallingScreen', params: {
+              callType: 'outgoing',
+              callerName: name,
+              callerPhone: phone,
+              callerId: userId
+            }
+          }],
         });
       }
 
       const callId = `call_${Date.now()}`;
-      
+
       this.pendingCall = {
         callId,
         recipientPhone: phone,
@@ -141,11 +146,11 @@ export class VideoCallService {
       };
 
       const result = await socketManager.initiateCall(callData);
-      
+
       if (!result.success) {
         this.pendingCall = null;
         if (this.navigationRef?.current) {
-          this.navigationRef.current.goBack();
+          this.navigationRef.current.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
         }
         Alert.alert('Call Failed', result.error === 'timeout' ? 'No answer. The person may be busy or offline.' : 'Unable to reach this person right now.');
       }
@@ -154,7 +159,7 @@ export class VideoCallService {
     } catch (_error) {
       this.pendingCall = null;
       if (this.navigationRef?.current) {
-        this.navigationRef.current.goBack();
+        this.navigationRef.current.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
       }
       Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
     }
@@ -188,17 +193,22 @@ export class VideoCallService {
       }
 
       if (this.navigationRef?.current) {
-        this.navigationRef.current.navigate('CallingScreen', {
-          callType: 'outgoing',
-          callerName: name,
-          callerPhone: phone,
-          callerId: userId,
-          isVoiceOnly: true
+        this.navigationRef.current.reset({
+          index: 0,
+          routes: [{
+            name: 'CallingScreen', params: {
+              callType: 'outgoing',
+              callerName: name,
+              callerPhone: phone,
+              callerId: userId,
+              isVoiceOnly: true
+            }
+          }],
         });
       }
 
       const callId = `call_${Date.now()}`;
-      
+
       this.pendingCall = {
         callId,
         recipientPhone: phone,
@@ -215,11 +225,11 @@ export class VideoCallService {
       };
 
       const result = await socketManager.initiateCall(callData);
-      
+
       if (!result.success) {
         this.pendingCall = null;
         if (this.navigationRef?.current) {
-          this.navigationRef.current.goBack();
+          this.navigationRef.current.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
         }
         Alert.alert('Call Failed', result.error === 'timeout' ? 'No answer. The person may be busy or offline.' : 'Unable to reach this person right now.');
       }
@@ -228,7 +238,7 @@ export class VideoCallService {
     } catch (_error) {
       this.pendingCall = null;
       if (this.navigationRef?.current) {
-        this.navigationRef.current.goBack();
+        this.navigationRef.current.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
       }
       Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
     }
@@ -248,10 +258,15 @@ export class VideoCallService {
 
   private navigateToCallScreen(contact: Contact) {
     if (this.navigationRef?.current) {
-      this.navigationRef.current.navigate('VideoCallScreen', {
-        id: `call_${contact.id}`,
-        type: 'outgoing',
-        contact: contact
+      this.navigationRef.current.reset({
+        index: 0,
+        routes: [{
+          name: 'VideoCallScreen', params: {
+            id: `call_${contact.id}`,
+            type: 'outgoing',
+            contact: contact
+          }
+        }],
       });
     }
   }
@@ -259,11 +274,16 @@ export class VideoCallService {
   async handleIncomingCall(caller: User): Promise<void> {
     return new Promise((resolve) => {
       if (this.navigationRef?.current) {
-        this.navigationRef.current.navigate('CallingScreen', {
-          callType: 'incoming',
-          callerName: caller.name || caller.username,
-          callerPhone: caller.phoneNumbers?.[0]?.number,
-          callerId: caller.id || caller.username
+        this.navigationRef.current.reset({
+          index: 0,
+          routes: [{
+            name: 'CallingScreen', params: {
+              callType: 'incoming',
+              callerName: caller.name || caller.username,
+              callerPhone: caller.phoneNumbers?.[0]?.number,
+              callerId: caller.id || caller.username
+            }
+          }],
         });
       }
       resolve();
@@ -274,10 +294,15 @@ export class VideoCallService {
     try {
       if (this.webRTCContext) {
         if (this.navigationRef?.current) {
-          this.navigationRef.current.navigate('VideoCallScreen', {
-            id: `call_${caller.id || caller.username}`,
-            type: 'incoming',
-            caller: caller
+          this.navigationRef.current.reset({
+            index: 0,
+            routes: [{
+              name: 'VideoCallScreen', params: {
+                id: `call_${caller.id || caller.username}`,
+                type: 'incoming',
+                caller: caller
+              }
+            }],
           });
         }
       }
@@ -328,7 +353,7 @@ export class VideoCallService {
     });
 
     if (this.navigationRef?.current) {
-      this.navigationRef.current.goBack();
+      this.navigationRef.current.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
     }
 
     console.log('call_declined', callId);
@@ -344,7 +369,7 @@ export class VideoCallService {
     if (!this.pendingCall) {
       console.log('no_pending_call');
       if (this.navigationRef?.current) {
-        this.navigationRef.current.goBack();
+        this.navigationRef.current.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
       }
       return;
     }
@@ -357,7 +382,7 @@ export class VideoCallService {
     this.pendingCall = null;
 
     if (this.navigationRef?.current) {
-      this.navigationRef.current.goBack();
+      this.navigationRef.current.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
     }
 
     console.log('call_cancelled');
@@ -374,7 +399,7 @@ export class VideoCallService {
     }
 
     if (this.navigationRef?.current) {
-      this.navigationRef.current.goBack();
+      this.navigationRef.current.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
     }
   }
 
@@ -384,11 +409,11 @@ export class VideoCallService {
 
   getCallStatus() {
     if (!this.webRTCContext) return 'unavailable';
-    
+
     if (this.webRTCContext.activeCall) return 'active';
     if (this.webRTCContext.remoteUser) return 'connecting';
     if (this.webRTCContext.localStream) return 'ready';
-    
+
     return 'initializing';
   }
 }

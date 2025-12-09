@@ -172,7 +172,17 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerShown: false,
+      gestureEnabled: false,
     });
+  }, [navigation]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (e.data.action.type === 'GO_BACK' || e.data.action.type === 'POP') {
+        e.preventDefault();
+      }
+    });
+    return unsubscribe;
   }, [navigation]);
 
   useEffect(() => {
@@ -399,7 +409,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     } catch (err) {
       console.log('denied_cleanup_err', err);
     } finally {
-      navigation.goBack();
+      navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
     }
   }, [acknowledgeJoinDenied, closeCall, navigation]);
 
@@ -449,7 +459,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
           if (!meetingId) {
             showModal('Error', 'No call ID provided to join.', 'alert-circle', [
-              { text: 'OK', onPress: () => { closeModal(); navigation.goBack(); } }
+              { text: 'OK', onPress: () => { closeModal(); navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] }); } }
             ]);
             return;
           }
@@ -506,14 +516,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             console.log('join_error', joinError);
 
             showModal('Error', userFriendlyMessage, 'alert-circle', [
-              { text: 'OK', onPress: () => { closeModal(); joinAttempted.current = false; navigation.goBack(); } }
+              { text: 'OK', onPress: () => { closeModal(); joinAttempted.current = false; navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] }); } }
             ]);
             return;
           }
 
           if (!joined) {
             showModal('Error', 'Could not join call. Please check the call ID and try again.', 'alert-circle', [
-              { text: 'OK', onPress: () => { closeModal(); joinAttempted.current = false; navigation.goBack(); } }
+              { text: 'OK', onPress: () => { closeModal(); joinAttempted.current = false; navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] }); } }
             ]);
             return;
           }
@@ -567,7 +577,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               'Call Creation Failed',
               `Failed to create call: ${meetingError instanceof Error ? meetingError.message : 'Unknown error'}`,
               'alert-circle',
-              [{ text: 'OK', onPress: () => { closeModal(); navigation.goBack(); } }]
+              [{ text: 'OK', onPress: () => { closeModal(); navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] }); } }]
             );
             return;
           }
@@ -589,7 +599,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           `Failed to initialize video call: ${initializationErrorMessage}\n\nPlease check your camera and microphone permissions and try again.`,
           'alert-circle',
           [
-            { text: 'Cancel', onPress: () => { closeModal(); navigation.goBack(); } },
+            { text: 'Cancel', onPress: () => { closeModal(); navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] }); } },
             { text: 'Retry', onPress: () => { closeModal(); initializationAttempted.current = false; } }
           ]
         );

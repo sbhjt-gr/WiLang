@@ -10,10 +10,10 @@ import { videoCallService } from '../services/VideoCallService';
 import { WebRTCContext } from '../store/WebRTCContext';
 import InCallManager from 'react-native-incall-manager';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring, 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
   runOnJS,
   interpolateColor,
   withRepeat,
@@ -47,7 +47,7 @@ export default function CallingScreen() {
   const webRTCContext = useContext(WebRTCContext);
 
   const [callDuration, setCallDuration] = useState(0);
-  
+
   const translateX = useSharedValue(0);
   const arrowOpacity = useSharedValue(0);
 
@@ -108,14 +108,19 @@ export default function CallingScreen() {
         params.meetingToken
       );
     }
-    
+
     const screenName = params.isVoiceOnly ? 'VoiceCallScreen' : 'VideoCallScreen';
-    (navigation as any).navigate(screenName, {
-      id: params.meetingId || `call_${params.callerId || Date.now()}`,
-      type: 'incoming',
-      joinCode: params.meetingId,
-      meetingToken: params.meetingToken,
-      callerName: params.callerName
+    (navigation as any).reset({
+      index: 0,
+      routes: [{
+        name: screenName, params: {
+          id: params.meetingId || `call_${params.callerId || Date.now()}`,
+          type: 'incoming',
+          joinCode: params.meetingId,
+          meetingToken: params.meetingToken,
+          callerName: params.callerName
+        }
+      }],
     });
   };
 
@@ -124,21 +129,13 @@ export default function CallingScreen() {
     if (params.callType === 'incoming' && params.callId && params.callerSocketId) {
       videoCallService.declineIncomingCall(params.callId, params.callerSocketId);
     }
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      (navigation as any).navigate('HomeScreen');
-    }
+    (navigation as any).reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
   };
 
   const handleCancel = () => {
     stopRingtone();
     videoCallService.cancelOutgoingCall();
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      (navigation as any).navigate('HomeScreen');
-    }
+    (navigation as any).reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
   };
 
   const panGesture = Gesture.Pan()
@@ -207,7 +204,7 @@ export default function CallingScreen() {
             </View>
 
             <View style={styles.callerContainer}>
-              <MotiView 
+              <MotiView
                 from={{ scale: 1 }}
                 animate={{ scale: 1.15 }}
                 transition={{
@@ -249,7 +246,7 @@ export default function CallingScreen() {
                       <View style={styles.iconLeft}>
                         <Ionicons name="call" size={24} color="rgba(255,59,48,0.8)" style={{ transform: [{ rotate: '135deg' }] }} />
                       </View>
-                      
+
                       <Animated.View style={[styles.arrowsLeft, leftArrowStyle]}>
                         <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.4)" />
                         <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.6)" style={{ marginLeft: -6 }} />
@@ -287,7 +284,7 @@ export default function CallingScreen() {
 
             <View style={styles.hintContainer}>
               <Text style={[styles.hintText, { color: colors.textInverse }]}>
-                {params.callType === 'incoming' 
+                {params.callType === 'incoming'
                   ? (params.isVoiceOnly ? 'Voice call' : 'Video call')
                   : 'Connecting...'}
               </Text>
