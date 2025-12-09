@@ -37,6 +37,7 @@ export type RootStackParamList = {
     peerSourceLang: string;
     peerTargetLang: string;
     isHost: boolean;
+    sessionId: string;
   };
   UsersScreen: undefined;
   EnvironmentConfig: undefined;

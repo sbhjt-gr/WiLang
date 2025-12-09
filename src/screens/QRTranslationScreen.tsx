@@ -21,6 +21,7 @@ import TranslationControls from '../components/translation-controls';
 import TranscriptionOverlay from '../components/transcription-overlay';
 import { VideoCallTranslation, type TranslationState } from '../services/video-call-translation';
 import { CallTranslationPrefs } from '../services/call-translation-prefs';
+import { qrPairingService } from '../services/qr-pairing-service';
 import type { SourceLangCode, TargetLangCode } from '../services/palabra/types';
 
 const { width, height } = Dimensions.get('window');
@@ -49,7 +50,7 @@ const LANGUAGES: Record<string, string> = {
 
 export default function QRTranslationScreen({ navigation, route }: Props) {
     const { colors } = useTheme();
-    const { peerId, peerName, peerSourceLang, peerTargetLang, isHost } = route.params;
+    const { peerId, peerName, peerSourceLang, peerTargetLang, isHost, sessionId } = route.params;
 
     const {
         localStream,
@@ -269,6 +270,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
 
     const handleCloseCall = useCallback(async () => {
         try {
+            qrPairingService.endSession(sessionId);
             if (palabraServiceRef.current) {
                 await palabraServiceRef.current.stop();
                 palabraServiceRef.current = null;
@@ -280,7 +282,23 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
         } finally {
             navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
         }
-    }, [closeCall, navigation]);
+    }, [closeCall, navigation, sessionId]);
+
+    useEffect(() => {
+        qrPairingService.setSessionId(sessionId);
+
+        const handleSessionEnded = (data: { endedBy: string; reason?: string }) => {
+            if (data.endedBy !== peerId) {
+                handleCloseCall();
+            }
+        };
+
+        qrPairingService.on('sessionEnded', handleSessionEnded);
+
+        return () => {
+            qrPairingService.off('sessionEnded', handleSessionEnded);
+        };
+    }, [sessionId, peerId, handleCloseCall]);
 
     const getInitials = (name: string) => {
         const names = name.split(' ');

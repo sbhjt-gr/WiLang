@@ -23,6 +23,7 @@ export interface QRPairingEvents {
     sessionCreated: (session: QRSession) => void;
     peerJoined: (peer: QRPeerInfo) => void;
     sessionExpired: () => void;
+    sessionEnded: (data: { endedBy: string; reason?: string }) => void;
     error: (error: Error) => void;
 }
 
@@ -66,6 +67,11 @@ class QRPairingService extends EventEmitter {
                 this.currentSession.status = 'expired';
             }
             this.emit('sessionExpired');
+            this.cleanup();
+        });
+
+        this.socket.on('qr-session-ended', (data: { endedBy: string; reason?: string }) => {
+            this.emit('sessionEnded', data);
             this.cleanup();
         });
     }
@@ -151,6 +157,27 @@ class QRPairingService extends EventEmitter {
             this.currentSession.status = 'cancelled';
         }
         this.cleanup();
+    }
+
+    endSession(sessionId?: string) {
+        const sid = sessionId || this.currentSession?.sessionId;
+        if (this.socket && sid) {
+            this.socket.emit('end-qr-session', { sessionId: sid });
+        }
+        this.cleanup();
+    }
+
+    setSessionId(sessionId: string) {
+        if (!this.currentSession) {
+            this.currentSession = {
+                sessionId,
+                secret: '',
+                expiresAt: 0,
+                status: 'paired',
+            };
+        } else {
+            this.currentSession.sessionId = sessionId;
+        }
     }
 
     getCurrentSession(): QRSession | null {

@@ -123,12 +123,14 @@ export default function QRPairScreen({ navigation }: Props) {
     };
 
     const startTranslationCall = useCallback((peer: QRPeerInfo) => {
+        const currentSession = qrPairingService.getCurrentSession();
         navigation.navigate('QRTranslationScreen', {
             peerId: peer.peerId,
             peerName: peer.username,
             peerSourceLang: peer.sourceLang,
             peerTargetLang: peer.targetLang,
             isHost: true,
+            sessionId: currentSession?.sessionId || '',
         });
     }, [navigation]);
 
@@ -169,6 +171,7 @@ export default function QRPairScreen({ navigation }: Props) {
                 peerSourceLang: host.sourceLang,
                 peerTargetLang: host.targetLang,
                 isHost: false,
+                sessionId: parsed.sessionId,
             });
         } catch (err) {
             Alert.alert('Connection Failed', err instanceof Error ? err.message : 'Failed to connect');
