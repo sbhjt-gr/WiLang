@@ -249,12 +249,6 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
         onPress: () => handleVideoCall(contact)
       });
     }
-
-    Alert.alert(
-      contact.name,
-      contact.registeredUserId ? 'WiLang User - Choose an action:' : 'Choose an action:',
-      actions
-    );
   };
 
   const handlePhoneCall = (phoneNumber: string) => {

@@ -156,23 +156,6 @@ export default function CallsScreen({ navigation }: Props) {
     }
   };
 
-  const showCallOptions = (call: CallHistoryEntry) => {
-    if (!call.contactId || !call.contactPhone) {
-      handleCall(call, false);
-      return;
-    }
-
-    Alert.alert(
-      call.contactName,
-      'Choose call type',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Voice Call', onPress: () => handleCall(call, true) },
-        { text: 'Video Call', onPress: () => handleCall(call, false) },
-      ]
-    );
-  };
-
   const getCallColor = (type: string) => {
     switch (type) {
       case 'missed': return '#ef4444';
@@ -333,14 +316,12 @@ export default function CallsScreen({ navigation }: Props) {
           ) : (
             <View style={[styles.historyList, { backgroundColor: colors.surface }]}>
               {callHistory.map((call, index) => (
-                <TouchableOpacity
+                <View
                   key={call.id}
                   style={[
                     styles.callItem,
                     index !== callHistory.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }
                   ]}
-                  onPress={() => showCallOptions(call)}
-                  activeOpacity={0.7}
                 >
                   <View style={[styles.callAvatar, { backgroundColor: getCallColor(call.type) + '20' }]}>
                     <Ionicons
@@ -364,40 +345,22 @@ export default function CallsScreen({ navigation }: Props) {
                     </View>
                   </View>
                   <View style={styles.callActions}>
-                    {call.contactId && call.contactPhone ? (
-                      <>
-                        <TouchableOpacity
-                          style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleCall(call, true);
-                          }}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons name="call" size={16} color="#8b5cf6" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleCall(call, false);
-                          }}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons name="videocam" size={16} color="#8b5cf6" />
-                        </TouchableOpacity>
-                      </>
-                    ) : (
-                      <TouchableOpacity
-                        style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
-                        onPress={() => handleCall(call, false)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons name="videocam" size={16} color="#8b5cf6" />
-                      </TouchableOpacity>
-                    )}
+                    <TouchableOpacity
+                      style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
+                      onPress={() => handleCall(call, true)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="call" size={16} color="#8b5cf6" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
+                      onPress={() => handleCall(call, false)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="videocam" size={16} color="#8b5cf6" />
+                    </TouchableOpacity>
                   </View>
-                </TouchableOpacity>
+                </View>
               ))}
             </View>
           )}
