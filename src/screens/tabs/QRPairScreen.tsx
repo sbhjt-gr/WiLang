@@ -10,7 +10,6 @@ import {
     ActivityIndicator,
     TextInput,
     FlatList,
-    Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,8 +24,6 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
 import type { SourceLangCode, TargetLangCode } from '../../services/palabra/types';
 import GlassModal from '../../components/GlassModal';
-
-const { width } = Dimensions.get('window');
 
 const LANGUAGES = [
     { code: 'auto', label: 'Auto Detect', icon: 'flash-outline' },
@@ -45,7 +42,7 @@ const LANGUAGES = [
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 export default function QRPairScreen() {
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
     const navigation = useNavigation<NavigationProp>();
     const webRTCContext = useContext(WebRTCContext);
 
@@ -254,29 +251,6 @@ export default function QRPairScreen() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={styles.heroSection}>
-                    <LinearGradient
-                        colors={['rgba(139,92,246,0.15)', 'rgba(139,92,246,0.05)', 'transparent']}
-                        style={styles.heroGradient}
-                    />
-                    <View style={styles.heroIconWrapper}>
-                        <LinearGradient
-                            colors={['#8b5cf6', '#7c3aed']}
-                            style={styles.heroIconGradient}
-                        >
-                            <Ionicons name="globe" size={32} color="#fff" />
-                        </LinearGradient>
-                        <View style={styles.heroIconRing} />
-                        <View style={styles.heroIconRingOuter} />
-                    </View>
-                    <Text style={[styles.heroTitle, { color: colors.text }]}>
-                        Live Translation
-                    </Text>
-                    <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
-                        Break language barriers instantly
-                    </Text>
-                </View>
-
                 <View style={[styles.langCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <View style={styles.langCardHeader}>
                         <Ionicons name="swap-horizontal" size={18} color="#8b5cf6" />
@@ -503,63 +477,7 @@ export default function QRPairScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     scrollView: { flex: 1 },
-    scrollContent: { paddingBottom: 40 },
-
-    heroSection: {
-        alignItems: 'center',
-        paddingTop: 32,
-        paddingBottom: 28,
-        paddingHorizontal: 20,
-        position: 'relative',
-    },
-    heroGradient: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 200,
-    },
-    heroIconWrapper: {
-        position: 'relative',
-        marginBottom: 20,
-    },
-    heroIconGradient: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    heroIconRing: {
-        position: 'absolute',
-        top: -8,
-        left: -8,
-        right: -8,
-        bottom: -8,
-        borderRadius: 44,
-        borderWidth: 2,
-        borderColor: 'rgba(139,92,246,0.2)',
-    },
-    heroIconRingOuter: {
-        position: 'absolute',
-        top: -16,
-        left: -16,
-        right: -16,
-        bottom: -16,
-        borderRadius: 52,
-        borderWidth: 1,
-        borderColor: 'rgba(139,92,246,0.1)',
-    },
-    heroTitle: {
-        fontSize: 28,
-        fontWeight: '700',
-        marginBottom: 8,
-        letterSpacing: -0.5,
-    },
-    heroSubtitle: {
-        fontSize: 16,
-        textAlign: 'center',
-    },
+    scrollContent: { paddingTop: 35, paddingBottom: 40 },
 
     langCard: {
         marginHorizontal: 20,

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { MotiView, AnimatePresence } from 'moti';
 import { StatusBar } from 'expo-status-bar';
@@ -40,109 +41,111 @@ export default function GlassModal({
   const { colors, isDark } = useTheme();
 
   return (
-    <AnimatePresence>
-      {isVisible && (
-        <View style={styles.overlay} key="modal-overlay">
-          <MotiView
-            from={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ type: 'timing', duration: 300 }}
-            style={[
-              styles.backdrop,
-              {
-                backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)',
-              }
-            ]}
-          >
-            <TouchableOpacity
-              style={styles.backdropTouchable}
-              onPress={onClose}
-              activeOpacity={1}
-            />
-          </MotiView>
-
-          <MotiView
-            from={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ type: 'spring', damping: 15 }}
-            style={[
-              styles.bottomSheet,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                height: height,
-              }
-            ]}
-          >
-            {showGradient && (
-              <LinearGradient
-                colors={['#8b5cf6' + '30', colors.surface + '80']}
-                style={styles.modalGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+    <Modal
+      visible={isVisible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <AnimatePresence>
+        {isVisible && (
+          <View style={styles.overlay} key="modal-overlay">
+            <MotiView
+              from={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ type: 'timing', duration: 300 }}
+              style={[
+                styles.backdrop,
+                {
+                  backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)',
+                }
+              ]}
+            >
+              <TouchableOpacity
+                style={styles.backdropTouchable}
+                onPress={onClose}
+                activeOpacity={1}
               />
-            )}
+            </MotiView>
 
-            <StatusBar style={isDark ? "light" : "dark"} />
+            <MotiView
+              from={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ type: 'spring', damping: 15 }}
+              style={[
+                styles.bottomSheet,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  height: height,
+                }
+              ]}
+            >
+              {showGradient && (
+                <LinearGradient
+                  colors={['#8b5cf6' + '30', colors.surface + '80']}
+                  style={styles.modalGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+              )}
 
-            <View style={styles.header}>
-              <View style={[styles.headerIcon, { backgroundColor: '#8b5cf6' + '20' }]}>
-                <Ionicons name={icon as any} size={24} color="#8b5cf6" />
-              </View>
-              <View style={styles.headerText}>
-                <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-                {subtitle && (
-                  <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                    {subtitle}
-                  </Text>
+              <StatusBar style={isDark ? "light" : "dark"} />
+
+              <View style={styles.header}>
+                <View style={[styles.headerIcon, { backgroundColor: '#8b5cf6' + '20' }]}>
+                  <Ionicons name={icon as any} size={24} color="#8b5cf6" />
+                </View>
+                <View style={styles.headerText}>
+                  <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+                  {subtitle && (
+                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                      {subtitle}
+                    </Text>
+                  )}
+                </View>
+                {headerActions ? headerActions : (
+                  <View style={styles.glassCloseButton}>
+                    <TouchableOpacity
+                      style={[
+                        styles.closeButton,
+                        {
+                          backgroundColor: isDark
+                            ? 'rgba(40, 40, 40, 0.3)'
+                            : 'rgba(255, 255, 255, 0.4)',
+                          borderColor: isDark
+                            ? 'rgba(255, 255, 255, 0.15)'
+                            : 'rgba(255, 255, 255, 0.6)',
+                        }
+                      ]}
+                      onPress={onClose}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="close" size={20} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
-              {headerActions ? headerActions : (
-                <View style={styles.glassCloseButton}>
-                  <TouchableOpacity
-                    style={[
-                      styles.closeButton,
-                      {
-                        backgroundColor: isDark
-                          ? 'rgba(40, 40, 40, 0.3)'
-                          : 'rgba(255, 255, 255, 0.4)',
-                        borderColor: isDark
-                          ? 'rgba(255, 255, 255, 0.15)'
-                          : 'rgba(255, 255, 255, 0.6)',
-                      }
-                    ]}
-                    onPress={onClose}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="close" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
 
-            <View style={styles.content}>
-              {children}
-            </View>
-          </MotiView>
-        </View>
-      )}
-    </AnimatePresence>
+              <View style={styles.content}>
+                {children}
+              </View>
+            </MotiView>
+          </View>
+        )}
+      </AnimatePresence>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
-    paddingTop: 60,
   },
   backdrop: {
     position: 'absolute',
