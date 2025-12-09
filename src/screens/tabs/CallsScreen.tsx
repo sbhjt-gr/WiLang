@@ -122,37 +122,32 @@ export default function CallsScreen({ navigation }: Props) {
   };
 
   const handleCall = async (call: CallHistoryEntry, isVoiceOnly: boolean = false) => {
-    if (call.contactId && call.contactPhone) {
-      try {
-        if (!webRTCContext) {
-          Alert.alert('Unable to Call', 'Something went wrong. Please restart the app and try again.');
-          return;
-        }
-        videoCallService.setNavigationRef({ current: navigation });
+    if (!call.contactId || !call.contactPhone) {
+      return;
+    }
 
-        if (isVoiceOnly) {
-          await videoCallService.startVoiceCallWithPhone(
-            call.contactId,
-            call.contactPhone,
-            call.contactName
-          );
-        } else {
-          await videoCallService.startVideoCallWithPhone(
-            call.contactId,
-            call.contactPhone,
-            call.contactName
-          );
-        }
-      } catch {
-        Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
+    try {
+      if (!webRTCContext) {
+        Alert.alert('Unable to Call', 'Something went wrong. Please restart the app and try again.');
+        return;
       }
-    } else {
-      const meetingId = call.meetingId || `REDIAL_${Date.now()}`;
-      const screenName = isVoiceOnly ? 'VoiceCallScreen' : 'VideoCallScreen';
-      navigation.reset({
-        index: 0,
-        routes: [{ name: screenName, params: { id: meetingId, type: 'instant' } }],
-      });
+      videoCallService.setNavigationRef({ current: navigation });
+
+      if (isVoiceOnly) {
+        await videoCallService.startVoiceCallWithPhone(
+          call.contactId,
+          call.contactPhone,
+          call.contactName
+        );
+      } else {
+        await videoCallService.startVideoCallWithPhone(
+          call.contactId,
+          call.contactPhone,
+          call.contactName
+        );
+      }
+    } catch {
+      Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
     }
   };
 
@@ -344,22 +339,24 @@ export default function CallsScreen({ navigation }: Props) {
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.callActions}>
-                    <TouchableOpacity
-                      style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
-                      onPress={() => handleCall(call, true)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="call" size={16} color="#8b5cf6" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
-                      onPress={() => handleCall(call, false)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="videocam" size={16} color="#8b5cf6" />
-                    </TouchableOpacity>
-                  </View>
+                  {call.contactId && call.contactPhone && (
+                    <View style={styles.callActions}>
+                      <TouchableOpacity
+                        style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
+                        onPress={() => handleCall(call, true)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="call" size={16} color="#8b5cf6" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
+                        onPress={() => handleCall(call, false)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="videocam" size={16} color="#8b5cf6" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               ))}
             </View>
