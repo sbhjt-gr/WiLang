@@ -121,18 +121,12 @@ export default function QRPairScreen() {
     };
 
     const startTranslationCall = useCallback((peer: QRPeerInfo) => {
-        navigation.reset({
-            index: 0,
-            routes: [{
-                name: 'QRTranslationScreen',
-                params: {
-                    peerId: peer.peerId,
-                    peerName: peer.username,
-                    peerSourceLang: peer.sourceLang,
-                    peerTargetLang: peer.targetLang,
-                    isHost: true,
-                },
-            }],
+        navigation.navigate('QRTranslationScreen', {
+            peerId: peer.peerId,
+            peerName: peer.username,
+            peerSourceLang: peer.sourceLang,
+            peerTargetLang: peer.targetLang,
+            isHost: true,
         });
     }, [navigation]);
 
@@ -167,18 +161,12 @@ export default function QRPairScreen() {
                 targetLang
             );
 
-            navigation.reset({
-                index: 0,
-                routes: [{
-                    name: 'QRTranslationScreen',
-                    params: {
-                        peerId: host.peerId,
-                        peerName: host.username,
-                        peerSourceLang: host.sourceLang,
-                        peerTargetLang: host.targetLang,
-                        isHost: false,
-                    },
-                }],
+            navigation.navigate('QRTranslationScreen', {
+                peerId: host.peerId,
+                peerName: host.username,
+                peerSourceLang: host.sourceLang,
+                peerTargetLang: host.targetLang,
+                isHost: false,
             });
         } catch (err) {
             Alert.alert('Connection Failed', err instanceof Error ? err.message : 'Failed to connect');
