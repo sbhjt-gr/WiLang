@@ -17,7 +17,8 @@ module.exports = function(api) {
     env: {
       production: {
         plugins: [
-          'transform-remove-console'
+          'transform-remove-console',
+          ['@babel/plugin-transform-react-jsx', { runtime: 'automatic' }]
         ],
       },
     },

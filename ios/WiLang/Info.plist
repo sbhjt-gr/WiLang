@@ -58,8 +58,12 @@
     <string>WiLang needs access to your contacts to help you connect with friends and family for video calls.</string>
     <key>NSFaceIDUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>WiLang uses the local network for peer-to-peer video calls.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>WiLang needs microphone access for real-time speech transcription.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>WiLang needs permission to save photos and videos from calls to your photo library.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>WiLang needs access to your photo library to save or share media from video calls.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
