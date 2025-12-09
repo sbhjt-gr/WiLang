@@ -573,7 +573,7 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
           socketManager.current?.setMeetingId(meetingId);
           peerManager.current?.setMeetingId(meetingId);
 
-          if (!callStartTimeRef.current) {
+          if (directCallStateRef.current.active && !callStartTimeRef.current) {
             callStartTimeRef.current = Date.now();
             callTypeRef.current = 'outgoing';
             callHistoryLoggedRef.current = false;
@@ -601,14 +601,14 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
 
           if (directCallStateRef.current.active) {
             ensureDirectCallState({ createPeerConnection: true });
-          }
 
-          if (!callStartTimeRef.current) {
-            callStartTimeRef.current = Date.now();
-            if (!callTypeRef.current) {
-              callTypeRef.current = 'incoming';
+            if (!callStartTimeRef.current) {
+              callStartTimeRef.current = Date.now();
+              if (!callTypeRef.current) {
+                callTypeRef.current = 'incoming';
+              }
+              callHistoryLoggedRef.current = false;
             }
-            callHistoryLoggedRef.current = false;
           }
         },
         onParticipantsUpdated: (participants: User[]) => {
@@ -1026,9 +1026,9 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
     setPendingJoinRequests([]);
     setJoinDeniedReason(null);
 
-    if (!callStartTimeRef.current) {
+    if (directCallStateRef.current.active && !callStartTimeRef.current) {
       callStartTimeRef.current = Date.now();
-      callTypeRef.current = meetingToken ? 'incoming' : 'incoming';
+      callTypeRef.current = 'incoming';
       callHistoryLoggedRef.current = false;
     }
 
@@ -1105,6 +1105,13 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
 
     if (!callStartTimeRef.current) {
       console.log('log_call_history_skipped_no_start_time');
+      return;
+    }
+
+    if (!callContactPhoneRef.current) {
+      console.log('log_call_history_skipped_not_direct_call');
+      callStartTimeRef.current = null;
+      callTypeRef.current = null;
       return;
     }
 
