@@ -9,6 +9,7 @@ import {
   Share,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { RTCView } from '@livekit/react-native-webrtc';
 import { StatusBar } from 'expo-status-bar';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -788,6 +789,18 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
             </View>
           </View>
         )}
+
+        {remotePeers.map(peer => {
+          const stream = remoteStreams?.get(peer.peerId);
+          if (!stream) return null;
+          return (
+            <RTCView
+              key={`audio-${peer.peerId}`}
+              streamURL={stream.toURL()}
+              style={styles.hiddenAudio}
+            />
+          );
+        })}
       </LinearGradient>
 
       <GlassModal
@@ -1341,5 +1354,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     marginTop: 6,
+  },
+  hiddenAudio: {
+    width: 0,
+    height: 0,
+    position: 'absolute',
   },
 });
