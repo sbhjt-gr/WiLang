@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -8,7 +8,11 @@ import {
     ScrollView,
     Alert,
     ActivityIndicator,
+    TextInput,
+    FlatList,
+    Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { WebRTCContext } from '../../store/WebRTCContext';
@@ -20,25 +24,28 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
 import type { SourceLangCode, TargetLangCode } from '../../services/palabra/types';
+import GlassModal from '../../components/GlassModal';
+
+const { width } = Dimensions.get('window');
 
 const LANGUAGES = [
-    { code: 'auto', label: 'Auto Detect' },
-    { code: 'en-us', label: 'English' },
-    { code: 'es', label: 'Spanish' },
-    { code: 'fr', label: 'French' },
-    { code: 'de', label: 'German' },
-    { code: 'hi', label: 'Hindi' },
-    { code: 'ja', label: 'Japanese' },
-    { code: 'ko', label: 'Korean' },
-    { code: 'zh', label: 'Chinese' },
-    { code: 'pt', label: 'Portuguese' },
-    { code: 'ar', label: 'Arabic' },
+    { code: 'auto', label: 'Auto Detect', icon: 'flash-outline' },
+    { code: 'en-us', label: 'English', icon: 'language-outline' },
+    { code: 'es', label: 'Spanish', icon: 'language-outline' },
+    { code: 'fr', label: 'French', icon: 'language-outline' },
+    { code: 'de', label: 'German', icon: 'language-outline' },
+    { code: 'hi', label: 'Hindi', icon: 'language-outline' },
+    { code: 'ja', label: 'Japanese', icon: 'language-outline' },
+    { code: 'ko', label: 'Korean', icon: 'language-outline' },
+    { code: 'zh', label: 'Chinese', icon: 'language-outline' },
+    { code: 'pt', label: 'Portuguese', icon: 'language-outline' },
+    { code: 'ar', label: 'Arabic', icon: 'language-outline' },
 ];
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 export default function QRPairScreen() {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const navigation = useNavigation<NavigationProp>();
     const webRTCContext = useContext(WebRTCContext);
 
@@ -49,8 +56,17 @@ export default function QRPairScreen() {
     const [sourceLang, setSourceLang] = useState<SourceLangCode>('auto');
     const [targetLang, setTargetLang] = useState<TargetLangCode>('en-us');
     const [loading, setLoading] = useState(false);
-    const [peerInfo, setPeerInfo] = useState<QRPeerInfo | null>(null);
     const [langSelectType, setLangSelectType] = useState<'source' | 'target'>('source');
+    const [search, setSearch] = useState('');
+
+    const filteredLanguages = useMemo(() => {
+        let langs = LANGUAGES;
+        if (langSelectType === 'target') {
+            langs = LANGUAGES.filter(l => l.code !== 'auto');
+        }
+        if (!search.trim()) return langs;
+        return langs.filter(l => l.label.toLowerCase().includes(search.toLowerCase()));
+    }, [search, langSelectType]);
 
     useEffect(() => {
         const loadPrefs = async () => {
@@ -69,17 +85,13 @@ export default function QRPairScreen() {
 
     useEffect(() => {
         const handlePeerJoined = (peer: QRPeerInfo) => {
-            setPeerInfo(peer);
             setShowQRModal(false);
             Alert.alert(
                 'Partner Found!',
                 `${peer.username || 'Someone'} wants to connect.\nTheir language: ${getLangLabel(peer.sourceLang)} → ${getLangLabel(peer.targetLang)}`,
                 [
                     { text: 'Cancel', style: 'cancel', onPress: () => qrPairingService.cancelSession() },
-                    {
-                        text: 'Start Translation',
-                        onPress: () => startTranslationCall(peer)
-                    },
+                    { text: 'Start Translation', onPress: () => startTranslationCall(peer) },
                 ]
             );
         };
@@ -186,6 +198,7 @@ export default function QRPairScreen() {
 
     const openLangSelect = (type: 'source' | 'target') => {
         setLangSelectType(type);
+        setSearch('');
         setShowLangModal(true);
     };
 
@@ -200,6 +213,40 @@ export default function QRPairScreen() {
         setShowLangModal(false);
     };
 
+    const renderLangItem = ({ item }: { item: { code: string; label: string; icon: string } }) => {
+        const isSelected = (langSelectType === 'source' ? sourceLang : targetLang) === item.code;
+        return (
+            <TouchableOpacity
+                style={[
+                    styles.langItem,
+                    { backgroundColor: isSelected ? 'rgba(139,92,246,0.12)' : 'transparent' },
+                ]}
+                onPress={() => handleLangSelect(item.code)}
+                activeOpacity={0.7}
+            >
+                <View style={styles.langItemLeft}>
+                    <View style={[styles.langIcon, { backgroundColor: isSelected ? '#8b5cf6' : colors.backgroundTertiary }]}>
+                        <Ionicons name={item.icon as any} size={16} color={isSelected ? '#fff' : colors.textSecondary} />
+                    </View>
+                    <Text style={[styles.langItemText, { color: isSelected ? '#8b5cf6' : colors.text }]}>
+                        {item.label}
+                    </Text>
+                </View>
+                {isSelected && (
+                    <View style={styles.checkIcon}>
+                        <Ionicons name="checkmark-circle" size={22} color="#8b5cf6" />
+                    </View>
+                )}
+            </TouchableOpacity>
+        );
+    };
+
+    const steps = [
+        { icon: 'language-outline', title: 'Set Languages', desc: 'Choose what you speak and hear' },
+        { icon: 'qr-code-outline', title: 'Share or Scan', desc: 'Connect with your partner' },
+        { icon: 'chatbubbles-outline', title: 'Start Talking', desc: 'Real-time translation begins' },
+    ];
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView
@@ -208,128 +255,203 @@ export default function QRPairScreen() {
                 showsVerticalScrollIndicator={false}
             >
                 <View style={styles.heroSection}>
-                    <View style={styles.heroIcon}>
-                        <Ionicons name="qr-code" size={48} color="#8b5cf6" />
+                    <LinearGradient
+                        colors={['rgba(139,92,246,0.15)', 'rgba(139,92,246,0.05)', 'transparent']}
+                        style={styles.heroGradient}
+                    />
+                    <View style={styles.heroIconWrapper}>
+                        <LinearGradient
+                            colors={['#8b5cf6', '#7c3aed']}
+                            style={styles.heroIconGradient}
+                        >
+                            <Ionicons name="globe" size={32} color="#fff" />
+                        </LinearGradient>
+                        <View style={styles.heroIconRing} />
+                        <View style={styles.heroIconRingOuter} />
                     </View>
                     <Text style={[styles.heroTitle, { color: colors.text }]}>
                         Live Translation
                     </Text>
                     <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
-                        Connect with anyone nearby. Speak different languages, understand each other instantly.
+                        Break language barriers instantly
                     </Text>
                 </View>
 
-                <View style={styles.langSection}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                        Your Language Settings
-                    </Text>
-                    <View style={styles.langRow}>
+                <View style={[styles.langCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.langCardHeader}>
+                        <Ionicons name="swap-horizontal" size={18} color="#8b5cf6" />
+                        <Text style={[styles.langCardTitle, { color: colors.text }]}>
+                            Language Settings
+                        </Text>
+                    </View>
+                    <View style={styles.langSelectors}>
                         <TouchableOpacity
-                            style={[styles.langBtn, { backgroundColor: colors.surface }]}
+                            style={[styles.langSelector, { backgroundColor: colors.backgroundTertiary }]}
                             onPress={() => openLangSelect('source')}
+                            activeOpacity={0.8}
                         >
-                            <Text style={[styles.langLabel, { color: colors.textSecondary }]}>
-                                I speak
-                            </Text>
-                            <Text style={[styles.langValue, { color: colors.text }]}>
-                                {getLangLabel(sourceLang)}
-                            </Text>
-                            <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+                            <View style={styles.langSelectorIcon}>
+                                <Ionicons name="mic" size={18} color="#8b5cf6" />
+                            </View>
+                            <View style={styles.langSelectorContent}>
+                                <Text style={[styles.langSelectorLabel, { color: colors.textSecondary }]}>
+                                    I speak
+                                </Text>
+                                <Text style={[styles.langSelectorValue, { color: colors.text }]}>
+                                    {getLangLabel(sourceLang)}
+                                </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                         </TouchableOpacity>
 
-                        <Ionicons name="arrow-forward" size={20} color={colors.textTertiary} />
+                        <View style={styles.langArrowContainer}>
+                            <View style={[styles.langArrow, { backgroundColor: '#8b5cf6' }]}>
+                                <Ionicons name="arrow-forward" size={14} color="#fff" />
+                            </View>
+                        </View>
 
                         <TouchableOpacity
-                            style={[styles.langBtn, { backgroundColor: colors.surface }]}
+                            style={[styles.langSelector, { backgroundColor: colors.backgroundTertiary }]}
                             onPress={() => openLangSelect('target')}
+                            activeOpacity={0.8}
                         >
-                            <Text style={[styles.langLabel, { color: colors.textSecondary }]}>
-                                Translate to
-                            </Text>
-                            <Text style={[styles.langValue, { color: colors.text }]}>
-                                {getLangLabel(targetLang)}
-                            </Text>
-                            <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+                            <View style={styles.langSelectorIcon}>
+                                <Ionicons name="ear" size={18} color="#8b5cf6" />
+                            </View>
+                            <View style={styles.langSelectorContent}>
+                                <Text style={[styles.langSelectorLabel, { color: colors.textSecondary }]}>
+                                    I hear
+                                </Text>
+                                <Text style={[styles.langSelectorValue, { color: colors.text }]}>
+                                    {getLangLabel(targetLang)}
+                                </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                         </TouchableOpacity>
                     </View>
                 </View>
 
-                <View style={styles.actionSection}>
+                <View style={styles.actionButtons}>
                     <TouchableOpacity
                         style={styles.primaryBtn}
                         onPress={handleShowQR}
                         disabled={loading}
+                        activeOpacity={0.9}
                     >
-                        <Ionicons name="qr-code-outline" size={24} color="#ffffff" />
-                        <Text style={styles.primaryBtnText}>Show My QR Code</Text>
-                        {loading && <ActivityIndicator size="small" color="#ffffff" style={styles.btnLoader} />}
+                        <LinearGradient
+                            colors={['#8b5cf6', '#7c3aed']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.primaryBtnGradient}
+                        >
+                            {loading ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                                <>
+                                    <View style={styles.primaryBtnIcon}>
+                                        <Ionicons name="qr-code" size={22} color="#fff" />
+                                    </View>
+                                    <View style={styles.primaryBtnContent}>
+                                        <Text style={styles.primaryBtnTitle}>Show My QR</Text>
+                                        <Text style={styles.primaryBtnSubtitle}>Let others scan to connect</Text>
+                                    </View>
+                                    <Ionicons name="arrow-forward" size={20} color="rgba(255,255,255,0.8)" />
+                                </>
+                            )}
+                        </LinearGradient>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.secondaryBtn, { backgroundColor: colors.surface }]}
+                        style={[styles.secondaryBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
                         onPress={() => setShowScanModal(true)}
                         disabled={loading}
+                        activeOpacity={0.8}
                     >
-                        <Ionicons name="scan-outline" size={24} color="#8b5cf6" />
-                        <Text style={[styles.secondaryBtnText, { color: colors.text }]}>
-                            Scan Partner's QR
-                        </Text>
+                        <View style={[styles.secondaryBtnIcon, { backgroundColor: 'rgba(139,92,246,0.12)' }]}>
+                            <Ionicons name="scan" size={22} color="#8b5cf6" />
+                        </View>
+                        <View style={styles.secondaryBtnContent}>
+                            <Text style={[styles.secondaryBtnTitle, { color: colors.text }]}>Scan QR Code</Text>
+                            <Text style={[styles.secondaryBtnSubtitle, { color: colors.textSecondary }]}>
+                                Join partner's session
+                            </Text>
+                        </View>
+                        <Ionicons name="arrow-forward" size={20} color={colors.textTertiary} />
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.howItWorks}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                        How It Works
+                <View style={styles.stepsSection}>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                        How it works
                     </Text>
-                    <View style={[styles.stepCard, { backgroundColor: colors.surface }]}>
-                        <View style={styles.stepRow}>
-                            <View style={styles.stepNum}><Text style={styles.stepNumText}>1</Text></View>
-                            <Text style={[styles.stepText, { color: colors.text }]}>
-                                Set your language and what you want to hear
-                            </Text>
-                        </View>
-                        <View style={styles.stepRow}>
-                            <View style={styles.stepNum}><Text style={styles.stepNumText}>2</Text></View>
-                            <Text style={[styles.stepText, { color: colors.text }]}>
-                                Show your QR or scan their QR code
-                            </Text>
-                        </View>
-                        <View style={styles.stepRow}>
-                            <View style={styles.stepNum}><Text style={styles.stepNumText}>3</Text></View>
-                            <Text style={[styles.stepText, { color: colors.text }]}>
-                                Start talking – both hear translations live
-                            </Text>
-                        </View>
+                    <View style={[styles.stepsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        {steps.map((step, idx) => (
+                            <View key={idx} style={styles.stepItem}>
+                                <View style={[styles.stepIconContainer, { backgroundColor: 'rgba(139,92,246,0.1)' }]}>
+                                    <Ionicons name={step.icon as any} size={20} color="#8b5cf6" />
+                                </View>
+                                <View style={styles.stepContent}>
+                                    <Text style={[styles.stepTitle, { color: colors.text }]}>{step.title}</Text>
+                                    <Text style={[styles.stepDesc, { color: colors.textSecondary }]}>{step.desc}</Text>
+                                </View>
+                                {idx < steps.length - 1 && (
+                                    <View style={[styles.stepConnector, { backgroundColor: colors.border }]} />
+                                )}
+                            </View>
+                        ))}
                     </View>
                 </View>
             </ScrollView>
 
-            <Modal visible={showQRModal} animationType="slide" transparent>
+            <Modal visible={showQRModal} animationType="fade" transparent>
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-                        <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>
-                                Your QR Code
-                            </Text>
-                            <TouchableOpacity onPress={handleCloseQR}>
-                                <Ionicons name="close" size={24} color={colors.textSecondary} />
+                    <View style={[styles.qrModalContent, { backgroundColor: colors.surface }]}>
+                        <LinearGradient
+                            colors={['rgba(139,92,246,0.1)', 'transparent']}
+                            style={styles.qrModalGradient}
+                        />
+                        <View style={styles.qrModalHeader}>
+                            <View style={styles.qrModalHeaderLeft}>
+                                <View style={[styles.qrModalIcon, { backgroundColor: 'rgba(139,92,246,0.12)' }]}>
+                                    <Ionicons name="qr-code" size={20} color="#8b5cf6" />
+                                </View>
+                                <View>
+                                    <Text style={[styles.qrModalTitle, { color: colors.text }]}>
+                                        Your QR Code
+                                    </Text>
+                                    <Text style={[styles.qrModalSubtitle, { color: colors.textSecondary }]}>
+                                        Ready to connect
+                                    </Text>
+                                </View>
+                            </View>
+                            <TouchableOpacity
+                                style={[styles.qrCloseBtn, { backgroundColor: colors.backgroundTertiary }]}
+                                onPress={handleCloseQR}
+                            >
+                                <Ionicons name="close" size={20} color={colors.textSecondary} />
                             </TouchableOpacity>
                         </View>
-                        <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-                            Ask your partner to scan this code
-                        </Text>
-                        <View style={styles.qrWrapper}>
-                            <QRDisplay
-                                data={qrPairingService.generateQRData()}
-                                expiresAt={session?.expiresAt}
-                                size={220}
-                            />
+
+                        <View style={styles.qrDisplayWrapper}>
+                            <View style={[styles.qrBorder, { borderColor: 'rgba(139,92,246,0.3)' }]}>
+                                <QRDisplay
+                                    data={qrPairingService.generateQRData()}
+                                    expiresAt={session?.expiresAt}
+                                    size={200}
+                                />
+                            </View>
                         </View>
-                        <View style={styles.langInfo}>
-                            <Text style={[styles.langInfoText, { color: colors.textSecondary }]}>
+
+                        <View style={[styles.qrLangInfo, { backgroundColor: colors.backgroundTertiary }]}>
+                            <Ionicons name="language" size={16} color="#8b5cf6" />
+                            <Text style={[styles.qrLangText, { color: colors.text }]}>
                                 {getLangLabel(sourceLang)} → {getLangLabel(targetLang)}
                             </Text>
                         </View>
+
+                        <Text style={[styles.qrHint, { color: colors.textTertiary }]}>
+                            Ask your partner to scan this code
+                        </Text>
                     </View>
                 </View>
             </Modal>
@@ -341,40 +463,39 @@ export default function QRPairScreen() {
                 />
             </Modal>
 
-            <Modal visible={showLangModal} animationType="fade" transparent>
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.langModalContent, { backgroundColor: colors.surface }]}>
-                        <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>
-                                {langSelectType === 'source' ? 'I Speak' : 'Translate To'}
-                            </Text>
-                            <TouchableOpacity onPress={() => setShowLangModal(false)}>
-                                <Ionicons name="close" size={24} color={colors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-                        <ScrollView style={styles.langList}>
-                            {LANGUAGES.filter(l => langSelectType === 'source' || l.code !== 'auto').map(lang => (
-                                <TouchableOpacity
-                                    key={lang.code}
-                                    style={[
-                                        styles.langItem,
-                                        { borderBottomColor: colors.border },
-                                        (langSelectType === 'source' ? sourceLang : targetLang) === lang.code && styles.langItemActive,
-                                    ]}
-                                    onPress={() => handleLangSelect(lang.code)}
-                                >
-                                    <Text style={[styles.langItemText, { color: colors.text }]}>
-                                        {lang.label}
-                                    </Text>
-                                    {(langSelectType === 'source' ? sourceLang : targetLang) === lang.code && (
-                                        <Ionicons name="checkmark" size={20} color="#8b5cf6" />
-                                    )}
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
+            <GlassModal
+                isVisible={showLangModal}
+                onClose={() => setShowLangModal(false)}
+                title={langSelectType === 'source' ? 'I Speak' : 'I Want to Hear'}
+                subtitle={langSelectType === 'source' ? 'Select your language' : 'Select target language'}
+                icon={langSelectType === 'source' ? 'mic-outline' : 'ear-outline'}
+                height={520}
+            >
+                <View style={[styles.searchContainer, { backgroundColor: colors.backgroundTertiary, borderColor: colors.border }]}>
+                    <Ionicons name="search" size={18} color={colors.textSecondary} />
+                    <TextInput
+                        style={[styles.searchInput, { color: colors.text }]}
+                        placeholder="Search languages..."
+                        placeholderTextColor={colors.textTertiary}
+                        value={search}
+                        onChangeText={setSearch}
+                        autoCorrect={false}
+                    />
+                    {search.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearch('')}>
+                            <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                    )}
                 </View>
-            </Modal>
+                <FlatList
+                    data={filteredLanguages}
+                    keyExtractor={(item) => item.code}
+                    renderItem={renderLangItem}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.langList}
+                    ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
+                />
+            </GlassModal>
         </View>
     );
 }
@@ -382,71 +503,364 @@ export default function QRPairScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     scrollView: { flex: 1 },
-    scrollContent: { padding: 20, paddingTop: 24 },
-    heroSection: { alignItems: 'center', marginBottom: 32 },
-    heroIcon: {
-        width: 88,
-        height: 88,
-        borderRadius: 44,
-        backgroundColor: 'rgba(139,92,246,0.15)',
+    scrollContent: { paddingBottom: 40 },
+
+    heroSection: {
         alignItems: 'center',
-        justifyContent: 'center',
+        paddingTop: 32,
+        paddingBottom: 28,
+        paddingHorizontal: 20,
+        position: 'relative',
+    },
+    heroGradient: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 200,
+    },
+    heroIconWrapper: {
+        position: 'relative',
         marginBottom: 20,
     },
-    heroTitle: { fontSize: 26, fontWeight: '700', marginBottom: 8 },
-    heroSubtitle: { fontSize: 15, textAlign: 'center', lineHeight: 22, paddingHorizontal: 16 },
-    langSection: { marginBottom: 24 },
-    sectionTitle: { fontSize: 14, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.7 },
-    langRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    langBtn: { flex: 1, padding: 14, borderRadius: 12 },
-    langLabel: { fontSize: 11, marginBottom: 4 },
-    langValue: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
-    actionSection: { gap: 12, marginBottom: 32 },
-    primaryBtn: {
-        backgroundColor: '#8b5cf6',
-        flexDirection: 'row',
+    heroIconGradient: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 18,
-        borderRadius: 16,
-        gap: 10,
     },
-    primaryBtnText: { color: '#ffffff', fontSize: 17, fontWeight: '600' },
-    btnLoader: { marginLeft: 8 },
-    secondaryBtn: {
+    heroIconRing: {
+        position: 'absolute',
+        top: -8,
+        left: -8,
+        right: -8,
+        bottom: -8,
+        borderRadius: 44,
+        borderWidth: 2,
+        borderColor: 'rgba(139,92,246,0.2)',
+    },
+    heroIconRingOuter: {
+        position: 'absolute',
+        top: -16,
+        left: -16,
+        right: -16,
+        bottom: -16,
+        borderRadius: 52,
+        borderWidth: 1,
+        borderColor: 'rgba(139,92,246,0.1)',
+    },
+    heroTitle: {
+        fontSize: 28,
+        fontWeight: '700',
+        marginBottom: 8,
+        letterSpacing: -0.5,
+    },
+    heroSubtitle: {
+        fontSize: 16,
+        textAlign: 'center',
+    },
+
+    langCard: {
+        marginHorizontal: 20,
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 1,
+    },
+    langCardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: 18,
-        borderRadius: 16,
-        gap: 10,
+        gap: 8,
+        marginBottom: 16,
     },
-    secondaryBtnText: { fontSize: 17, fontWeight: '600' },
-    howItWorks: { marginBottom: 24 },
-    stepCard: { borderRadius: 16, padding: 16 },
-    stepRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-    stepNum: {
+    langCardTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    langSelectors: {
+        gap: 12,
+    },
+    langSelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 14,
+        borderRadius: 14,
+        gap: 12,
+    },
+    langSelectorIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(139,92,246,0.12)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    langSelectorContent: {
+        flex: 1,
+    },
+    langSelectorLabel: {
+        fontSize: 12,
+        marginBottom: 2,
+    },
+    langSelectorValue: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    langArrowContainer: {
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    langArrow: {
         width: 28,
         height: 28,
         borderRadius: 14,
-        backgroundColor: '#8b5cf6',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 12,
     },
-    stepNumText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
-    stepText: { flex: 1, fontSize: 14, lineHeight: 20 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
-    modalContent: { borderRadius: 24, padding: 24, alignItems: 'center' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 8 },
-    modalTitle: { fontSize: 20, fontWeight: '600' },
-    modalSubtitle: { fontSize: 14, marginBottom: 24, textAlign: 'center' },
-    qrWrapper: { marginBottom: 16 },
-    langInfo: { marginTop: 8 },
-    langInfoText: { fontSize: 14 },
-    langModalContent: { borderRadius: 20, maxHeight: '70%', overflow: 'hidden' },
-    langList: { maxHeight: 400 },
-    langItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1 },
-    langItemActive: { backgroundColor: 'rgba(139,92,246,0.1)' },
-    langItemText: { fontSize: 16 },
+
+    actionButtons: {
+        paddingHorizontal: 20,
+        gap: 12,
+        marginBottom: 28,
+    },
+    primaryBtn: {
+        borderRadius: 18,
+        overflow: 'hidden',
+        shadowColor: '#8b5cf6',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+    },
+    primaryBtnGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 18,
+        gap: 14,
+    },
+    primaryBtnIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    primaryBtnContent: {
+        flex: 1,
+    },
+    primaryBtnTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#fff',
+        marginBottom: 2,
+    },
+    primaryBtnSubtitle: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.8)',
+    },
+    secondaryBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 18,
+        gap: 14,
+        borderWidth: 1,
+    },
+    secondaryBtnIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    secondaryBtnContent: {
+        flex: 1,
+    },
+    secondaryBtnTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 2,
+    },
+    secondaryBtnSubtitle: {
+        fontSize: 13,
+    },
+
+    stepsSection: {
+        paddingHorizontal: 20,
+    },
+    sectionTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
+        marginBottom: 12,
+    },
+    stepsCard: {
+        borderRadius: 20,
+        padding: 20,
+        borderWidth: 1,
+    },
+    stepItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        position: 'relative',
+        paddingBottom: 20,
+    },
+    stepIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 14,
+    },
+    stepContent: {
+        flex: 1,
+        paddingTop: 2,
+    },
+    stepTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        marginBottom: 3,
+    },
+    stepDesc: {
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    stepConnector: {
+        position: 'absolute',
+        left: 19,
+        top: 44,
+        width: 2,
+        height: 20,
+        borderRadius: 1,
+    },
+
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'center',
+        padding: 24,
+    },
+    qrModalContent: {
+        borderRadius: 28,
+        overflow: 'hidden',
+        paddingTop: 20,
+        paddingHorizontal: 24,
+        paddingBottom: 28,
+    },
+    qrModalGradient: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 120,
+    },
+    qrModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 24,
+    },
+    qrModalHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    qrModalIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    qrModalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    qrModalSubtitle: {
+        fontSize: 13,
+        marginTop: 2,
+    },
+    qrCloseBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    qrDisplayWrapper: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    qrBorder: {
+        padding: 16,
+        borderRadius: 20,
+        borderWidth: 2,
+        borderStyle: 'dashed',
+    },
+    qrLangInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        alignSelf: 'center',
+        marginBottom: 16,
+    },
+    qrLangText: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    qrHint: {
+        textAlign: 'center',
+        fontSize: 13,
+    },
+
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 14,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        marginBottom: 16,
+        gap: 10,
+        borderWidth: 1,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 15,
+        padding: 0,
+    },
+    langList: {
+        paddingBottom: 20,
+    },
+    langItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 14,
+        borderRadius: 14,
+    },
+    langItemLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    langIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    langItemText: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    checkIcon: {},
 });
