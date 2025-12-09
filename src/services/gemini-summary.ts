@@ -41,10 +41,9 @@ class GeminiSummaryService {
   private static instance: GeminiSummaryService;
   private config: GeminiSummaryConfig = DEFAULT_GEMINI_CONFIG;
   private apiKey: string | null = null;
+  private apiKeyLoaded = false;
 
-  private constructor() {
-    this.loadApiKey();
-  }
+  private constructor() {}
 
   static getInstance(): GeminiSummaryService {
     if (!GeminiSummaryService.instance) {
@@ -54,10 +53,13 @@ class GeminiSummaryService {
   }
 
   private loadApiKey(): void {
+    if (this.apiKeyLoaded) return;
+    
     const extra = Constants.expoConfig?.extra;
     this.apiKey = extra?.GEMINI_API_KEY || null;
+    this.apiKeyLoaded = true;
 
-    if (!this.apiKey || this.apiKey === 'your-gemini-api-key-here') {
+    if (!this.apiKey) {
       console.warn('[GeminiService] API key not configured');
       this.apiKey = null;
     }
@@ -68,6 +70,7 @@ class GeminiSummaryService {
   }
 
   isConfigured(): boolean {
+    this.loadApiKey();
     return this.apiKey !== null && this.apiKey !== 'your-gemini-api-key-here';
   }
 
@@ -105,9 +108,7 @@ If the transcript is too short or unclear, still provide your best analysis base
   }
 
   async generateSummary(session: CallSession): Promise<CallSummary> {
-    if (!this.isConfigured()) {
-      throw new Error('Gemini API key not configured. Please add GEMINI_API_KEY to your .env file.');
-    }
+    this.loadApiKey();
 
     const transcript = this.formatTranscriptForPrompt(session);
     
@@ -300,6 +301,8 @@ If the transcript is too short or unclear, still provide your best analysis base
   }
 
   async generateQuickSummary(text: string): Promise<string> {
+    this.loadApiKey();
+    
     if (!this.isConfigured()) {
       throw new Error('Gemini API key not configured');
     }

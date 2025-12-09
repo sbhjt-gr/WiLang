@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -8,8 +8,10 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme';
 import { useFocusEffect } from '@react-navigation/native';
 import { callNotesStorage } from '../../services/call-notes-storage';
@@ -17,10 +19,12 @@ import { geminiSummaryService } from '../../services/gemini-summary';
 import { CallNotePreview, CallType } from '../../types/call-summary';
 import GlassModal from '../../components/GlassModal';
 
+const { width } = Dimensions.get('window');
+
 type FilterType = 'all' | 'video' | 'voice' | 'qr-translation';
 
 export default function CallNotesScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const [notes, setNotes] = useState<CallNotePreview[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,6 +39,14 @@ export default function CallNotesScreen() {
     topics?: string[];
     sentiment?: string;
   } | null>(null);
+
+  const stats = useMemo(() => {
+    const totalNotes = notes.length;
+    const totalKeyPoints = notes.reduce((acc, note) => acc + note.keyPointsCount, 0);
+    const videoNotes = notes.filter(n => n.callType === 'video').length;
+    const voiceNotes = notes.filter(n => n.callType === 'voice').length;
+    return { totalNotes, totalKeyPoints, videoNotes, voiceNotes };
+  }, [notes]);
 
   const loadNotes = async (forceRefresh: boolean = false) => {
     try {
@@ -121,6 +133,19 @@ export default function CallNotesScreen() {
     }
   };
 
+  const getCallTypeLabel = (type: CallType): string => {
+    switch (type) {
+      case 'video':
+        return 'Video';
+      case 'voice':
+        return 'Voice';
+      case 'qr-translation':
+        return 'Translation';
+      default:
+        return 'Call';
+    }
+  };
+
   const handleNotePress = async (note: CallNotePreview) => {
     setSelectedNote(note);
     setShowDetailModal(true);
@@ -191,149 +216,263 @@ export default function CallNotesScreen() {
     }
   };
 
-  const renderFilterButtons = () => (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.filterContainer}
-      contentContainerStyle={styles.filterContent}
-    >
-      {[
-        { key: 'all', label: 'All', icon: 'layers' },
-        { key: 'video', label: 'Video', icon: 'videocam' },
-        { key: 'voice', label: 'Voice', icon: 'call' },
-        { key: 'qr-translation', label: 'Translate', icon: 'scan' },
-      ].map(({ key, label, icon }) => (
-        <TouchableOpacity
-          key={key}
-          style={[
-            styles.filterButton,
-            {
-              backgroundColor: filter === key ? '#8b5cf6' : colors.surface,
-              borderColor: filter === key ? '#8b5cf6' : colors.border,
-            },
-          ]}
-          onPress={() => setFilter(key as FilterType)}
-        >
-          <Ionicons
-            name={icon as keyof typeof Ionicons.glyphMap}
-            size={16}
-            color={filter === key ? '#ffffff' : colors.textSecondary}
-          />
-          <Text
-            style={[
-              styles.filterButtonText,
-              { color: filter === key ? '#ffffff' : colors.textSecondary },
-            ]}
-          >
-            {label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
-  );
-
-  const renderNoteCard = (note: CallNotePreview) => (
-    <TouchableOpacity
-      key={note.id}
-      style={[styles.noteCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      onPress={() => handleNotePress(note)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.noteHeader}>
-        <View style={[styles.typeIcon, { backgroundColor: getCallTypeColor(note.callType) + '20' }]}>
-          <Ionicons
-            name={getCallTypeIcon(note.callType)}
-            size={18}
-            color={getCallTypeColor(note.callType)}
-          />
-        </View>
-        <View style={styles.noteHeaderText}>
-          <Text style={[styles.noteTitle, { color: colors.text }]} numberOfLines={1}>
-            {note.title}
-          </Text>
-          <View style={styles.noteMeta}>
-            <Text style={[styles.noteMetaText, { color: colors.textSecondary }]}>
-              {formatDate(note.startTime)}
-            </Text>
-            <Text style={[styles.noteMetaDot, { color: colors.textTertiary }]}>•</Text>
-            <Text style={[styles.noteMetaText, { color: colors.textSecondary }]}>
-              {formatDuration(note.duration)}
-            </Text>
-            {note.participants.length > 0 && (
-              <>
-                <Text style={[styles.noteMetaDot, { color: colors.textTertiary }]}>•</Text>
-                <Ionicons name="people" size={12} color={colors.textSecondary} />
-                <Text style={[styles.noteMetaText, { color: colors.textSecondary }]}>
-                  {note.participants.length}
-                </Text>
-              </>
-            )}
+  const renderStatsHeader = () => (
+    <View style={styles.statsContainer}>
+      <View style={styles.statsRow}>
+        <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.statIconContainer, { backgroundColor: '#8b5cf620' }]}>
+            <Ionicons name="document-text" size={18} color="#8b5cf6" />
+          </View>
+          <View style={styles.statContent}>
+            <Text style={[styles.statValue, { color: colors.text }]}>{stats.totalNotes}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Notes</Text>
           </View>
         </View>
-        <View style={styles.keyPointsBadge}>
-          <Ionicons name="bulb" size={12} color="#f59e0b" />
-          <Text style={styles.keyPointsText}>{note.keyPointsCount}</Text>
+        <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.statIconContainer, { backgroundColor: '#f59e0b20' }]}>
+            <Ionicons name="bulb" size={18} color="#f59e0b" />
+          </View>
+          <View style={styles.statContent}>
+            <Text style={[styles.statValue, { color: colors.text }]}>{stats.totalKeyPoints}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Key Points</Text>
+          </View>
         </View>
       </View>
-      <Text
-        style={[styles.noteSummary, { color: colors.textSecondary }]}
-        numberOfLines={2}
-      >
-        {note.summaryPreview}
-      </Text>
-    </TouchableOpacity>
+    </View>
   );
+
+  const renderFilterButtons = () => (
+    <View style={styles.filterWrapper}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterContent}
+      >
+        {[
+          { key: 'all', label: 'All', icon: 'layers' },
+          { key: 'video', label: 'Video', icon: 'videocam' },
+          { key: 'voice', label: 'Voice', icon: 'call' },
+          { key: 'qr-translation', label: 'Translate', icon: 'scan' },
+        ].map(({ key, label, icon }) => {
+          const isActive = filter === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              style={[
+                styles.filterPill,
+                {
+                  backgroundColor: isActive ? '#8b5cf6' : colors.surface,
+                  borderColor: isActive ? '#8b5cf6' : colors.border,
+                },
+              ]}
+              onPress={() => setFilter(key as FilterType)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={icon as keyof typeof Ionicons.glyphMap}
+                size={14}
+                color={isActive ? '#ffffff' : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.filterPillText,
+                  { color: isActive ? '#ffffff' : colors.textSecondary },
+                ]}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+
+  const renderNoteCard = (note: CallNotePreview, index: number) => {
+    const typeColor = getCallTypeColor(note.callType);
+    
+    return (
+      <TouchableOpacity
+        key={note.id}
+        style={[styles.noteCard, { backgroundColor: colors.surface }]}
+        onPress={() => handleNotePress(note)}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={[typeColor + '12', 'transparent']}
+          style={styles.noteCardGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+        <View style={styles.noteCardContent}>
+          <View style={styles.noteHeader}>
+            <View style={[styles.typeIconWrapper, { backgroundColor: typeColor + '20' }]}>
+              <Ionicons
+                name={getCallTypeIcon(note.callType)}
+                size={18}
+                color={typeColor}
+              />
+            </View>
+            <View style={styles.noteHeaderInfo}>
+              <Text style={[styles.noteTitle, { color: colors.text }]} numberOfLines={1}>
+                {note.title}
+              </Text>
+              <View style={styles.noteMetaRow}>
+                <View style={styles.noteMetaItem}>
+                  <Ionicons name="time-outline" size={11} color={colors.textTertiary} />
+                  <Text style={[styles.noteMetaText, { color: colors.textTertiary }]}>
+                    {formatDate(note.startTime)}
+                  </Text>
+                </View>
+                <View style={[styles.metaDot, { backgroundColor: colors.textTertiary }]} />
+                <View style={styles.noteMetaItem}>
+                  <Ionicons name="hourglass-outline" size={11} color={colors.textTertiary} />
+                  <Text style={[styles.noteMetaText, { color: colors.textTertiary }]}>
+                    {formatDuration(note.duration)}
+                  </Text>
+                </View>
+                {note.participants.length > 0 && (
+                  <>
+                    <View style={[styles.metaDot, { backgroundColor: colors.textTertiary }]} />
+                    <View style={styles.noteMetaItem}>
+                      <Ionicons name="people-outline" size={11} color={colors.textTertiary} />
+                      <Text style={[styles.noteMetaText, { color: colors.textTertiary }]}>
+                        {note.participants.length}
+                      </Text>
+                    </View>
+                  </>
+                )}
+              </View>
+            </View>
+            <View style={styles.keyPointsBadge}>
+              <Ionicons name="bulb" size={12} color="#f59e0b" />
+              <Text style={styles.keyPointsCount}>{note.keyPointsCount}</Text>
+            </View>
+          </View>
+
+          <View style={[styles.summaryContainer, { borderColor: colors.border }]}>
+            <Text
+              style={[styles.noteSummary, { color: colors.textSecondary }]}
+              numberOfLines={2}
+            >
+              {note.summaryPreview}
+            </Text>
+          </View>
+
+          <View style={styles.noteFooter}>
+            <View style={[styles.typeTag, { backgroundColor: typeColor + '15' }]}>
+              <Text style={[styles.typeTagText, { color: typeColor }]}>
+                {getCallTypeLabel(note.callType)}
+              </Text>
+            </View>
+            <View style={styles.viewMore}>
+              <Text style={[styles.viewMoreText, { color: colors.textTertiary }]}>View details</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.textTertiary} />
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <View style={[styles.emptyIcon, { backgroundColor: colors.surface }]}>
-        <Ionicons name="document-text-outline" size={48} color={colors.textTertiary} />
+      <LinearGradient
+        colors={['#8b5cf620', 'transparent']}
+        style={styles.emptyGradient}
+      />
+      <View style={[styles.emptyIconWrapper, { backgroundColor: colors.surface }]}>
+        <View style={[styles.emptyIconInner, { backgroundColor: '#8b5cf615' }]}>
+          <Ionicons name="document-text-outline" size={40} color="#8b5cf6" />
+        </View>
       </View>
       <Text style={[styles.emptyTitle, { color: colors.text }]}>No Call Notes Yet</Text>
       <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
         {geminiSummaryService.isConfigured()
-          ? 'Your call summaries and key points will appear here after your calls.'
-          : 'Add your Gemini API key in settings to enable AI-powered call summaries.'}
+          ? 'Your AI-generated call summaries and key points will appear here after your calls end.'
+          : 'Enable AI summaries by adding your Gemini API key in settings.'}
       </Text>
       {!geminiSummaryService.isConfigured() && (
-        <View style={styles.apiKeyWarning}>
-          <Ionicons name="key" size={16} color="#f59e0b" />
-          <Text style={[styles.apiKeyWarningText, { color: '#f59e0b' }]}>
-            Gemini API key required
-          </Text>
+        <View style={styles.apiKeyBanner}>
+          <LinearGradient
+            colors={['#f59e0b20', '#f59e0b10']}
+            style={styles.apiKeyBannerGradient}
+          />
+          <View style={styles.apiKeyContent}>
+            <View style={[styles.apiKeyIconWrapper, { backgroundColor: '#f59e0b20' }]}>
+              <Ionicons name="key" size={18} color="#f59e0b" />
+            </View>
+            <View style={styles.apiKeyTextContainer}>
+              <Text style={[styles.apiKeyTitle, { color: colors.text }]}>API Key Required</Text>
+              <Text style={[styles.apiKeySubtitle, { color: colors.textSecondary }]}>
+                Add your Gemini API key to get started
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+          </View>
         </View>
       )}
+      <View style={styles.featureList}>
+        {[
+          { icon: 'sparkles', text: 'AI-powered summaries', color: '#8b5cf6' },
+          { icon: 'bulb', text: 'Key points extraction', color: '#f59e0b' },
+          { icon: 'checkbox', text: 'Action items detection', color: '#10b981' },
+        ].map((feature, idx) => (
+          <View key={idx} style={[styles.featureItem, { backgroundColor: colors.surface }]}>
+            <View style={[styles.featureIcon, { backgroundColor: feature.color + '15' }]}>
+              <Ionicons name={feature.icon as any} size={16} color={feature.color} />
+            </View>
+            <Text style={[styles.featureText, { color: colors.textSecondary }]}>{feature.text}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color="#8b5cf6" />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-          Loading call notes...
-        </Text>
+        <View style={styles.loadingContent}>
+          <View style={[styles.loadingIconWrapper, { backgroundColor: '#8b5cf615' }]}>
+            <ActivityIndicator size="large" color="#8b5cf6" />
+          </View>
+          <Text style={[styles.loadingText, { color: colors.text }]}>Loading Notes</Text>
+          <Text style={[styles.loadingSubtext, { color: colors.textSecondary }]}>
+            Fetching your call summaries...
+          </Text>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {renderFilterButtons()}
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8b5cf6" />
         }
       >
-        {notes.length === 0 ? (
-          renderEmptyState()
-        ) : (
-          notes.map(renderNoteCard)
-        )}
+        {notes.length > 0 && renderStatsHeader()}
+        {renderFilterButtons()}
+        
+        <View style={styles.notesContainer}>
+          {notes.length === 0 ? (
+            renderEmptyState()
+          ) : (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Notes</Text>
+                <Text style={[styles.sectionCount, { color: colors.textTertiary }]}>
+                  {notes.length} {notes.length === 1 ? 'note' : 'notes'}
+                </Text>
+              </View>
+              {notes.map((note, index) => renderNoteCard(note, index))}
+            </>
+          )}
+        </View>
       </ScrollView>
 
       <GlassModal
@@ -341,7 +480,7 @@ export default function CallNotesScreen() {
         onClose={closeDetailModal}
         title={selectedNote?.title || 'Call Note'}
         icon="document-text"
-        height={500}
+        height={550}
       >
         {detailLoading ? (
           <View style={styles.detailLoading}>
@@ -352,37 +491,61 @@ export default function CallNotesScreen() {
           </View>
         ) : noteDetail ? (
           <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={false}>
-            {/* Sentiment Badge */}
-            {noteDetail.sentiment && (
-              <View style={styles.sentimentBadge}>
-                <Ionicons
-                  name={getSentimentIcon(noteDetail.sentiment)}
-                  size={16}
-                  color={getSentimentColor(noteDetail.sentiment)}
-                />
-                <Text style={[styles.sentimentText, { color: getSentimentColor(noteDetail.sentiment) }]}>
-                  {noteDetail.sentiment.charAt(0).toUpperCase() + noteDetail.sentiment.slice(1)} tone
-                </Text>
+            {selectedNote && (
+              <View style={styles.detailMeta}>
+                <View style={[styles.detailMetaItem, { backgroundColor: colors.surface }]}>
+                  <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                  <Text style={[styles.detailMetaText, { color: colors.textSecondary }]}>
+                    {formatDate(selectedNote.startTime)}
+                  </Text>
+                </View>
+                <View style={[styles.detailMetaItem, { backgroundColor: colors.surface }]}>
+                  <Ionicons name="hourglass-outline" size={14} color={colors.textSecondary} />
+                  <Text style={[styles.detailMetaText, { color: colors.textSecondary }]}>
+                    {formatDuration(selectedNote.duration)}
+                  </Text>
+                </View>
+                {noteDetail.sentiment && (
+                  <View style={[styles.detailMetaItem, { backgroundColor: getSentimentColor(noteDetail.sentiment) + '15' }]}>
+                    <Ionicons
+                      name={getSentimentIcon(noteDetail.sentiment)}
+                      size={14}
+                      color={getSentimentColor(noteDetail.sentiment)}
+                    />
+                    <Text style={[styles.detailMetaText, { color: getSentimentColor(noteDetail.sentiment) }]}>
+                      {noteDetail.sentiment}
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
-            {/* Summary */}
-            <View style={styles.detailSection}>
-              <Text style={[styles.detailSectionTitle, { color: colors.text }]}>Summary</Text>
+            <View style={[styles.detailSection, { backgroundColor: colors.surface }]}>
+              <View style={styles.detailSectionHeader}>
+                <View style={[styles.detailSectionIcon, { backgroundColor: '#8b5cf615' }]}>
+                  <Ionicons name="document-text" size={16} color="#8b5cf6" />
+                </View>
+                <Text style={[styles.detailSectionTitle, { color: colors.text }]}>Summary</Text>
+              </View>
               <Text style={[styles.detailSectionText, { color: colors.textSecondary }]}>
                 {noteDetail.summary}
               </Text>
             </View>
 
-            {/* Key Points */}
             {noteDetail.keyPoints.length > 0 && (
-              <View style={styles.detailSection}>
-                <Text style={[styles.detailSectionTitle, { color: colors.text }]}>
-                  <Ionicons name="bulb" size={14} color="#f59e0b" /> Key Points
-                </Text>
+              <View style={[styles.detailSection, { backgroundColor: colors.surface }]}>
+                <View style={styles.detailSectionHeader}>
+                  <View style={[styles.detailSectionIcon, { backgroundColor: '#f59e0b15' }]}>
+                    <Ionicons name="bulb" size={16} color="#f59e0b" />
+                  </View>
+                  <Text style={[styles.detailSectionTitle, { color: colors.text }]}>Key Points</Text>
+                  <View style={styles.detailSectionBadge}>
+                    <Text style={styles.detailSectionBadgeText}>{noteDetail.keyPoints.length}</Text>
+                  </View>
+                </View>
                 {noteDetail.keyPoints.map((point, index) => (
                   <View key={index} style={styles.bulletPoint}>
-                    <View style={styles.bullet} />
+                    <View style={[styles.bulletDot, { backgroundColor: '#f59e0b' }]} />
                     <Text style={[styles.bulletText, { color: colors.textSecondary }]}>
                       {point}
                     </Text>
@@ -391,15 +554,24 @@ export default function CallNotesScreen() {
               </View>
             )}
 
-            {/* Action Items */}
             {noteDetail.actionItems && noteDetail.actionItems.length > 0 && (
-              <View style={styles.detailSection}>
-                <Text style={[styles.detailSectionTitle, { color: colors.text }]}>
-                  <Ionicons name="checkbox" size={14} color="#10b981" /> Action Items
-                </Text>
+              <View style={[styles.detailSection, { backgroundColor: colors.surface }]}>
+                <View style={styles.detailSectionHeader}>
+                  <View style={[styles.detailSectionIcon, { backgroundColor: '#10b98115' }]}>
+                    <Ionicons name="checkbox" size={16} color="#10b981" />
+                  </View>
+                  <Text style={[styles.detailSectionTitle, { color: colors.text }]}>Action Items</Text>
+                  <View style={[styles.detailSectionBadge, { backgroundColor: '#10b98120' }]}>
+                    <Text style={[styles.detailSectionBadgeText, { color: '#10b981' }]}>
+                      {noteDetail.actionItems.length}
+                    </Text>
+                  </View>
+                </View>
                 {noteDetail.actionItems.map((item, index) => (
-                  <View key={index} style={styles.bulletPoint}>
-                    <Ionicons name="square-outline" size={14} color="#10b981" />
+                  <View key={index} style={styles.actionItem}>
+                    <View style={[styles.actionCheckbox, { borderColor: '#10b981' }]}>
+                      <Ionicons name="checkmark" size={10} color="transparent" />
+                    </View>
                     <Text style={[styles.bulletText, { color: colors.textSecondary }]}>
                       {item}
                     </Text>
@@ -408,14 +580,18 @@ export default function CallNotesScreen() {
               </View>
             )}
 
-            {/* Topics */}
             {noteDetail.topics && noteDetail.topics.length > 0 && (
-              <View style={styles.detailSection}>
-                <Text style={[styles.detailSectionTitle, { color: colors.text }]}>Topics</Text>
+              <View style={[styles.detailSection, { backgroundColor: colors.surface }]}>
+                <View style={styles.detailSectionHeader}>
+                  <View style={[styles.detailSectionIcon, { backgroundColor: '#6366f115' }]}>
+                    <Ionicons name="pricetags" size={16} color="#6366f1" />
+                  </View>
+                  <Text style={[styles.detailSectionTitle, { color: colors.text }]}>Topics</Text>
+                </View>
                 <View style={styles.topicsContainer}>
                   {noteDetail.topics.map((topic, index) => (
-                    <View key={index} style={[styles.topicTag, { backgroundColor: colors.surface }]}>
-                      <Text style={[styles.topicText, { color: colors.textSecondary }]}>
+                    <View key={index} style={[styles.topicChip, { backgroundColor: colors.background }]}>
+                      <Text style={[styles.topicChipText, { color: colors.textSecondary }]}>
                         {topic}
                       </Text>
                     </View>
@@ -424,10 +600,10 @@ export default function CallNotesScreen() {
               </View>
             )}
 
-            {/* Delete Button */}
             <TouchableOpacity
               style={styles.deleteButton}
               onPress={() => selectedNote && handleDeleteNote(selectedNote.id)}
+              activeOpacity={0.7}
             >
               <Ionicons name="trash-outline" size={18} color="#ef4444" />
               <Text style={styles.deleteButtonText}>Delete Note</Text>
@@ -443,144 +619,323 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-  },
-  filterContainer: {
-    maxHeight: 50,
-    marginTop: 8,
-  },
-  filterContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-    flexDirection: 'row',
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 6,
-  },
-  filterButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
     paddingBottom: 32,
   },
-  noteCard: {
+  
+  // Stats Section
+  statsContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    gap: 12,
+  },
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statContent: {
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+
+  // Filter Section
+  filterWrapper: {
+    marginTop: 16,
+  },
+  filterContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
     borderWidth: 1,
+    gap: 6,
+  },
+  filterPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // Notes List
+  notesContainer: {
+    paddingHorizontal: 16,
+    marginTop: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  sectionCount: {
+    fontSize: 13,
+  },
+
+  // Note Card
+  noteCard: {
+    borderRadius: 20,
+    marginBottom: 14,
+    overflow: 'hidden',
+  },
+  noteCardGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+  },
+  noteCardContent: {
+    padding: 16,
   },
   noteHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
   },
-  typeIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  typeIconWrapper: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
-  noteHeaderText: {
+  noteHeaderInfo: {
     flex: 1,
+    marginLeft: 12,
   },
   noteTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
   },
-  noteMeta: {
+  noteMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+  },
+  noteMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   noteMetaText: {
-    fontSize: 12,
+    fontSize: 11,
   },
-  noteMetaDot: {
-    fontSize: 12,
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    marginHorizontal: 6,
   },
   keyPointsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#f59e0b15',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 12,
     gap: 4,
   },
-  keyPointsText: {
-    fontSize: 12,
-    fontWeight: '600',
+  keyPointsCount: {
+    fontSize: 13,
+    fontWeight: '700',
     color: '#f59e0b',
+  },
+  summaryContainer: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
   },
   noteSummary: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
   },
+  noteFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  typeTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  typeTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  viewMore: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  viewMoreText: {
+    fontSize: 12,
+  },
+
+  // Empty State
   emptyContainer: {
-    flex: 1,
+    alignItems: 'center',
+    paddingTop: 40,
+    paddingHorizontal: 20,
+  },
+  emptyGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    borderRadius: 100,
+  },
+  emptyIconWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingTop: 60,
+    marginBottom: 20,
   },
-  emptyIcon: {
+  emptyIconInner: {
     width: 80,
     height: 80,
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 10,
     textAlign: 'center',
   },
   emptySubtitle: {
-    fontSize: 14,
+    fontSize: 15,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
+    maxWidth: 300,
   },
-  apiKeyWarning: {
+  apiKeyBanner: {
+    width: '100%',
+    borderRadius: 16,
+    marginTop: 24,
+    overflow: 'hidden',
+  },
+  apiKeyBannerGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  apiKeyContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
-    gap: 6,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    padding: 14,
+    gap: 12,
   },
-  apiKeyWarningText: {
-    fontSize: 13,
-    fontWeight: '500',
+  apiKeyIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  apiKeyTextContainer: {
+    flex: 1,
+  },
+  apiKeyTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  apiKeySubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  featureList: {
+    marginTop: 24,
+    gap: 10,
+    width: '100%',
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    gap: 12,
+  },
+  featureIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  featureText: {
+    fontSize: 14,
+  },
+
+  // Loading State
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContent: {
+    alignItems: 'center',
+  },
+  loadingIconWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+
+  // Detail Modal
   detailLoading: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 60,
   },
   detailLoadingText: {
     marginTop: 12,
@@ -589,28 +944,57 @@ const styles = StyleSheet.create({
   detailScroll: {
     flex: 1,
   },
-  sentimentBadge: {
+  detailMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  detailMetaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: 'rgba(107, 114, 128, 0.1)',
-    marginBottom: 16,
-    gap: 6,
+    borderRadius: 10,
+    gap: 5,
   },
-  sentimentText: {
+  detailMetaText: {
     fontSize: 12,
-    fontWeight: '500',
+    textTransform: 'capitalize',
   },
   detailSection: {
-    marginBottom: 20,
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+  },
+  detailSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 10,
+  },
+  detailSectionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   detailSectionTitle: {
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 8,
+    flex: 1,
+  },
+  detailSectionBadge: {
+    backgroundColor: '#f59e0b20',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  detailSectionBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#f59e0b',
   },
   detailSectionText: {
     fontSize: 14,
@@ -619,14 +1003,13 @@ const styles = StyleSheet.create({
   bulletPoint: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 10,
     gap: 10,
   },
-  bullet: {
+  bulletDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#8b5cf6',
     marginTop: 7,
   },
   bulletText: {
@@ -634,32 +1017,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  actionItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+    gap: 10,
+  },
+  actionCheckbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 1,
+  },
   topicsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  topicTag: {
+  topicChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 20,
   },
-  topicText: {
+  topicChipText: {
     fontSize: 13,
   },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    marginTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    paddingVertical: 16,
+    marginTop: 8,
+    marginBottom: 20,
+    borderRadius: 12,
+    backgroundColor: '#ef444415',
     gap: 8,
   },
   deleteButtonText: {
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#ef4444',
   },
 });
