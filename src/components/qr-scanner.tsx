@@ -13,12 +13,24 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
     const { colors } = useTheme();
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
+    const [cameraReady, setCameraReady] = useState(false);
 
     useEffect(() => {
         if (!permission?.granted) {
             requestPermission();
         }
     }, [permission, requestPermission]);
+
+    useEffect(() => {
+        setScanned(false);
+        setCameraReady(false);
+        const timer = setTimeout(() => setCameraReady(true), 100);
+        return () => {
+            clearTimeout(timer);
+            setScanned(false);
+            setCameraReady(false);
+        };
+    }, []);
 
     const handleBarCodeScanned = ({ data }: { type: string; data: string }) => {
         if (scanned) return;
@@ -67,14 +79,16 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
 
     return (
         <View style={styles.container}>
-            <CameraView
-                style={StyleSheet.absoluteFillObject}
-                facing="back"
-                barcodeScannerSettings={{
-                    barcodeTypes: ['qr'],
-                }}
-                onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-            />
+            {cameraReady && (
+                <CameraView
+                    style={StyleSheet.absoluteFillObject}
+                    facing="back"
+                    barcodeScannerSettings={{
+                        barcodeTypes: ['qr'],
+                    }}
+                    onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+                />
+            )}
             <View style={styles.overlay}>
                 <View style={styles.topOverlay} />
                 <View style={styles.middleRow}>
