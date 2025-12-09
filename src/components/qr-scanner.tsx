@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
@@ -12,8 +12,9 @@ interface QRScannerProps {
 export default function QRScanner({ onScan, onClose }: QRScannerProps) {
     const { colors } = useTheme();
     const [permission, requestPermission] = useCameraPermissions();
-    const [scanned, setScanned] = useState(false);
-    const [cameraReady, setCameraReady] = useState(false);
+    const [scanState, setScanState] = useState<'scanning' | 'detected' | 'processing'>('scanning');
+    const [detectedData, setDetectedData] = useState<string | null>(null);
+    const scanLockRef = useRef(false);
 
     useEffect(() => {
         if (!permission?.granted) {
@@ -22,24 +23,28 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
     }, [permission, requestPermission]);
 
     useEffect(() => {
-        setScanned(false);
-        setCameraReady(false);
-        const timer = setTimeout(() => setCameraReady(true), 100);
         return () => {
-            clearTimeout(timer);
-            setScanned(false);
-            setCameraReady(false);
+            scanLockRef.current = false;
         };
     }, []);
 
     const handleBarCodeScanned = ({ data }: { type: string; data: string }) => {
-        if (scanned) return;
-        setScanned(true);
-        onScan(data);
+        if (scanLockRef.current) return;
+        scanLockRef.current = true;
+        
+        setDetectedData(data);
+        setScanState('detected');
+        
+        setTimeout(() => {
+            setScanState('processing');
+            onScan(data);
+        }, 300);
     };
 
     const handleRetry = () => {
-        setScanned(false);
+        scanLockRef.current = false;
+        setDetectedData(null);
+        setScanState('scanning');
     };
 
     if (!permission) {
@@ -79,33 +84,59 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
 
     return (
         <View style={styles.container}>
-            {cameraReady && (
-                <CameraView
-                    style={StyleSheet.absoluteFillObject}
-                    facing="back"
-                    barcodeScannerSettings={{
-                        barcodeTypes: ['qr'],
-                    }}
-                    onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-                />
-            )}
+            <CameraView
+                style={StyleSheet.absoluteFillObject}
+                facing="back"
+                barcodeScannerSettings={{
+                    barcodeTypes: ['qr'],
+                }}
+                onBarcodeScanned={scanState === 'scanning' ? handleBarCodeScanned : undefined}
+            />
             <View style={styles.overlay}>
                 <View style={styles.topOverlay} />
                 <View style={styles.middleRow}>
                     <View style={styles.sideOverlay} />
                     <View style={styles.scanArea}>
-                        <View style={[styles.corner, styles.topLeft]} />
-                        <View style={[styles.corner, styles.topRight]} />
-                        <View style={[styles.corner, styles.bottomLeft]} />
-                        <View style={[styles.corner, styles.bottomRight]} />
+                        <View style={[
+                            styles.corner, 
+                            styles.topLeft,
+                            scanState === 'detected' && styles.cornerDetected
+                        ]} />
+                        <View style={[
+                            styles.corner, 
+                            styles.topRight,
+                            scanState === 'detected' && styles.cornerDetected
+                        ]} />
+                        <View style={[
+                            styles.corner, 
+                            styles.bottomLeft,
+                            scanState === 'detected' && styles.cornerDetected
+                        ]} />
+                        <View style={[
+                            styles.corner, 
+                            styles.bottomRight,
+                            scanState === 'detected' && styles.cornerDetected
+                        ]} />
+                        {scanState !== 'scanning' && (
+                            <View style={styles.detectedOverlay}>
+                                {scanState === 'detected' && (
+                                    <Ionicons name="checkmark-circle" size={64} color="#22c55e" />
+                                )}
+                                {scanState === 'processing' && (
+                                    <ActivityIndicator size="large" color="#8b5cf6" />
+                                )}
+                            </View>
+                        )}
                     </View>
                     <View style={styles.sideOverlay} />
                 </View>
                 <View style={styles.bottomOverlay}>
                     <Text style={styles.instructionText}>
-                        {scanned ? 'Processing...' : 'Point camera at QR code'}
+                        {scanState === 'scanning' && 'Point camera at QR code'}
+                        {scanState === 'detected' && 'QR Code detected!'}
+                        {scanState === 'processing' && 'Connecting...'}
                     </Text>
-                    {scanned && (
+                    {scanState === 'processing' && (
                         <TouchableOpacity style={styles.retryBtn} onPress={handleRetry}>
                             <Text style={styles.retryBtnText}>Scan Again</Text>
                         </TouchableOpacity>
@@ -212,6 +243,15 @@ const styles = StyleSheet.create({
         borderBottomWidth: 4,
         borderRightWidth: 4,
         borderBottomRightRadius: 8,
+    },
+    cornerDetected: {
+        borderColor: '#22c55e',
+    },
+    detectedOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0,0,0,0.3)',
     },
     bottomOverlay: {
         flex: 1,
