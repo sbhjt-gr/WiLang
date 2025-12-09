@@ -1,5 +1,6 @@
 !android/app/google-services.json
 !ios/WiLang/GoogleService-Info.plist
+!.env
 
 # Development directories
 node_modules/
