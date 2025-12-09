@@ -66,8 +66,8 @@ export default {
       favicon: "./assets/favicon.png"
     },
     extra: {
-      eas: {
-        projectId: "146b3cbc-1d82-4c4b-9f27-746b6274af08"
+      "eas": {
+        "projectId": "6b9c7570-f26b-41c6-97e3-7d8154249a70"
       },
       FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
       FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,

@@ -13,14 +13,6 @@ module.exports = function(api) {
         allowUndefined: true,
         verbose: false,
       }],
-    ],
-    env: {
-      production: {
-        plugins: [
-          'transform-remove-console',
-          ['@babel/plugin-transform-react-jsx', { runtime: 'automatic' }]
-        ],
-      },
-    },
+    ]
   };
 };
