@@ -1,4 +1,4 @@
-import React, { useContext, useLayoutEffect, useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useContext, useLayoutEffect, useRef, useEffect, useState, useCallback } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
@@ -6,6 +6,7 @@ import {
     Text,
     View,
     TouchableOpacity,
+    ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -17,8 +18,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
 import GlassModal from '../components/GlassModal';
 import { useTheme } from '../theme';
-import TranslationControls from '../components/translation-controls';
-import TranscriptionOverlay from '../components/transcription-overlay';
 import { VideoCallTranslation, type TranslationState } from '../services/video-call-translation';
 import { CallTranslationPrefs } from '../services/call-translation-prefs';
 import { qrPairingService } from '../services/qr-pairing-service';
@@ -35,7 +34,7 @@ interface Props {
 }
 
 const LANGUAGES: Record<string, string> = {
-    'auto': 'Auto',
+    'auto': 'Auto Detect',
     'en-us': 'English',
     'es': 'Spanish',
     'fr': 'French',
@@ -47,6 +46,14 @@ const LANGUAGES: Record<string, string> = {
     'pt': 'Portuguese',
     'ar': 'Arabic',
 };
+
+interface TranscriptEntry {
+    id: string;
+    original: string;
+    translated: string;
+    timestamp: number;
+    isFinal: boolean;
+}
 
 export default function QRTranslationScreen({ navigation, route }: Props) {
     const { colors } = useTheme();
@@ -62,15 +69,14 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
         restoreOriginalAudio,
     } = useContext(WebRTCContext);
 
-    const [callDuration, setCallDuration] = useState(0);
+    const [sessionDuration, setSessionDuration] = useState(0);
     const [isConnected, setIsConnected] = useState(false);
-    const [palabraEnabled, setPalabraEnabled] = useState(true);
     const [palabraState, setPalabraState] = useState<TranslationState>('idle');
     const [palabraSource, setPalabraSource] = useState<SourceLangCode>('auto');
     const [palabraTarget, setPalabraTarget] = useState<TargetLangCode>('en-us');
-    const [palabraTranscript, setPalabraTranscript] = useState<string | null>(null);
-    const [palabraTranslation, setPalabraTranslation] = useState<string | null>(null);
-    const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
+    const [currentTranscript, setCurrentTranscript] = useState<string>('');
+    const [currentTranslation, setCurrentTranslation] = useState<string>('');
+    const [transcriptHistory, setTranscriptHistory] = useState<TranscriptEntry[]>([]);
     const [isSpeakerOn, setIsSpeakerOn] = useState(true);
     const [modalConfig, setModalConfig] = useState<{
         visible: boolean;
@@ -87,8 +93,10 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
     });
 
     const palabraServiceRef = useRef<VideoCallTranslation | null>(null);
-    const callStartTime = useRef<number | null>(null);
+    const sessionStartTime = useRef<number | null>(null);
     const initializationAttempted = useRef(false);
+    const scrollViewRef = useRef<ScrollView>(null);
+    const entryIdCounter = useRef(0);
 
     const showModal = useCallback((title: string, message: string, icon: string = 'information-circle', buttons: Array<{ text: string; onPress?: () => void }> = [{ text: 'OK' }]) => {
         setModalConfig({ visible: true, title, message, icon, buttons });
@@ -135,18 +143,6 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
     });
 
     useEffect(() => {
-        if (!palabraEnabled) {
-            if (palabraServiceRef.current) {
-                palabraServiceRef.current.stop();
-                palabraServiceRef.current = null;
-                setPalabraState('idle');
-                setPalabraTranscript(null);
-                setPalabraTranslation(null);
-                restoreOriginalAudioRef.current?.();
-            }
-            return;
-        }
-
         let service = palabraServiceRef.current;
         if (!service) {
             service = new VideoCallTranslation();
@@ -159,16 +155,29 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
             setPalabraState(state);
             if (state === 'active' && !isConnected) {
                 setIsConnected(true);
-                callStartTime.current = Date.now();
+                sessionStartTime.current = Date.now();
             }
         };
 
         const handleTranscription = (data: { text: string; isFinal?: boolean }) => {
-            setPalabraTranscript(data.text);
+            setCurrentTranscript(data.text);
+            if (data.isFinal && data.text.trim()) {
+                const newEntry: TranscriptEntry = {
+                    id: `entry-${entryIdCounter.current++}`,
+                    original: data.text,
+                    translated: currentTranslation || data.text,
+                    timestamp: Date.now(),
+                    isFinal: true,
+                };
+                setTranscriptHistory(prev => [...prev.slice(-49), newEntry]);
+                setTimeout(() => {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                }, 100);
+            }
         };
 
         const handleTranslation = (data: { text: string; isFinal?: boolean }) => {
-            setPalabraTranslation(data.text);
+            setCurrentTranslation(data.text);
         };
 
         const handleRemoteTrack = (tracks: Array<{ track: MediaStreamTrack }>) => {
@@ -195,16 +204,16 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
             service.off('remoteTrack', handleRemoteTrack);
             service.off('error', handleError);
         };
-    }, [palabraEnabled, palabraSource, palabraTarget, showModal, isConnected]);
+    }, [palabraSource, palabraTarget, showModal, isConnected, currentTranslation]);
 
     useEffect(() => {
-        if (!palabraEnabled || !palabraServiceRef.current) return;
+        if (!palabraServiceRef.current) return;
 
         const service = palabraServiceRef.current;
         if (service.getState() !== 'idle') return;
 
         service.start();
-    }, [palabraEnabled]);
+    }, []);
 
     useEffect(() => {
         return () => {
@@ -220,8 +229,8 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
         if (!isConnected) return;
 
         const timer = setInterval(() => {
-            if (callStartTime.current) {
-                setCallDuration(Math.floor((Date.now() - callStartTime.current) / 1000));
+            if (sessionStartTime.current) {
+                setSessionDuration(Math.floor((Date.now() - sessionStartTime.current) / 1000));
             }
         }, 1000);
 
@@ -256,19 +265,16 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handlePalabraToggle = useCallback(() => {
-        setPalabraEnabled(prev => !prev);
-    }, []);
-
-    const handleSubtitlesToggle = useCallback(() => {
-        setSubtitlesEnabled(prev => !prev);
-    }, []);
+    const formatTime = (timestamp: number) => {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
 
     const handleSpeakerToggle = useCallback(() => {
         setIsSpeakerOn(prev => !prev);
     }, []);
 
-    const handleCloseCall = useCallback(async () => {
+    const handleEndSession = useCallback(async () => {
         try {
             qrPairingService.endSession(sessionId);
             if (palabraServiceRef.current) {
@@ -289,7 +295,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
 
         const handleSessionEnded = (data: { endedBy: string; reason?: string }) => {
             if (data.endedBy !== peerId) {
-                handleCloseCall();
+                handleEndSession();
             }
         };
 
@@ -298,25 +304,42 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
         return () => {
             qrPairingService.off('sessionEnded', handleSessionEnded);
         };
-    }, [sessionId, peerId, handleCloseCall]);
-
-    const getInitials = (name: string) => {
-        const names = name.split(' ');
-        if (names.length >= 2) {
-            return (names[0][0] + names[1][0]).toUpperCase();
-        }
-        return name.substring(0, 2).toUpperCase();
-    };
+    }, [sessionId, peerId, handleEndSession]);
 
     const displayName = peerName || 'Partner';
 
+    const getStatusColor = () => {
+        switch (palabraState) {
+            case 'active': return '#10b981';
+            case 'connecting': return '#f59e0b';
+            case 'error': return '#ef4444';
+            default: return '#6b7280';
+        }
+    };
+
+    const getStatusText = () => {
+        switch (palabraState) {
+            case 'active': return 'Live';
+            case 'connecting': return 'Connecting...';
+            case 'error': return 'Error';
+            default: return 'Starting...';
+        }
+    };
+
     if (!localStream) {
         return (
-            <View style={[styles.container, { backgroundColor: '#0a0a0a' }]}>
-                <StatusBar backgroundColor="black" style="light" />
+            <View style={[styles.container, { backgroundColor: '#0f0f1a' }]}>
+                <StatusBar backgroundColor="transparent" style="light" />
                 <View style={styles.loadingContent}>
-                    <ActivityIndicator size="large" color="#8b5cf6" />
-                    <Text style={styles.loadingText}>Setting up translation...</Text>
+                    <MotiView
+                        from={{ rotate: '0deg' }}
+                        animate={{ rotate: '360deg' }}
+                        transition={{ type: 'timing', duration: 1500, loop: true }}
+                    >
+                        <Ionicons name="language" size={48} color="#8b5cf6" />
+                    </MotiView>
+                    <Text style={styles.loadingText}>Initializing translation...</Text>
+                    <Text style={styles.loadingSubText}>Setting up real-time speech recognition</Text>
                 </View>
             </View>
         );
@@ -324,150 +347,164 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
 
     return (
         <View style={styles.container}>
-            <StatusBar backgroundColor="black" style="light" />
+            <StatusBar backgroundColor="transparent" style="light" />
 
             <LinearGradient
-                colors={['#1a1a2e', '#16213e', '#0f0f1a']}
+                colors={['#0f0f1a', '#1a1a2e', '#0f0f1a']}
                 style={styles.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
             >
-                <View style={styles.topSection}>
-                    <View style={styles.statusRow}>
-                        <View style={styles.langBadge}>
-                            <Ionicons name="language" size={14} color="#8b5cf6" />
-                            <Text style={styles.langBadgeText}>
-                                {LANGUAGES[peerSourceLang] || peerSourceLang} → {LANGUAGES[peerTargetLang] || peerTargetLang}
-                            </Text>
+                {/* Header */}
+                <View style={styles.header}>
+                    <View style={styles.headerLeft}>
+                        <View style={[styles.statusIndicator, { backgroundColor: getStatusColor() }]}>
+                            {palabraState === 'active' && (
+                                <MotiView
+                                    from={{ opacity: 0.5 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ type: 'timing', duration: 800, loop: true, repeatReverse: true }}
+                                    style={[styles.statusPulse, { backgroundColor: getStatusColor() }]}
+                                />
+                            )}
                         </View>
-                        <View style={styles.callInfo}>
-                            <Text style={styles.callInfoText}>Live Translation</Text>
-                            <Text style={styles.roleText}>
-                                {isHost ? 'You showed QR' : 'You scanned QR'}
-                            </Text>
+                        <View>
+                            <Text style={styles.statusText}>{getStatusText()}</Text>
+                            <Text style={styles.durationText}>{formatDuration(sessionDuration)}</Text>
                         </View>
                     </View>
+                    <TouchableOpacity style={styles.endButton} onPress={handleEndSession}>
+                        <Ionicons name="close" size={24} color="#fff" />
+                    </TouchableOpacity>
                 </View>
 
-                <View style={styles.centerSection}>
-                    <View style={styles.avatarContainer}>
-                        <MotiView
-                            from={{ scale: 1, opacity: 0.5 }}
-                            animate={{ scale: isConnected ? 1.15 : 1.05, opacity: isConnected ? 0.3 : 0.5 }}
-                            transition={{
-                                type: 'timing',
-                                duration: isConnected ? 1500 : 2000,
-                                loop: true,
-                                repeatReverse: true,
-                            }}
-                            style={styles.avatarPulseOuter}
-                        />
-                        <MotiView
-                            from={{ scale: 1, opacity: 0.6 }}
-                            animate={{ scale: isConnected ? 1.1 : 1.03, opacity: isConnected ? 0.4 : 0.6 }}
-                            transition={{
-                                type: 'timing',
-                                duration: isConnected ? 1200 : 1600,
-                                loop: true,
-                                repeatReverse: true,
-                            }}
-                            style={styles.avatarPulseInner}
-                        />
-                        <View style={styles.avatarInner}>
-                            <Text style={styles.avatarText}>{getInitials(displayName)}</Text>
+                {/* Language Info Card */}
+                <View style={styles.languageCard}>
+                    <View style={styles.languageRow}>
+                        <View style={styles.languageItem}>
+                            <Text style={styles.languageLabel}>Speaking</Text>
+                            <View style={styles.languageValue}>
+                                <Ionicons name="mic" size={16} color="#8b5cf6" />
+                                <Text style={styles.languageText}>{LANGUAGES[palabraSource] || palabraSource}</Text>
+                            </View>
                         </View>
-                        {isMuted && (
-                            <View style={styles.mutedBadge}>
-                                <Ionicons name="mic-off" size={16} color="#fff" />
+                        <View style={styles.languageArrow}>
+                            <Ionicons name="arrow-forward" size={20} color="#8b5cf6" />
+                        </View>
+                        <View style={styles.languageItem}>
+                            <Text style={styles.languageLabel}>Translating to</Text>
+                            <View style={styles.languageValue}>
+                                <Ionicons name="language" size={16} color="#10b981" />
+                                <Text style={[styles.languageText, { color: '#10b981' }]}>{LANGUAGES[palabraTarget] || palabraTarget}</Text>
                             </View>
-                        )}
+                        </View>
                     </View>
-
-                    <Text style={styles.callerName}>{displayName}</Text>
-
-                    <View style={styles.callStatusContainer}>
-                        {isConnected ? (
-                            <View style={styles.connectedStatus}>
-                                <View style={styles.connectedDot} />
-                                <Text style={styles.durationText}>{formatDuration(callDuration)}</Text>
-                            </View>
-                        ) : (
-                            <View style={styles.connectingStatus}>
-                                <ActivityIndicator size="small" color="#8b5cf6" />
-                                <Text style={styles.connectingText}>Connecting translation...</Text>
-                            </View>
-                        )}
-                    </View>
-
-                    <View style={styles.yourLangContainer}>
-                        <Text style={styles.yourLangLabel}>Your settings:</Text>
-                        <Text style={styles.yourLangText}>
-                            {LANGUAGES[palabraSource] || palabraSource} → {LANGUAGES[palabraTarget] || palabraTarget}
+                    <View style={styles.partnerInfo}>
+                        <Ionicons name="person" size={14} color="rgba(255,255,255,0.5)" />
+                        <Text style={styles.partnerText}>
+                            with <Text style={styles.partnerName}>{displayName}</Text>
                         </Text>
                     </View>
                 </View>
 
-                <TranscriptionOverlay
-                    sourceText={palabraTranscript}
-                    translatedText={palabraTranslation}
-                    visible={subtitlesEnabled && palabraEnabled && palabraState !== 'idle' && palabraState !== 'error'}
-                    isConnecting={palabraState === 'connecting'}
-                />
+                {/* Live Translation Display */}
+                <View style={styles.translationContainer}>
+                    {/* Current Live Text */}
+                    {(currentTranscript || currentTranslation) && palabraState === 'active' && (
+                        <View style={styles.liveSection}>
+                            <View style={styles.liveBadge}>
+                                <MotiView
+                                    from={{ opacity: 0.5 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ type: 'timing', duration: 600, loop: true, repeatReverse: true }}
+                                    style={styles.liveDot}
+                                />
+                                <Text style={styles.liveText}>LIVE</Text>
+                            </View>
+                            {currentTranscript && (
+                                <View style={styles.currentTextBox}>
+                                    <Text style={styles.currentOriginal}>{currentTranscript}</Text>
+                                </View>
+                            )}
+                            {currentTranslation && (
+                                <View style={styles.currentTranslationBox}>
+                                    <Text style={styles.currentTranslated}>{currentTranslation}</Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
 
-                <View style={styles.bottomSection}>
-                    <View style={styles.controlsRow}>
-                        <TouchableOpacity
-                            style={[styles.controlBtn, subtitlesEnabled && styles.controlBtnActive]}
-                            onPress={handleSubtitlesToggle}
+                    {/* Transcript History */}
+                    <ScrollView
+                        ref={scrollViewRef}
+                        style={styles.historyScroll}
+                        contentContainerStyle={styles.historyContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {transcriptHistory.length === 0 && palabraState === 'active' && !currentTranscript && (
+                            <View style={styles.emptyState}>
+                                <MotiView
+                                    from={{ scale: 0.95, opacity: 0.5 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    transition={{ type: 'timing', duration: 1500, loop: true, repeatReverse: true }}
+                                >
+                                    <Ionicons name="chatbubbles-outline" size={64} color="rgba(139,92,246,0.3)" />
+                                </MotiView>
+                                <Text style={styles.emptyTitle}>Listening...</Text>
+                                <Text style={styles.emptySubtitle}>Start speaking and your words will appear here with translations</Text>
+                            </View>
+                        )}
+
+                        {palabraState === 'connecting' && (
+                            <View style={styles.emptyState}>
+                                <ActivityIndicator size="large" color="#8b5cf6" />
+                                <Text style={styles.emptyTitle}>Connecting to translation service...</Text>
+                                <Text style={styles.emptySubtitle}>This may take a few seconds</Text>
+                            </View>
+                        )}
+
+                        {transcriptHistory.map((entry) => (
+                            <View key={entry.id} style={styles.historyEntry}>
+                                <View style={styles.entryHeader}>
+                                    <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.4)" />
+                                    <Text style={styles.entryTime}>{formatTime(entry.timestamp)}</Text>
+                                </View>
+                                <Text style={styles.entryOriginal}>{entry.original}</Text>
+                                <Text style={styles.entryTranslated}>{entry.translated}</Text>
+                            </View>
+                        ))}
+                    </ScrollView>
+                </View>
+
+                {/* Bottom Controls */}
+                <View style={styles.bottomControls}>
+                    <TouchableOpacity
+                        style={[styles.controlButton, isMuted && styles.controlButtonActive]}
+                        onPress={toggleMute}
+                    >
+                        <View style={[styles.controlIcon, isMuted && styles.controlIconMuted]}>
+                            <Ionicons name={isMuted ? "mic-off" : "mic"} size={24} color="#fff" />
+                        </View>
+                        <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.controlButton, isSpeakerOn && styles.controlButtonActive]}
+                        onPress={handleSpeakerToggle}
+                    >
+                        <View style={[styles.controlIcon, isSpeakerOn && styles.controlIconActive]}>
+                            <Ionicons name={isSpeakerOn ? "volume-high" : "volume-mute"} size={24} color="#fff" />
+                        </View>
+                        <Text style={styles.controlLabel}>{isSpeakerOn ? 'Speaker On' : 'Speaker Off'}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.endSessionButton} onPress={handleEndSession}>
+                        <LinearGradient
+                            colors={['#ef4444', '#dc2626']}
+                            style={styles.endSessionGradient}
                         >
-                            <Ionicons
-                                name={subtitlesEnabled ? "text" : "text-outline"}
-                                size={22}
-                                color="#fff"
-                            />
-                            <Text style={styles.controlLabel}>Subtitles</Text>
-                        </TouchableOpacity>
-
-                        <TranslationControls
-                            state={palabraState}
-                            enabled={palabraEnabled}
-                            onToggle={handlePalabraToggle}
-                            style={styles.controlBtn}
-                            activeStyle={styles.controlBtnActive}
-                            labelStyle={styles.controlLabel}
-                        />
-
-                        <TouchableOpacity
-                            style={[styles.endCallBtn]}
-                            onPress={handleCloseCall}
-                        >
-                            <Ionicons name="call" size={28} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.controlBtn, isMuted && styles.controlBtnMuted]}
-                            onPress={toggleMute}
-                        >
-                            <Ionicons
-                                name={isMuted ? "mic-off" : "mic"}
-                                size={22}
-                                color="#fff"
-                            />
-                            <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.controlBtn, isSpeakerOn && styles.controlBtnActive]}
-                            onPress={handleSpeakerToggle}
-                        >
-                            <Ionicons
-                                name={isSpeakerOn ? "volume-high" : "volume-low"}
-                                size={22}
-                                color="#fff"
-                            />
-                            <Text style={styles.controlLabel}>Speaker</Text>
-                        </TouchableOpacity>
-                    </View>
+                            <Ionicons name="stop" size={28} color="#fff" />
+                        </LinearGradient>
+                        <Text style={styles.endSessionLabel}>End Session</Text>
+                    </TouchableOpacity>
                 </View>
             </LinearGradient>
 
@@ -498,92 +535,307 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0a0a0a' },
-    gradient: { flex: 1 },
-    loadingContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { color: '#ffffff', marginTop: 16, fontSize: 16 },
-    topSection: { paddingTop: 60, paddingHorizontal: 20 },
-    statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    langBadge: {
+    container: {
+        flex: 1,
+        backgroundColor: '#0f0f1a',
+    },
+    gradient: {
+        flex: 1,
+    },
+    loadingContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 40,
+    },
+    loadingText: {
+        color: '#ffffff',
+        marginTop: 24,
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    loadingSubText: {
+        color: 'rgba(255,255,255,0.5)',
+        marginTop: 8,
+        fontSize: 14,
+        textAlign: 'center',
+    },
+
+    // Header
+    header: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(139,92,246,0.2)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        justifyContent: 'space-between',
+        paddingTop: 60,
+        paddingHorizontal: 20,
+        paddingBottom: 16,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    statusIndicator: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        overflow: 'hidden',
+    },
+    statusPulse: {
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        borderRadius: 6,
+    },
+    statusText: {
+        color: '#ffffff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    durationText: {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 12,
+        marginTop: 2,
+    },
+    endButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    // Language Card
+    languageCard: {
+        marginHorizontal: 20,
+        backgroundColor: 'rgba(255,255,255,0.05)',
         borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+    },
+    languageRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    languageItem: {
+        flex: 1,
+    },
+    languageLabel: {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 11,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 6,
+    },
+    languageValue: {
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: 6,
     },
-    langBadgeText: { color: '#8b5cf6', fontSize: 12, fontWeight: '500' },
-    callInfo: { alignItems: 'flex-end' },
-    callInfoText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
-    roleText: { color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 },
-    centerSection: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 40 },
-    avatarContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-    avatarPulseOuter: {
-        position: 'absolute',
-        width: 160,
-        height: 160,
-        borderRadius: 80,
-        backgroundColor: 'rgba(139,92,246,0.3)',
+    languageText: {
+        color: '#ffffff',
+        fontSize: 15,
+        fontWeight: '600',
     },
-    avatarPulseInner: {
-        position: 'absolute',
-        width: 140,
-        height: 140,
-        borderRadius: 70,
-        backgroundColor: 'rgba(139,92,246,0.4)',
+    languageArrow: {
+        paddingHorizontal: 12,
     },
-    avatarInner: {
-        width: 110,
-        height: 110,
-        borderRadius: 55,
-        backgroundColor: '#8b5cf6',
+    partnerInfo: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        gap: 6,
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.1)',
     },
-    avatarText: { fontSize: 36, fontWeight: '700', color: '#ffffff' },
-    mutedBadge: {
-        position: 'absolute',
-        bottom: 0,
-        right: 0,
+    partnerText: {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 13,
+    },
+    partnerName: {
+        color: '#8b5cf6',
+        fontWeight: '600',
+    },
+
+    // Translation Container
+    translationContainer: {
+        flex: 1,
+        marginTop: 16,
+        marginHorizontal: 20,
+    },
+    liveSection: {
+        marginBottom: 16,
+    },
+    liveBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 12,
+    },
+    liveDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
         backgroundColor: '#ef4444',
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+    },
+    liveText: {
+        color: '#ef4444',
+        fontSize: 11,
+        fontWeight: '700',
+        letterSpacing: 1,
+    },
+    currentTextBox: {
+        backgroundColor: 'rgba(139,92,246,0.15)',
+        borderRadius: 12,
+        padding: 14,
+        borderLeftWidth: 3,
+        borderLeftColor: '#8b5cf6',
+        marginBottom: 8,
+    },
+    currentOriginal: {
+        color: '#ffffff',
+        fontSize: 16,
+        lineHeight: 24,
+    },
+    currentTranslationBox: {
+        backgroundColor: 'rgba(16,185,129,0.15)',
+        borderRadius: 12,
+        padding: 14,
+        borderLeftWidth: 3,
+        borderLeftColor: '#10b981',
+    },
+    currentTranslated: {
+        color: '#10b981',
+        fontSize: 16,
+        lineHeight: 24,
+        fontWeight: '500',
+    },
+
+    // History
+    historyScroll: {
+        flex: 1,
+    },
+    historyContent: {
+        paddingBottom: 20,
+    },
+    emptyState: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+    },
+    emptyTitle: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 18,
+        fontWeight: '600',
+        marginTop: 20,
+    },
+    emptySubtitle: {
+        color: 'rgba(255,255,255,0.4)',
+        fontSize: 14,
+        textAlign: 'center',
+        marginTop: 8,
+        paddingHorizontal: 40,
+    },
+    historyEntry: {
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)',
+    },
+    entryHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 8,
+    },
+    entryTime: {
+        color: 'rgba(255,255,255,0.4)',
+        fontSize: 11,
+    },
+    entryOriginal: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 14,
+        lineHeight: 20,
+        marginBottom: 6,
+    },
+    entryTranslated: {
+        color: '#10b981',
+        fontSize: 14,
+        lineHeight: 20,
+        fontWeight: '500',
+    },
+
+    // Bottom Controls
+    bottomControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        paddingHorizontal: 20,
+        paddingBottom: 40,
+        paddingTop: 16,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.05)',
+    },
+    controlButton: {
+        alignItems: 'center',
+        gap: 8,
+    },
+    controlButtonActive: {},
+    controlIcon: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: 'rgba(255,255,255,0.1)',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    callerName: { fontSize: 28, fontWeight: '700', color: '#ffffff', marginBottom: 8 },
-    callStatusContainer: { marginTop: 8 },
-    connectedStatus: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    connectedDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981' },
-    durationText: { color: '#ffffff', fontSize: 18, fontWeight: '500' },
-    connectingStatus: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    connectingText: { color: 'rgba(255,255,255,0.7)', fontSize: 14 },
-    yourLangContainer: { marginTop: 24, alignItems: 'center' },
-    yourLangLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 12, marginBottom: 4 },
-    yourLangText: { color: '#10b981', fontSize: 14, fontWeight: '600' },
-    bottomSection: { paddingBottom: 50, paddingHorizontal: 20 },
-    controlsRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
-    controlBtn: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 56,
-        height: 70,
+    controlIconMuted: {
+        backgroundColor: 'rgba(239,68,68,0.2)',
     },
-    controlBtnActive: { opacity: 1 },
-    controlBtnMuted: { opacity: 1 },
-    controlLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 10, marginTop: 4 },
-    endCallBtn: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: '#ef4444',
+    controlIconActive: {
+        backgroundColor: 'rgba(139,92,246,0.2)',
+    },
+    controlLabel: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 11,
+        fontWeight: '500',
+    },
+    endSessionButton: {
+        alignItems: 'center',
+        gap: 8,
+    },
+    endSessionGradient: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    modalMessage: { fontSize: 16, lineHeight: 24, marginBottom: 24 },
-    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+    endSessionLabel: {
+        color: '#ef4444',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+
+    // Modal
+    modalMessage: {
+        fontSize: 16,
+        lineHeight: 24,
+        marginBottom: 24,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 12,
+    },
     modalButton: {
         paddingVertical: 12,
         paddingHorizontal: 24,
@@ -592,5 +844,9 @@ const styles = StyleSheet.create({
         minWidth: 80,
         alignItems: 'center',
     },
-    modalButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+    modalButtonText: {
+        color: '#ffffff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
 });
