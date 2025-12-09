@@ -900,6 +900,12 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
             <View style={styles.approvalBox}>
               <ActivityIndicator size="small" color="#8b5cf6" />
               <Text style={styles.approvalText}>Waiting for host approval...</Text>
+              <TouchableOpacity
+                style={styles.cancelApprovalButton}
+                onPress={handleCloseCall}
+              >
+                <Text style={styles.cancelApprovalText}>Cancel</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -1344,6 +1350,18 @@ const styles = StyleSheet.create({
   },
   approvalText: {
     fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  cancelApprovalButton: {
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  cancelApprovalText: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#ffffff',
   },
