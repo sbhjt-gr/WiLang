@@ -412,20 +412,6 @@ export default function CallNotesScreen() {
           </View>
         </View>
       )}
-      <View style={styles.featureList}>
-        {[
-          { icon: 'sparkles', text: 'AI-powered summaries', color: '#8b5cf6' },
-          { icon: 'bulb', text: 'Key points extraction', color: '#f59e0b' },
-          { icon: 'checkbox', text: 'Action items detection', color: '#10b981' },
-        ].map((feature, idx) => (
-          <View key={idx} style={[styles.featureItem, { backgroundColor: colors.surface }]}>
-            <View style={[styles.featureIcon, { backgroundColor: feature.color + '15' }]}>
-              <Ionicons name={feature.icon as any} size={16} color={feature.color} />
-            </View>
-            <Text style={[styles.featureText, { color: colors.textSecondary }]}>{feature.text}</Text>
-          </View>
-        ))}
-      </View>
     </View>
   );
 

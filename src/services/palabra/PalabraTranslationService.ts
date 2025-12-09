@@ -27,6 +27,18 @@ import {
 
 const DEFAULT_API_BASE_URL = 'https://api.palabra.ai';
 
+function normalizeSourceLang(lang: string): SourceLangCode {
+  const base = lang.split('-')[0].toLowerCase();
+  const valid: SourceLangCode[] = [
+    'auto', 'ar', 'be', 'bg', 'ca', 'cs', 'cy', 'da', 'de', 'el',
+    'en', 'es', 'et', 'fi', 'fr', 'gl', 'he', 'hi', 'hr', 'hu',
+    'id', 'it', 'ja', 'ko', 'lt', 'lv', 'ms', 'nl', 'no', 'pl',
+    'pt', 'ro', 'ru', 'sk', 'sl', 'sv', 'sw', 'ta', 'th', 'tr',
+    'uk', 'ur', 'vi', 'zh',
+  ];
+  return valid.includes(base as SourceLangCode) ? (base as SourceLangCode) : 'en';
+}
+
 export interface PalabraTranslationServiceConfig {
   auth: PalabraAuth;
   sourceLanguage: SourceLangCode;
@@ -97,17 +109,19 @@ export class PalabraTranslationService extends EventEmitter {
   }
 
   private getDetectableLanguages(): SourceLangCode[] {
-    if (this.sourceLanguage === 'auto') {
+    const normalized = normalizeSourceLang(this.sourceLanguage);
+    if (normalized === 'auto') {
       return [
         'en', 'uk', 'it', 'es', 'de', 'pt', 'tr', 'ar', 'ru', 'pl',
         'fr', 'id', 'zh', 'nl', 'ja', 'ko', 'fi', 'hu', 'el', 'cs',
         'da', 'he', 'hi',
       ];
     }
-    return [this.sourceLanguage];
+    return [normalized];
   }
 
   private createPipelineConfig(): PipelineConfig {
+    const normalizedSource = normalizeSourceLang(this.sourceLanguage);
     return {
       input_stream: {
         content_type: 'audio',
@@ -130,7 +144,7 @@ export class PalabraTranslationService extends EventEmitter {
           record_tracks: [],
         },
         transcription: {
-          source_language: this.sourceLanguage,
+          source_language: normalizedSource,
           detectable_languages: this.getDetectableLanguages(),
           segment_confirmation_silence_threshold: 0.5,
           sentence_splitter: { enabled: true },

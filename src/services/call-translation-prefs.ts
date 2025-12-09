@@ -12,11 +12,27 @@ const KEYS = {
 const DEFAULT_SOURCE: SourceLangCode = 'auto';
 const DEFAULT_TARGET: TargetLangCode = 'en-us';
 
+const VALID_SOURCE_LANGS: SourceLangCode[] = [
+  'auto', 'ar', 'be', 'bg', 'ca', 'cs', 'cy', 'da', 'de', 'el',
+  'en', 'es', 'et', 'fi', 'fr', 'gl', 'he', 'hi', 'hr', 'hu',
+  'id', 'it', 'ja', 'ko', 'lt', 'lv', 'ms', 'nl', 'no', 'pl',
+  'pt', 'ro', 'ru', 'sk', 'sl', 'sv', 'sw', 'ta', 'th', 'tr',
+  'uk', 'ur', 'vi', 'zh',
+];
+
+function normalizeSourceLang(val: string | null): SourceLangCode {
+  if (!val) return DEFAULT_SOURCE;
+  if (VALID_SOURCE_LANGS.includes(val as SourceLangCode)) return val as SourceLangCode;
+  const base = val.split('-')[0].toLowerCase();
+  if (VALID_SOURCE_LANGS.includes(base as SourceLangCode)) return base as SourceLangCode;
+  return DEFAULT_SOURCE;
+}
+
 export const CallTranslationPrefs = {
   async getSource(): Promise<SourceLangCode> {
     try {
       const val = await AsyncStorage.getItem(KEYS.SOURCE);
-      return (val as SourceLangCode) || DEFAULT_SOURCE;
+      return normalizeSourceLang(val);
     } catch {
       return DEFAULT_SOURCE;
     }

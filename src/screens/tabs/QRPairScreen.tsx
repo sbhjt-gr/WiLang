@@ -24,9 +24,9 @@ import { RootStackParamList } from '../../types/navigation';
 import type { SourceLangCode, TargetLangCode } from '../../services/palabra/types';
 import GlassModal from '../../components/GlassModal';
 
-const LANGUAGES = [
+const SOURCE_LANGUAGES = [
     { code: 'auto', label: 'Auto Detect', icon: 'flash-outline' },
-    { code: 'en-us', label: 'English', icon: 'language-outline' },
+    { code: 'en', label: 'English', icon: 'language-outline' },
     { code: 'es', label: 'Spanish', icon: 'language-outline' },
     { code: 'fr', label: 'French', icon: 'language-outline' },
     { code: 'de', label: 'German', icon: 'language-outline' },
@@ -36,6 +36,24 @@ const LANGUAGES = [
     { code: 'zh', label: 'Chinese', icon: 'language-outline' },
     { code: 'pt', label: 'Portuguese', icon: 'language-outline' },
     { code: 'ar', label: 'Arabic', icon: 'language-outline' },
+];
+
+const TARGET_LANGUAGES = [
+    { code: 'en-us', label: 'English (US)', icon: 'language-outline' },
+    { code: 'en-gb', label: 'English (UK)', icon: 'language-outline' },
+    { code: 'es', label: 'Spanish', icon: 'language-outline' },
+    { code: 'es-mx', label: 'Spanish (Mexico)', icon: 'language-outline' },
+    { code: 'fr', label: 'French', icon: 'language-outline' },
+    { code: 'fr-ca', label: 'French (Canada)', icon: 'language-outline' },
+    { code: 'de', label: 'German', icon: 'language-outline' },
+    { code: 'hi', label: 'Hindi', icon: 'language-outline' },
+    { code: 'ja', label: 'Japanese', icon: 'language-outline' },
+    { code: 'ko', label: 'Korean', icon: 'language-outline' },
+    { code: 'zh', label: 'Chinese', icon: 'language-outline' },
+    { code: 'zh-tw', label: 'Chinese (Taiwan)', icon: 'language-outline' },
+    { code: 'pt-br', label: 'Portuguese (Brazil)', icon: 'language-outline' },
+    { code: 'pt-pt', label: 'Portuguese (Portugal)', icon: 'language-outline' },
+    { code: 'ar-sa', label: 'Arabic', icon: 'language-outline' },
 ];
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
@@ -59,10 +77,7 @@ export default function QRPairScreen({ navigation }: Props) {
     const [search, setSearch] = useState('');
 
     const filteredLanguages = useMemo(() => {
-        let langs = LANGUAGES;
-        if (langSelectType === 'target') {
-            langs = LANGUAGES.filter(l => l.code !== 'auto');
-        }
+        const langs = langSelectType === 'source' ? SOURCE_LANGUAGES : TARGET_LANGUAGES;
         if (!search.trim()) return langs;
         return langs.filter(l => l.label.toLowerCase().includes(search.toLowerCase()));
     }, [search, langSelectType]);
@@ -111,8 +126,10 @@ export default function QRPairScreen({ navigation }: Props) {
     }, []);
 
     const getLangLabel = (code: string) => {
-        const lang = LANGUAGES.find(l => l.code === code);
-        return lang?.label || code;
+        const sourceLangMatch = SOURCE_LANGUAGES.find(l => l.code === code);
+        if (sourceLangMatch) return sourceLangMatch.label;
+        const targetLangMatch = TARGET_LANGUAGES.find(l => l.code === code);
+        return targetLangMatch?.label || code;
     };
 
     const startTranslationCall = useCallback((peer: QRPeerInfo) => {
