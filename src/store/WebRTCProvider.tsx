@@ -1108,7 +1108,7 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
       return;
     }
 
-    if (!callContactPhoneRef.current) {
+    if (!directCallStateRef.current.active && !callContactPhoneRef.current) {
       console.log('log_call_history_skipped_not_direct_call');
       callStartTimeRef.current = null;
       callTypeRef.current = null;
