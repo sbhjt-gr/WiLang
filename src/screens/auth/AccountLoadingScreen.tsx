@@ -94,13 +94,13 @@ export default function AccountLoadingScreen({ navigation, route }: Props) {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
-      
+
       <View style={[styles.floatingCircle, styles.circle1]} />
       <View style={[styles.floatingCircle, styles.circle2]} />
       <View style={[styles.floatingCircle, styles.circle3]} />
-      
+
       <SafeAreaView style={styles.safeArea}>
-        <MotiView 
+        <MotiView
           from={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{
@@ -110,7 +110,7 @@ export default function AccountLoadingScreen({ navigation, route }: Props) {
           }}
           style={styles.content}
         >
-          <MotiView 
+          <MotiView
             from={{ scale: 1 }}
             animate={{ scale: 1.1 }}
             transition={{
@@ -122,24 +122,24 @@ export default function AccountLoadingScreen({ navigation, route }: Props) {
             style={styles.logoContainer}
           >
             <View style={styles.logoGlow} />
-            <Image 
-              source={require('../../../assets/adaptive-icon.png')} 
+            <Image
+              source={require('../../../assets/icon.png')}
               style={styles.logo}
               resizeMode="contain"
             />
           </MotiView>
-          
+
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color="#ffffff" />
           </View>
-          
+
           <Text style={styles.statusText}>
-            Preparing your account
+            Loading your account
           </Text>
           <Text style={styles.statusSubtext}>
             This will only take a moment
           </Text>
-          </MotiView>
+        </MotiView>
       </SafeAreaView>
     </View>
   );
@@ -213,8 +213,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
   logo: {
-    width: 90,
-    height: 90,
+    width: 120,
+    height: 120,
+    borderRadius: 75,
   },
   loaderContainer: {
     marginBottom: 32,
