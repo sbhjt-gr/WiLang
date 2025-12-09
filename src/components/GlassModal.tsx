@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 
 const { width } = Dimensions.get('window');
+const ANIMATION_DURATION = 250;
 
 interface GlassModalProps {
   isVisible: boolean;
@@ -39,23 +40,46 @@ export default function GlassModal({
   headerActions,
 }: GlassModalProps) {
   const { colors, isDark } = useTheme();
+  const [modalVisible, setModalVisible] = useState(isVisible);
+  const [animating, setAnimating] = useState(isVisible);
+
+  useEffect(() => {
+    if (isVisible) {
+      setModalVisible(true);
+      setAnimating(true);
+    } else if (modalVisible) {
+      setAnimating(false);
+      const timer = setTimeout(() => {
+        setModalVisible(false);
+      }, ANIMATION_DURATION);
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible]);
+
+  const handleClose = () => {
+    setAnimating(false);
+    setTimeout(() => {
+      setModalVisible(false);
+      onClose();
+    }, ANIMATION_DURATION);
+  };
 
   return (
     <Modal
-      visible={isVisible}
+      visible={modalVisible}
       transparent
       animationType="none"
       statusBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <AnimatePresence>
-        {isVisible && (
+        {animating && (
           <View style={styles.overlay} key="modal-overlay">
             <MotiView
               from={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ type: 'timing', duration: 300 }}
+              transition={{ type: 'timing', duration: ANIMATION_DURATION }}
               style={[
                 styles.backdrop,
                 {
@@ -65,7 +89,7 @@ export default function GlassModal({
             >
               <TouchableOpacity
                 style={styles.backdropTouchable}
-                onPress={onClose}
+                onPress={handleClose}
                 activeOpacity={1}
               />
             </MotiView>
@@ -74,7 +98,7 @@ export default function GlassModal({
               from={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ type: 'spring', damping: 15 }}
+              transition={{ type: 'timing', duration: ANIMATION_DURATION }}
               style={[
                 styles.bottomSheet,
                 {
@@ -121,7 +145,7 @@ export default function GlassModal({
                             : 'rgba(255, 255, 255, 0.6)',
                         }
                       ]}
-                      onPress={onClose}
+                      onPress={handleClose}
                       activeOpacity={0.7}
                     >
                       <Ionicons name="close" size={20} color={colors.textSecondary} />
