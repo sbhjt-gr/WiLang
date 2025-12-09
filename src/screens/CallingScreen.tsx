@@ -4,7 +4,6 @@ import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { videoCallService } from '../services/VideoCallService';
 import { WebRTCContext } from '../store/WebRTCContext';
@@ -184,114 +183,112 @@ export default function CallingScreen() {
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
-        <LinearGradient
-          colors={[colors.primary, colors.secondary] as readonly [string, string, ...string[]]}
-          style={styles.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.content}>
-            <View style={styles.statusContainer}>
-              <Text style={[styles.statusText, { color: colors.textInverse }]}>
-                {params.callType === 'incoming' ? 'Incoming Call' : 'Calling...'}
+      <LinearGradient
+        colors={[colors.primary, colors.secondary] as readonly [string, string, ...string[]]}
+        style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.content}>
+          <View style={styles.statusContainer}>
+            <Text style={[styles.statusText, { color: colors.textInverse }]}>
+              {params.callType === 'incoming' ? 'Incoming Call' : 'Calling...'}
+            </Text>
+            {params.callType === 'outgoing' && callDuration > 0 && (
+              <Text style={[styles.durationText, { color: colors.textInverse }]}>
+                {formatDuration(callDuration)}
               </Text>
-              {params.callType === 'outgoing' && callDuration > 0 && (
-                <Text style={[styles.durationText, { color: colors.textInverse }]}>
-                  {formatDuration(callDuration)}
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.callerContainer}>
-              <MotiView
-                from={{ scale: 1 }}
-                animate={{ scale: 1.15 }}
-                transition={{
-                  type: 'timing',
-                  duration: 1200,
-                  loop: true,
-                  repeatReverse: true,
-                }}
-                style={styles.avatarPulse}
-              >
-                <View style={styles.avatarOuter}>
-                  {params.callerImage ? (
-                    <Image source={{ uri: params.callerImage }} style={styles.avatarImage} />
-                  ) : (
-                    <View style={[styles.avatar, { backgroundColor: colors.primaryDark }]}>
-                      <Text style={[styles.avatarText, { color: colors.textInverse }]}>
-                        {getInitials(params.callerName)}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </MotiView>
-
-              <Text style={[styles.callerName, { color: colors.textInverse }]}>
-                {params.callerName}
-              </Text>
-              {params.callerPhone && (
-                <Text style={[styles.callerPhone, { color: colors.textInverse }]}>
-                  {params.callerPhone}
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.actionsContainer}>
-              {params.callType === 'incoming' ? (
-                <View style={styles.sliderContainer}>
-                  <Animated.View style={[styles.sliderTrack, trackStyle]}>
-                    <View style={styles.iconsRow}>
-                      <View style={styles.iconLeft}>
-                        <Ionicons name="call" size={24} color="rgba(255,59,48,0.8)" style={{ transform: [{ rotate: '135deg' }] }} />
-                      </View>
-
-                      <Animated.View style={[styles.arrowsLeft, leftArrowStyle]}>
-                        <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.4)" />
-                        <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.6)" style={{ marginLeft: -6 }} />
-                      </Animated.View>
-
-                      <GestureDetector gesture={panGesture}>
-                        <Animated.View style={[styles.knob, knobStyle]}>
-                          <Ionicons name="call" size={28} color="#fff" />
-                        </Animated.View>
-                      </GestureDetector>
-
-                      <Animated.View style={[styles.arrowsRight, rightArrowStyle]}>
-                        <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.6)" />
-                        <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" style={{ marginLeft: -6 }} />
-                      </Animated.View>
-
-                      <View style={styles.iconRight}>
-                        <Ionicons name="call" size={24} color="rgba(76,217,100,0.8)" />
-                      </View>
-                    </View>
-                  </Animated.View>
-                  <Text style={styles.hintLabel}>Swipe to answer or decline</Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.cancelButton, { backgroundColor: colors.error }]}
-                  onPress={handleCancel}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="call" size={24} color={colors.textInverse} style={{ transform: [{ rotate: '135deg' }] }} />
-                  <Text style={[styles.cancelLabel, { color: colors.textInverse }]}>End Call</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View style={styles.hintContainer}>
-              <Text style={[styles.hintText, { color: colors.textInverse }]}>
-                {params.callType === 'incoming'
-                  ? (params.isVoiceOnly ? 'Voice call' : 'Video call')
-                  : 'Connecting...'}
-              </Text>
-            </View>
+            )}
           </View>
-        </LinearGradient>
-      </SafeAreaView>
+
+          <View style={styles.callerContainer}>
+            <MotiView
+              from={{ scale: 1 }}
+              animate={{ scale: 1.15 }}
+              transition={{
+                type: 'timing',
+                duration: 1200,
+                loop: true,
+                repeatReverse: true,
+              }}
+              style={styles.avatarPulse}
+            >
+              <View style={styles.avatarOuter}>
+                {params.callerImage ? (
+                  <Image source={{ uri: params.callerImage }} style={styles.avatarImage} />
+                ) : (
+                  <View style={[styles.avatar, { backgroundColor: colors.primaryDark }]}>
+                    <Text style={[styles.avatarText, { color: colors.textInverse }]}>
+                      {getInitials(params.callerName)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </MotiView>
+
+            <Text style={[styles.callerName, { color: colors.textInverse }]}>
+              {params.callerName}
+            </Text>
+            {params.callerPhone && (
+              <Text style={[styles.callerPhone, { color: colors.textInverse }]}>
+                {params.callerPhone}
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.actionsContainer}>
+            {params.callType === 'incoming' ? (
+              <View style={styles.sliderContainer}>
+                <Animated.View style={[styles.sliderTrack, trackStyle]}>
+                  <View style={styles.iconsRow}>
+                    <View style={styles.iconLeft}>
+                      <Ionicons name="call" size={24} color="rgba(255,59,48,0.8)" style={{ transform: [{ rotate: '135deg' }] }} />
+                    </View>
+
+                    <Animated.View style={[styles.arrowsLeft, leftArrowStyle]}>
+                      <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.4)" />
+                      <Ionicons name="chevron-back" size={18} color="rgba(255,255,255,0.6)" style={{ marginLeft: -6 }} />
+                    </Animated.View>
+
+                    <GestureDetector gesture={panGesture}>
+                      <Animated.View style={[styles.knob, knobStyle]}>
+                        <Ionicons name="call" size={28} color="#fff" />
+                      </Animated.View>
+                    </GestureDetector>
+
+                    <Animated.View style={[styles.arrowsRight, rightArrowStyle]}>
+                      <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.6)" />
+                      <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" style={{ marginLeft: -6 }} />
+                    </Animated.View>
+
+                    <View style={styles.iconRight}>
+                      <Ionicons name="call" size={24} color="rgba(76,217,100,0.8)" />
+                    </View>
+                  </View>
+                </Animated.View>
+                <Text style={styles.hintLabel}>Swipe to answer or decline</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.cancelButton, { backgroundColor: colors.error }]}
+                onPress={handleCancel}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="call" size={24} color={colors.textInverse} style={{ transform: [{ rotate: '135deg' }] }} />
+                <Text style={[styles.cancelLabel, { color: colors.textInverse }]}>End Call</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.hintContainer}>
+            <Text style={[styles.hintText, { color: colors.textInverse }]}>
+              {params.callType === 'incoming'
+                ? (params.isVoiceOnly ? 'Voice call' : 'Video call')
+                : 'Connecting...'}
+            </Text>
+          </View>
+        </View>
+      </LinearGradient>
     </GestureHandlerRootView>
   );
 }
