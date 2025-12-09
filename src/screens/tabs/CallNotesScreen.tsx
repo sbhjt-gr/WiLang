@@ -441,7 +441,7 @@ export default function CallNotesScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8b5cf6" />
         }
       >
-        {notes.length > 0 && renderStatsHeader()}
+        {renderStatsHeader()}
         {renderFilterButtons()}
         
         <View style={styles.notesContainer}>
