@@ -1006,7 +1006,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       </GlassModal>
 
       <GlassModal
-        isVisible={showShareModal && !!currentMeetingId && !isDirectCall && !pendingJoinRequest}
+        isVisible={showShareModal && !!currentMeetingId && !isDirectCall}
         onClose={() => setShowShareModal(false)}
         title="Share Call"
         subtitle="Invite others to join"
