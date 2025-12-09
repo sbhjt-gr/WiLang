@@ -12,7 +12,6 @@ import { WebRTCPeerManager } from './WebRTCPeerManager';
 import { WebRTCMeetingManager } from './WebRTCMeetingManager';
 import { keyManager, sessionManager } from '../crypto';
 import { callHistoryService } from '../services/CallHistoryService';
-import { pushService } from '../services/push-service';
 import { callKeepService } from '../services/callkeep-service';
 import { navigationRef, navigate, goBack } from '../utils/navigationRef';
 import { getCurrentUser } from '../services/FirebaseService';

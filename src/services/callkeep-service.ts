@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 import RNCallKeep from 'react-native-callkeep';
 import { navigate } from '../utils/navigationRef';
-import { clearIncomingCall } from '../utils/call-storage';
 
 interface CallData {
   callId: string;
@@ -13,16 +12,12 @@ interface CallData {
   meetingToken?: string;
 }
 
-type VoipTokenCallback = (token: string) => void;
-
 class CallKeepService {
   private initialized = false;
   private activeCallId: string | null = null;
   private pendingCallData: CallData | null = null;
   private answerCallback: ((callData: CallData) => void) | null = null;
   private endCallback: ((callId: string) => void) | null = null;
-  private voipTokenCallback: VoipTokenCallback | null = null;
-  private voipToken: string | null = null;
 
   async init(): Promise<boolean> {
     if (this.initialized) return true;
@@ -97,7 +92,7 @@ class CallKeepService {
     }
   }
 
-  private async onAnswerCall({ callUUID }: { callUUID: string }) {
+  private onAnswerCall({ callUUID }: { callUUID: string }) {
     console.log('callkeep_answered', callUUID);
     
     if (Platform.OS === 'android') {
@@ -120,20 +115,18 @@ class CallKeepService {
       });
     }
 
-    await clearIncomingCall();
     RNCallKeep.endCall(callUUID);
     this.activeCallId = null;
     this.pendingCallData = null;
   }
 
-  private async onEndCall({ callUUID }: { callUUID: string }) {
+  private onEndCall({ callUUID }: { callUUID: string }) {
     console.log('callkeep_ended', callUUID);
     
     if (this.endCallback && this.activeCallId) {
       this.endCallback(this.activeCallId);
     }
 
-    await clearIncomingCall();
     this.activeCallId = null;
     this.pendingCallData = null;
   }
@@ -156,25 +149,6 @@ class CallKeepService {
 
   private onMuteCall({ muted, callUUID }: { muted: boolean; callUUID: string }) {
     console.log('callkeep_mute', { muted, callUUID });
-  }
-
-  onVoipTokenReceived(callback: VoipTokenCallback) {
-    this.voipTokenCallback = callback;
-    if (this.voipToken) {
-      callback(this.voipToken);
-    }
-  }
-
-  setVoipToken(token: string) {
-    this.voipToken = token;
-    console.log('voip_token_set');
-    if (this.voipTokenCallback) {
-      this.voipTokenCallback(token);
-    }
-  }
-
-  getVoipToken(): string | null {
-    return this.voipToken;
   }
 
   displayIncomingCall(callData: CallData) {

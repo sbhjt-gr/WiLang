@@ -29,7 +29,6 @@ import WebRTCInitializer from './src/components/WebRTCInitializer';
 import { ThemeProvider } from './src/theme';
 import { pushService } from './src/services/push-service';
 import { callKeepService } from './src/services/callkeep-service';
-import { getIncomingCall, clearIncomingCall } from './src/utils/call-storage';
 
 registerGlobals();
 
@@ -57,24 +56,6 @@ export default function App() {
         await callKeepService.init();
         await pushService.setupNotificationChannel();
         pushService.setupNotificationHandler();
-
-        const storedCall = await getIncomingCall();
-        if (storedCall) {
-          await clearIncomingCall();
-          setTimeout(() => {
-            navigate('CallingScreen', {
-              callType: 'incoming',
-              callerName: storedCall.callerName,
-              callerPhone: storedCall.callerPhone,
-              callerId: storedCall.callerId,
-              callerSocketId: storedCall.callerSocketId,
-              callId: storedCall.callId,
-              meetingId: storedCall.meetingId,
-              meetingToken: storedCall.meetingToken,
-              fromPush: true,
-            });
-          }, 500);
-        }
       } catch (error) {
         console.error('app_init_error', error);
       }
