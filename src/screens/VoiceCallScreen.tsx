@@ -391,19 +391,24 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
 
   const handlePalabraToggle = useCallback(() => {
     if (!palabraEnabled && remotePeers.length > 0) {
-      const initialSettings: ParticipantTranslation[] = remotePeers.map(p => ({
+      setShowTranslationModal(true);
+    } else {
+      setPalabraEnabled(prev => !prev);
+    }
+  }, [palabraEnabled, remotePeers.length]);
+
+  const modalParticipants = useMemo((): ParticipantTranslation[] => {
+    return remotePeers.map(p => {
+      const existing = participantSettings.find(s => s.peerId === p.peerId);
+      return existing || {
         peerId: p.peerId,
         name: p.username || p.name || 'Unknown',
         enabled: false,
         source: 'auto' as SourceLangCode,
         target: palabraTarget,
-      }));
-      setParticipantSettings(initialSettings);
-      setShowTranslationModal(true);
-    } else {
-      setPalabraEnabled(prev => !prev);
-    }
-  }, [palabraEnabled, remotePeers, palabraTarget]);
+      };
+    });
+  }, [remotePeers, participantSettings, palabraTarget]);
 
   const handleSaveParticipantTranslation = useCallback((settings: ParticipantTranslation[]) => {
     setParticipantSettings(settings);
@@ -1080,7 +1085,7 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
       <ParticipantTranslationModal
         isVisible={showTranslationModal}
         onClose={() => setShowTranslationModal(false)}
-        participants={participantSettings}
+        participants={modalParticipants}
         onSave={handleSaveParticipantTranslation}
         localUser={{ name: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'You' }}
       />

@@ -45,6 +45,12 @@ export default function ParticipantTranslationModal({
   const [selectingLang, setSelectingLang] = useState<SelectingLang>(null);
   const [search, setSearch] = useState('');
 
+  React.useEffect(() => {
+    if (isVisible) {
+      setSettings(participants);
+    }
+  }, [isVisible, participants]);
+
   const handleToggle = useCallback((peerId: string, enabled: boolean) => {
     setSettings(prev =>
       prev.map(p => (p.peerId === peerId ? { ...p, enabled } : p))
