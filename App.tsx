@@ -6,6 +6,7 @@ import { View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
+import messaging from '@react-native-firebase/messaging';
 import TabNavigator from './src/screens/TabNavigator';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
@@ -28,6 +29,7 @@ import WebRTCProvider from './src/store/WebRTCProvider';
 import WebRTCInitializer from './src/components/WebRTCInitializer';
 import { ThemeProvider } from './src/theme';
 import { pushService } from './src/services/push-service';
+import { callKeepService } from './src/services/callkeep-service';
 
 registerGlobals();
 
@@ -52,27 +54,27 @@ export default function App() {
         await initDatabase();
         console.log('database_initialized');
 
+        await callKeepService.init();
         await pushService.setupNotificationChannel();
         pushService.setupNotificationHandler();
 
-        const lastResponse = await pushService.getLastNotificationResponse();
-        if (lastResponse) {
-          const data = lastResponse.notification.request.content.data;
-          if (data?.type === 'incoming_call') {
-            setTimeout(() => {
-              navigate('CallingScreen', {
-                callType: 'incoming',
-                callerName: String(data.callerName || 'Unknown'),
-                callerPhone: data.callerPhone ? String(data.callerPhone) : undefined,
-                callerId: data.callerId ? String(data.callerId) : undefined,
-                callerSocketId: data.callerSocketId ? String(data.callerSocketId) : undefined,
-                callId: data.callId ? String(data.callId) : undefined,
-                meetingId: data.meetingId ? String(data.meetingId) : undefined,
-                meetingToken: data.meetingToken ? String(data.meetingToken) : undefined,
-                isVoiceOnly: data.callType === 'voice',
-              });
-            }, 1000);
-          }
+        const initialNotification = await messaging().getInitialNotification();
+        if (initialNotification?.data?.type === 'incoming_call') {
+          const data = initialNotification.data;
+          setTimeout(() => {
+            navigate('CallingScreen', {
+              callType: 'incoming',
+              callerName: String(data.callerName || 'Unknown'),
+              callerPhone: data.callerPhone ? String(data.callerPhone) : undefined,
+              callerId: data.callerId ? String(data.callerId) : undefined,
+              callerSocketId: data.callerSocketId ? String(data.callerSocketId) : undefined,
+              callId: data.callId ? String(data.callId) : undefined,
+              meetingId: data.meetingId ? String(data.meetingId) : undefined,
+              meetingToken: data.meetingToken ? String(data.meetingToken) : undefined,
+              isVoiceOnly: data.callType === 'voice',
+              fromPush: true,
+            });
+          }, 1000);
         }
       } catch (error) {
         console.error('app_init_error', error);
@@ -80,6 +82,43 @@ export default function App() {
     };
 
     initApp();
+
+    const unsubscribeForeground = messaging().onMessage(async (remoteMessage) => {
+      console.log('fcm_foreground', remoteMessage.data?.type);
+      const data = remoteMessage.data;
+
+      if (data?.type === 'incoming_call') {
+        callKeepService.displayIncomingCall({
+          callId: String(data.callId || ''),
+          callerName: String(data.callerName || 'Unknown'),
+          callerPhone: data.callerPhone ? String(data.callerPhone) : undefined,
+          callerId: data.callerId ? String(data.callerId) : undefined,
+          callerSocketId: data.callerSocketId ? String(data.callerSocketId) : undefined,
+          meetingId: data.meetingId ? String(data.meetingId) : undefined,
+          meetingToken: data.meetingToken ? String(data.meetingToken) : undefined,
+        });
+      }
+    });
+
+    const unsubscribeOpenedApp = messaging().onNotificationOpenedApp((remoteMessage) => {
+      console.log('fcm_opened', remoteMessage.data?.type);
+      const data = remoteMessage.data;
+
+      if (data?.type === 'incoming_call') {
+        navigate('CallingScreen', {
+          callType: 'incoming',
+          callerName: String(data.callerName || 'Unknown'),
+          callerPhone: data.callerPhone ? String(data.callerPhone) : undefined,
+          callerId: data.callerId ? String(data.callerId) : undefined,
+          callerSocketId: data.callerSocketId ? String(data.callerSocketId) : undefined,
+          callId: data.callId ? String(data.callId) : undefined,
+          meetingId: data.meetingId ? String(data.meetingId) : undefined,
+          meetingToken: data.meetingToken ? String(data.meetingToken) : undefined,
+          isVoiceOnly: data.callType === 'voice',
+          fromPush: true,
+        });
+      }
+    });
 
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
@@ -109,7 +148,11 @@ export default function App() {
       }
     });
 
-    return () => subscription.remove();
+    return () => {
+      unsubscribeForeground();
+      unsubscribeOpenedApp();
+      subscription.remove();
+    };
   }, []);
 
   return (

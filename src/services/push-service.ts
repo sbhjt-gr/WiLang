@@ -1,10 +1,12 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
+import messaging from '@react-native-firebase/messaging';
 
 class PushService {
   private fcmToken: string | null = null;
   private tokenListeners: Array<(token: string) => void> = [];
+  private unsubscribeTokenRefresh: (() => void) | null = null;
 
   async init(): Promise<string | null> {
     if (!Device.isDevice) {
@@ -12,26 +14,32 @@ class PushService {
       return null;
     }
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-      console.log('push_permission_denied');
-      return null;
-    }
-
     try {
-      const tokenData = await Notifications.getDevicePushTokenAsync();
-      this.fcmToken = tokenData.data;
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+      if (!enabled) {
+        console.log('push_permission_denied');
+        return null;
+      }
+
+      if (Platform.OS === 'ios') {
+        await messaging().registerDeviceForRemoteMessages();
+      }
+
+      this.fcmToken = await messaging().getToken();
       console.log('push_token_obtained', Platform.OS);
 
       this.tokenListeners.forEach(listener => {
         if (this.fcmToken) listener(this.fcmToken);
+      });
+
+      this.unsubscribeTokenRefresh = messaging().onTokenRefresh((token) => {
+        this.fcmToken = token;
+        console.log('push_token_refreshed');
+        this.tokenListeners.forEach(listener => listener(token));
       });
 
       return this.fcmToken;
