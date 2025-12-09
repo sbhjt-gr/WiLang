@@ -148,9 +148,9 @@ export default function CallsScreen({ navigation }: Props) {
     } else {
       const meetingId = call.meetingId || `REDIAL_${Date.now()}`;
       const screenName = isVoiceOnly ? 'VoiceCallScreen' : 'VideoCallScreen';
-      navigation.navigate(screenName, {
-        id: meetingId,
-        type: 'instant',
+      navigation.reset({
+        index: 0,
+        routes: [{ name: screenName, params: { id: meetingId, type: 'instant' } }],
       });
     }
   };
@@ -209,19 +209,17 @@ export default function CallsScreen({ navigation }: Props) {
       const isOnlyNumeric = /^[0-9]+$/.test(rawInput);
       const numericId = parseInt(rawInput);
       if (isOnlyNumeric && !isNaN(numericId)) {
-        navigation.navigate('VideoCallScreen', {
-          id: numericId.toString(),
-          type: 'join',
-          joinCode: numericId.toString()
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'VideoCallScreen', params: { id: numericId.toString(), type: 'join', joinCode: numericId.toString() } }],
         });
       } else {
         const cleanCode = rawInput.toUpperCase();
 
         if (/^[A-Z0-9]{4,8}$/.test(cleanCode)) {
-          navigation.navigate('VideoCallScreen', {
-            id: Date.now().toString(),
-            type: 'join',
-            joinCode: cleanCode
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'VideoCallScreen', params: { id: Date.now().toString(), type: 'join', joinCode: cleanCode } }],
           });
         } else {
           showModal("Invalid Code", "Join codes should be 4-8 characters using letters and numbers only.", "alert-circle");
@@ -234,9 +232,9 @@ export default function CallsScreen({ navigation }: Props) {
 
   const createMeeting = (): void => {
     const meetingId = `INSTANT_${Date.now()}`;
-    navigation.navigate('VideoCallScreen', {
-      id: meetingId,
-      type: 'instant'
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'VideoCallScreen', params: { id: meetingId, type: 'instant' } }],
     });
   };
 

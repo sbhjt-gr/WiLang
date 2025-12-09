@@ -377,7 +377,7 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
     } catch (err) {
       console.log('call_cleanup_err', err);
     } finally {
-      navigation.navigate('HomeScreen', {});
+      navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
     }
   }, [closeCall, navigation]);
 
