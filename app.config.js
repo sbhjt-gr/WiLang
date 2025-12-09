@@ -22,6 +22,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.gorai.wilanger",
+      buildNumber: "2",
       googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
       deploymentTarget: "18.0",
       infoPlist: {
@@ -46,6 +47,7 @@ export default {
         backgroundColor: "#3754AB"
       },
       package: "com.gorai.wilanger",
+      versionCode: 2,
       googleServicesFile: "./android/app/google-services.json",
       permissions: [
         "android.permission.READ_CONTACTS",

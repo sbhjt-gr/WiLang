@@ -40,7 +40,7 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>2</string>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>
@@ -60,6 +60,8 @@
     <string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>WiLang needs microphone access for real-time speech transcription.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>WiLang needs access to your photo library to save or share media from video calls.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>WiLang needs speech recognition access for real-time subtitle transcription.</string>
     <key>NSUserActivityTypes</key>
