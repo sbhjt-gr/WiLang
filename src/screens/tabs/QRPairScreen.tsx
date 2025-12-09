@@ -85,14 +85,7 @@ export default function QRPairScreen({ navigation }: Props) {
     useEffect(() => {
         const handlePeerJoined = (peer: QRPeerInfo) => {
             setShowQRModal(false);
-            Alert.alert(
-                'Partner Found!',
-                `${peer.username || 'Someone'} wants to connect.\nTheir language: ${getLangLabel(peer.sourceLang)} → ${getLangLabel(peer.targetLang)}`,
-                [
-                    { text: 'Cancel', style: 'cancel', onPress: () => qrPairingService.cancelSession() },
-                    { text: 'Start Translation', onPress: () => startTranslationCall(peer) },
-                ]
-            );
+            startTranslationCall(peer);
         };
 
         const handleExpired = () => {
