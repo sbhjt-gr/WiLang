@@ -173,6 +173,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const pendingJoinRequest = pendingJoinRequests?.[0];
   const pendingJoinRequestId = pendingJoinRequest?.requestId;
 
+  useEffect(() => {
+    if (pendingJoinRequest) {
+      setShowShareModal(false);
+    }
+  }, [pendingJoinRequest]);
+
   const handleApproveJoinRequest = useCallback(() => {
     if (pendingJoinRequestId) {
       approveJoinRequest?.(pendingJoinRequestId);
@@ -1000,7 +1006,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       </GlassModal>
 
       <GlassModal
-        isVisible={showShareModal && !!currentMeetingId && !isDirectCall}
+        isVisible={showShareModal && !!currentMeetingId && !isDirectCall && !pendingJoinRequest}
         onClose={() => setShowShareModal(false)}
         title="Share Call"
         subtitle="Invite others to join"
