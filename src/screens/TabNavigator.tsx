@@ -139,9 +139,11 @@ export default function TabNavigator({ navigation, route }: Props) {
               <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
             </View>
             <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.headerButton}>
-                <Ionicons name="search-outline" size={20} color="#ffffff" />
-              </TouchableOpacity>
+              {activeTab === 'calls' && (
+                <TouchableOpacity style={styles.headerButton}>
+                  <Ionicons name="search-outline" size={20} color="#ffffff" />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={styles.headerButton}
                 onPress={openNotifications}
