@@ -8,7 +8,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../types/navigation';
 import CallsScreen from './tabs/CallsScreen';
 import ContactsScreen from './tabs/ContactsScreen';
-import HistoryScreen from './tabs/HistoryScreen';
 import SettingsScreen from './tabs/SettingsScreen';
 import { useTheme } from '../theme';
 
@@ -20,7 +19,7 @@ interface Props {
   route: TabNavigatorRouteProp;
 }
 
-type TabType = 'calls' | 'contacts' | 'history' | 'settings';
+type TabType = 'calls' | 'contacts' | 'settings';
 
 interface TabItem {
   key: TabType;
@@ -41,12 +40,6 @@ const tabs: TabItem[] = [
     title: 'Contacts',
     icon: 'people-outline',
     iconFocused: 'people',
-  },
-  {
-    key: 'history',
-    title: 'History',
-    icon: 'time-outline',
-    iconFocused: 'time',
   },
   {
     key: 'settings',
@@ -110,7 +103,6 @@ export default function TabNavigator({ navigation, route }: Props) {
     switch (activeTab) {
       case 'calls': return 'WiLang';
       case 'contacts': return 'Contacts';
-      case 'history': return 'Call History';
       case 'settings': return 'Settings';
       default: return 'WiLang';
     }
@@ -122,8 +114,6 @@ export default function TabNavigator({ navigation, route }: Props) {
         return <CallsScreen navigation={navigation} />;
       case 'contacts':
         return <ContactsScreen />;
-      case 'history':
-        return <HistoryScreen />;
       case 'settings':
         return <SettingsScreen navigation={navigation} />;
       default:
@@ -140,8 +130,8 @@ export default function TabNavigator({ navigation, route }: Props) {
           <View style={styles.headerContent}>
             <View style={styles.headerLeft}>
               <View style={styles.logoContainer}>
-                <Image 
-                  source={require('../../assets/icon.png')} 
+                <Image
+                  source={require('../../assets/icon.png')}
                   style={styles.logoImage}
                   resizeMode="contain"
                 />
@@ -152,7 +142,7 @@ export default function TabNavigator({ navigation, route }: Props) {
               <TouchableOpacity style={styles.headerButton}>
                 <Ionicons name="search-outline" size={20} color="#ffffff" />
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.headerButton}
                 onPress={openNotifications}
               >
@@ -170,14 +160,14 @@ export default function TabNavigator({ navigation, route }: Props) {
         onRequestClose={closeNotifications}
       >
         <Animated.View style={[styles.notificationOverlay, { opacity: fadeAnim }]}>
-          <Pressable 
-            style={StyleSheet.absoluteFill} 
+          <Pressable
+            style={StyleSheet.absoluteFill}
             onPress={closeNotifications}
           />
-          <Animated.View 
+          <Animated.View
             style={[
               styles.notificationPanelContainer,
-              { 
+              {
                 transform: [
                   { scale: scaleAnim },
                 ],
@@ -188,7 +178,7 @@ export default function TabNavigator({ navigation, route }: Props) {
             <View style={styles.notificationArrowContainer}>
               <View style={[styles.notificationArrow, { borderBottomColor: colors.surface }]} />
             </View>
-            <Pressable onPress={() => {}}>
+            <Pressable onPress={() => { }}>
               <View style={[styles.notificationPanel, { backgroundColor: colors.surface }]}>
                 <View style={styles.notificationHeader}>
                   <Text style={[styles.notificationTitle, { color: colors.text }]}>Notifications</Text>

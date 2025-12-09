@@ -1,10 +1,15 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, ScrollView, StyleSheet, Platform, TouchableOpacity, StatusBar, TextInput, Text, Image } from 'react-native';
+import React, { useState, useRef, useCallback, useContext } from 'react';
+import { View, ScrollView, StyleSheet, TouchableOpacity, TextInput, Text, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import GlassModal from '../../components/GlassModal';
+import { callHistoryService, CallHistoryEntry } from '../../services/CallHistoryService';
+import { auth } from '../../config/firebase';
+import { useFocusEffect } from '@react-navigation/native';
+import { videoCallService } from '../../services/VideoCallService';
+import { WebRTCContext } from '../../store/WebRTCContext';
 
 type CallsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -16,6 +21,7 @@ export default function CallsScreen({ navigation }: Props) {
   const [id, setID] = useState<string>('');
   const textInputRef = useRef<TextInput>(null);
   const { colors } = useTheme();
+  const webRTCContext = useContext(WebRTCContext);
   const [modalConfig, setModalConfig] = useState<{
     visible: boolean;
     title: string;
@@ -27,6 +33,160 @@ export default function CallsScreen({ navigation }: Props) {
     message: '',
     icon: 'information-circle',
   });
+
+  const [callHistory, setCallHistory] = useState<CallHistoryEntry[]>([]);
+  const [stats, setStats] = useState({
+    totalCalls: 0,
+    totalDuration: 0,
+    missedCalls: 0,
+    completedCalls: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadCallHistory = async (forceRefresh: boolean = false) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const [history, callStats] = await Promise.all([
+        callHistoryService.getCallHistory(currentUser.uid, 50, forceRefresh),
+        callHistoryService.getCallStats(currentUser.uid),
+      ]);
+
+      setCallHistory(history);
+      setStats(callStats);
+    } catch (error) {
+      console.log('load_call_history_failed', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCallHistory(false);
+    }, [])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadCallHistory(true);
+  };
+
+  const formatDuration = (seconds: number): string => {
+    if (seconds === 0) return '00:00';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatTotalDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m`;
+    }
+    return `${seconds}s`;
+  };
+
+  const formatTimeAgo = (timestamp: number): string => {
+    const now = Date.now();
+    const diffMs = now - timestamp;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+
+    const date = new Date(timestamp);
+    return date.toLocaleDateString();
+  };
+
+  const handleCall = async (call: CallHistoryEntry, isVoiceOnly: boolean = false) => {
+    if (call.contactId && call.contactPhone) {
+      try {
+        if (!webRTCContext) {
+          Alert.alert('Unable to Call', 'Something went wrong. Please restart the app and try again.');
+          return;
+        }
+        videoCallService.setNavigationRef({ current: navigation });
+
+        if (isVoiceOnly) {
+          await videoCallService.startVoiceCallWithPhone(
+            call.contactId,
+            call.contactPhone,
+            call.contactName
+          );
+        } else {
+          await videoCallService.startVideoCallWithPhone(
+            call.contactId,
+            call.contactPhone,
+            call.contactName
+          );
+        }
+      } catch {
+        Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
+      }
+    } else {
+      const meetingId = call.meetingId || `REDIAL_${Date.now()}`;
+      const screenName = isVoiceOnly ? 'VoiceCallScreen' : 'VideoCallScreen';
+      navigation.navigate(screenName, {
+        id: meetingId,
+        type: 'instant',
+      });
+    }
+  };
+
+  const showCallOptions = (call: CallHistoryEntry) => {
+    if (!call.contactId || !call.contactPhone) {
+      handleCall(call, false);
+      return;
+    }
+
+    Alert.alert(
+      call.contactName,
+      'Choose call type',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Voice Call', onPress: () => handleCall(call, true) },
+        { text: 'Video Call', onPress: () => handleCall(call, false) },
+      ]
+    );
+  };
+
+  const getCallIcon = (type: string): keyof typeof Ionicons.glyphMap => {
+    switch (type) {
+      case 'outgoing': return 'call-outline';
+      case 'incoming': return 'call-outline';
+      case 'missed': return 'call-outline';
+      default: return 'call-outline';
+    }
+  };
+
+  const getCallColor = (type: string) => {
+    switch (type) {
+      case 'missed': return '#dc2626';
+      default: return '#8b5cf6';
+    }
+  };
 
   const showModal = (title: string, message: string, icon: string = 'information-circle') => {
     setModalConfig({
@@ -69,7 +229,7 @@ export default function CallsScreen({ navigation }: Props) {
       showModal("Missing Meeting ID", "Please enter a valid meeting ID or join code to join the call.", "information-circle");
     }
   };
-  
+
   const createMeeting = (): void => {
     const meetingId = `INSTANT_${Date.now()}`;
     navigation.navigate('VideoCallScreen', {
@@ -88,6 +248,9 @@ export default function CallsScreen({ navigation }: Props) {
         keyboardDismissMode="none"
         automaticallyAdjustKeyboardInsets={true}
         nestedScrollEnabled={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8b5cf6" />
+        }
       >
         <View style={styles.actionsSection}>
           <View style={styles.instantActions}>
@@ -103,7 +266,7 @@ export default function CallsScreen({ navigation }: Props) {
             <View style={styles.secondaryActions}>
               <TouchableOpacity
                 style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => {}}
+                onPress={() => { }}
               >
                 <View style={styles.secondaryActionContent}>
                   <Ionicons name="mic" size={24} color="#8b5cf6" />
@@ -113,7 +276,7 @@ export default function CallsScreen({ navigation }: Props) {
 
               <TouchableOpacity
                 style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => {}}
+                onPress={() => { }}
               >
                 <View style={styles.secondaryActionContent}>
                   <Ionicons name="people" size={24} color="#8b5cf6" />
@@ -158,6 +321,108 @@ export default function CallsScreen({ navigation }: Props) {
               </Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        <View style={styles.statsSection}>
+          <View style={styles.statsGrid}>
+            <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
+              <Ionicons name="time-outline" size={20} color="#8b5cf6" />
+              <Text style={[styles.statNumber, { color: colors.text }]}>
+                {formatTotalDuration(stats.totalDuration)}
+              </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Time</Text>
+            </View>
+
+            <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
+              <Ionicons name="call-outline" size={20} color="#8b5cf6" />
+              <Text style={[styles.statNumber, { color: colors.text }]}>{stats.totalCalls}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Calls</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.historySection}>
+          <Text style={[styles.historySectionTitle, { color: colors.text }]}>Recent Calls</Text>
+
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#8b5cf6" />
+            </View>
+          ) : callHistory.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="call-outline" size={48} color={colors.textSecondary} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                No call history yet
+              </Text>
+            </View>
+          ) : (
+            callHistory.map((call) => (
+              <TouchableOpacity
+                key={call.id}
+                style={[styles.callCard, { backgroundColor: colors.surface }]}
+                onPress={() => showCallOptions(call)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.callInfo}>
+                  <View style={styles.callIcon}>
+                    <Ionicons
+                      name={getCallIcon(call.type)}
+                      size={20}
+                      color={getCallColor(call.type)}
+                      style={call.type === 'incoming' ? { transform: [{ rotate: '180deg' }] } : {}}
+                    />
+                  </View>
+                  <View style={styles.callDetails}>
+                    <View style={styles.nameRow}>
+                      <Text style={[styles.contactName, { color: colors.text }]}>
+                        {call.contactName}
+                      </Text>
+                      {call.encrypted && (
+                        <Ionicons name="lock-closed" size={12} color="#10b981" style={styles.encryptedIcon} />
+                      )}
+                    </View>
+                    <Text style={[styles.callTime, { color: colors.textSecondary }]}>
+                      {formatTimeAgo(call.timestamp)}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.callMeta}>
+                  <Text style={[styles.duration, { color: colors.textSecondary }]}>
+                    {formatDuration(call.duration)}
+                  </Text>
+                  {call.contactId && call.contactPhone ? (
+                    <View style={styles.callButtons}>
+                      <TouchableOpacity
+                        style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleCall(call, true);
+                        }}
+                      >
+                        <Ionicons name="call" size={16} color="#8b5cf6" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleCall(call, false);
+                        }}
+                      >
+                        <Ionicons name="videocam" size={16} color="#8b5cf6" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}
+                      onPress={() => handleCall(call, false)}
+                    >
+                      <Ionicons name="videocam" size={16} color="#8b5cf6" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
       </ScrollView>
 
@@ -269,84 +534,114 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  joinMeetingButtonDisabled: {
-  },
   joinMeetingButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
-  joinMeetingButtonTextDisabled: {
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    marginBottom: 20,
-    borderWidth: 2,
-  },
-  inputWrapperFocused: {
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-    paddingVertical: 12,
-  },
-  joinButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderWidth: 2,
-  },
-  joinButtonDisabled: {
-  },
-  joinButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  joinButtonTextDisabled: {
-  },
-  joinButtonIcon: {
-    marginLeft: 8,
-  },
-  languageBanner: {
+  statsSection: {
     marginBottom: 24,
   },
-  languageContainer: {
+  statsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    borderRadius: 16,
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  languageContent: {
+  statCard: {
     flex: 1,
-    marginLeft: 16,
-  },
-  languageTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  languageSubtitle: {
-    fontSize: 14,
-  },
-  languageButton: {
-    width: 32,
-    height: 32,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  historySection: {
+    flex: 1,
+  },
+  historySectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 16,
+    marginTop: 12,
+  },
+  callCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  callInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  callIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  callDetails: {
+    flex: 1,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  encryptedIcon: {
+    marginTop: -2,
+  },
+  callTime: {
+    fontSize: 12,
+  },
+  callMeta: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  duration: {
+    fontSize: 12,
+  },
+  callButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  redialButton: {
+    padding: 8,
+    borderRadius: 8,
   },
   modalMessage: {
     fontSize: 16,
