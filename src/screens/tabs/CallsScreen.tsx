@@ -343,11 +343,11 @@ export default function CallsScreen({ navigation }: Props) {
                   onPress={() => showCallOptions(call)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.callTypeIndicator, { backgroundColor: `${getCallColor(call.type)}15` }]}>
+                  <View style={[styles.callAvatar, { backgroundColor: colors.primaryLight }]}>
                     <Ionicons
-                      name={getCallTypeIcon(call.type)}
-                      size={16}
-                      color={getCallColor(call.type)}
+                      name="person"
+                      size={18}
+                      color="#8b5cf6"
                     />
                   </View>
                   <View style={styles.callInfo}>
@@ -445,9 +445,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#8b5cf6',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 20,
+    paddingVertical: 30,
+    paddingHorizontal: 18,
+    marginTop: 8,
+    marginBottom: 20,
   },
   startCallIcon: {
     width: 44,
@@ -562,10 +564,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
   },
-  callTypeIndicator: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  callAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
