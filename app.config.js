@@ -22,7 +22,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.gorai.wilanger",
-      buildNumber: "2",
+      buildNumber: "3",
       googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
       deploymentTarget: "18.0",
       infoPlist: {
@@ -49,7 +49,7 @@ export default {
         backgroundColor: "#3754AB"
       },
       package: "com.gorai.wilanger",
-      versionCode: 2,
+      versionCode: 3,
       googleServicesFile: "./android/app/google-services.json",
       permissions: [
         "android.permission.READ_CONTACTS",
@@ -67,7 +67,7 @@ export default {
     },
     extra: {
       "eas": {
-        "projectId": "6b9c7570-f26b-41c6-97e3-7d8154249a70"
+        "projectId": "146b3cbc-1d82-4c4b-9f27-746b6274af08"
       },
       FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
       FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
