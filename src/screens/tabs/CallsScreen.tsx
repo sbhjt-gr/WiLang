@@ -90,7 +90,8 @@ export default function CallsScreen({ navigation }: Props) {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const formatTotalDuration = (seconds: number): string => {
+  const formatTotalDuration = (seconds: number | null | undefined): string => {
+    if (seconds == null || seconds === 0) return '0s';
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
 
