@@ -1,8 +1,11 @@
 import React from 'react';
 import {
   TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
+  Text,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { TranslationState } from '../services/video-call-translation';
@@ -11,18 +14,24 @@ interface Props {
   state: TranslationState;
   enabled: boolean;
   onToggle: () => void;
+  style?: StyleProp<ViewStyle>;
+  activeStyle?: StyleProp<ViewStyle>;
+  labelStyle?: StyleProp<TextStyle>;
 }
 
 const TranslationControls: React.FC<Props> = ({
   state,
   enabled,
   onToggle,
+  style,
+  activeStyle,
+  labelStyle,
 }) => {
   const isConnecting = state === 'connecting';
 
   return (
     <TouchableOpacity
-      style={[styles.btn]}
+      style={[style, enabled && activeStyle]}
       onPress={onToggle}
       activeOpacity={0.7}
     >
@@ -31,23 +40,13 @@ const TranslationControls: React.FC<Props> = ({
       ) : (
         <Ionicons
           name={enabled ? 'language' : 'language-outline'}
-          size={20}
+          size={22}
           color="#fff"
         />
       )}
+      {labelStyle && <Text style={labelStyle}>Translate</Text>}
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  btn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
 
 export default TranslationControls;

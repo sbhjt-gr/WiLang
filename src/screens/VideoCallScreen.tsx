@@ -772,6 +772,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               state={palabraState}
               enabled={palabraEnabled}
               onToggle={handlePalabraToggle}
+              style={[styles.controlButton, { backgroundColor: palabraEnabled ? 'rgba(139, 92, 246, 0.6)' : 'rgba(0,0,0,0.6)' }]}
             />
 
             <TouchableOpacity

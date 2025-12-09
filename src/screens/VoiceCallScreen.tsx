@@ -667,7 +667,7 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
                 ) : (
                   <>
                     <Ionicons name="lock-closed" size={14} color="#10b981" />
-                    <Text style={[styles.e2eText, { color: '#10b981' }]}>Encrypted</Text>
+                    <Text style={[styles.e2eText, { color: '#10b981' }]}>End-to-End Encrypted</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -776,6 +776,9 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
               state={palabraState}
               enabled={palabraEnabled}
               onToggle={handlePalabraToggle}
+              style={styles.controlBtn}
+              activeStyle={styles.controlBtnActive}
+              labelStyle={styles.controlLabel}
             />
 
             <TouchableOpacity
@@ -951,7 +954,7 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
         onClose={toggleSecurityCodeModal}
         title="End-to-End Encryption"
         icon="shield-checkmark"
-        height={430}
+        height={390}
       >
         <View style={styles.securityCodeContent}>
           <View style={styles.securityBadge}>
