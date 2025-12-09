@@ -95,7 +95,7 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
   const [palabraTarget, setPalabraTarget] = useState<TargetLangCode>('en-us');
   const [palabraTranscript, setPalabraTranscript] = useState<string | null>(null);
   const [palabraTranslation, setPalabraTranslation] = useState<string | null>(null);
-  const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
+  const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(false);
   const palabraServiceRef = useRef<VideoCallTranslation | null>(null);
 
@@ -380,6 +380,36 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
       navigation.navigate('HomeScreen', {});
     }
   }, [closeCall, navigation]);
+
+  const hadRemotePeersRef = useRef(false);
+  const disconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const remotePeersLengthRef = useRef(0);
+
+  useEffect(() => {
+    remotePeersLengthRef.current = remotePeers.length;
+    if (remotePeers.length > 0) {
+      hadRemotePeersRef.current = true;
+      if (disconnectTimeoutRef.current) {
+        clearTimeout(disconnectTimeoutRef.current);
+        disconnectTimeoutRef.current = null;
+      }
+    }
+  }, [remotePeers.length]);
+
+  useEffect(() => {
+    if (hadRemotePeersRef.current && remotePeers.length === 0) {
+      disconnectTimeoutRef.current = setTimeout(() => {
+        if (remotePeersLengthRef.current === 0) {
+          handleCloseCall();
+        }
+      }, 3000);
+    }
+    return () => {
+      if (disconnectTimeoutRef.current) {
+        clearTimeout(disconnectTimeoutRef.current);
+      }
+    };
+  }, [remotePeers.length, handleCloseCall]);
 
   const handleJoinDeniedClose = useCallback(async () => {
     acknowledgeJoinDenied?.();

@@ -1,4 +1,4 @@
-import React, {useContext, useLayoutEffect, useRef, useEffect, useState, useCallback, useMemo} from 'react';
+import React, { useContext, useLayoutEffect, useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -9,13 +9,13 @@ import {
   Share,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import {RTCView} from '@livekit/react-native-webrtc';
+import { RTCView } from '@livekit/react-native-webrtc';
 import { StatusBar } from 'expo-status-bar';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { auth } from "../config/firebase";
 import { RootStackParamList } from '../types/navigation';
-import {WebRTCContext} from '../store/WebRTCContext';
+import { WebRTCContext } from '../store/WebRTCContext';
 import { Ionicons } from '@expo/vector-icons';
 import ParticipantGrid from '../components/ParticipantGrid';
 import GlassModal from '../components/GlassModal';
@@ -26,7 +26,7 @@ import { VideoCallTranslation, type TranslationState } from '../services/video-c
 import { CallTranslationPrefs } from '../services/call-translation-prefs';
 import type { SourceLangCode, TargetLangCode } from '../services/palabra/types';
 
-const {width, height} = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 type VideoCallScreenNavigationProp = StackNavigationProp<RootStackParamList, 'VideoCallScreen'>;
 type VideoCallScreenRouteProp = RouteProp<RootStackParamList, 'VideoCallScreen'>;
@@ -82,7 +82,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     title: string;
     message: string;
     icon: string;
-    buttons: Array<{text: string; onPress?: () => void}>;
+    buttons: Array<{ text: string; onPress?: () => void }>;
   }>({
     visible: false,
     title: '',
@@ -103,7 +103,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
 
-  const showModal = useCallback((title: string, message: string, icon: string = 'information-circle', buttons: Array<{text: string; onPress?: () => void}> = [{text: 'OK'}]) => {
+  const showModal = useCallback((title: string, message: string, icon: string = 'information-circle', buttons: Array<{ text: string; onPress?: () => void }> = [{ text: 'OK' }]) => {
     setModalConfig({
       visible: true,
       title,
@@ -126,10 +126,10 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       showModal('Please wait', 'Call code is still being generated.', 'time');
       return;
     }
-    
+
     try {
       const message = `Join my WiLang video call!\n\nJoin Code: ${currentMeetingId}\n\nDownload WiLang and enter this code to join the call with real-time translation.`;
-      
+
       await Share.share({
         message,
         title: 'Join My Video Call',
@@ -232,12 +232,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     }
 
     let service = palabraServiceRef.current;
-    
+
     if (!service) {
       service = new VideoCallTranslation();
       palabraServiceRef.current = service;
     }
-    
+
     service.setLanguages(palabraSource, palabraTarget);
 
     const handleStateChange = (state: TranslationState) => {
@@ -355,6 +355,36 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     }
   }, [closeCall, navigation]);
 
+  const hadRemotePeersRef = useRef(false);
+  const disconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const remotePeersLengthRef = useRef(0);
+
+  useEffect(() => {
+    remotePeersLengthRef.current = remotePeers.length;
+    if (remotePeers.length > 0) {
+      hadRemotePeersRef.current = true;
+      if (disconnectTimeoutRef.current) {
+        clearTimeout(disconnectTimeoutRef.current);
+        disconnectTimeoutRef.current = null;
+      }
+    }
+  }, [remotePeers.length]);
+
+  useEffect(() => {
+    if (hadRemotePeersRef.current && remotePeers.length === 0) {
+      disconnectTimeoutRef.current = setTimeout(() => {
+        if (remotePeersLengthRef.current === 0) {
+          handleCloseCall();
+        }
+      }, 3000);
+    }
+    return () => {
+      if (disconnectTimeoutRef.current) {
+        clearTimeout(disconnectTimeoutRef.current);
+      }
+    };
+  }, [remotePeers.length, handleCloseCall]);
+
   const handleJoinDeniedClose = useCallback(async () => {
     acknowledgeJoinDenied?.();
     try {
@@ -377,13 +407,13 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     if (initializationAttempted.current) {
       return;
     }
-    
+
     initializationAttempted.current = true;
-    
+
     const initializeCall = async () => {
       const currentUser = auth.currentUser;
       const username = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
-      
+
       try {
         let socketConnection = null;
         if (!localStream || (route.params.type === 'join' && !currentMeetingId) || route.params.type === 'incoming' || route.params.type === 'outgoing') {
@@ -401,14 +431,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               return;
             }
           }
-          
+
           // Mark as direct call for incoming/outgoing (hide meeting ID)
           if (route.params.type === 'incoming' || route.params.type === 'outgoing') {
             setIsDirectCall(true);
           }
-          
+
           joinAttempted.current = true;
-          
+
           const meetingId = route.params.joinCode || route.params.id;
           const meetingToken = route.params.meetingToken;
 
@@ -487,31 +517,31 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             ]);
             return;
           }
-          
+
         } else if (route.params.type === 'instant') {
           setIsInstantCall(true);
           setShowJoinCodeUI(true);
-          
+
           const currentUser = auth.currentUser;
           const username = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
-          
+
           setUsername(username);
-          
+
           const initResult = await initialize(username);
           const socket = initResult.socket || initResult;
-          
+
           if (!socket || !socket.connected) {
             throw new Error('Socket not connected - cannot create call');
           }
-          
+
           const newMeetingId = await createMeetingWithSocket(socket);
-          
+
           if (!newMeetingId) {
             throw new Error('Call creation returned empty call ID');
           }
 
           setShowShareModal(true);
-          
+
         } else if (!route.params.type || route.params.type === 'create') {
           try {
             let socketToUse = socketConnection;
@@ -519,14 +549,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               const initResult = await initialize(username);
               socketToUse = initResult.socket || initResult;
             }
-            
+
             if (!socketToUse || !socketToUse.connected) {
               throw new Error('Socket not connected - cannot create call');
             }
             await new Promise(resolve => setTimeout(resolve, 100));
-            
+
             const meetingId = await createMeeting();
-            
+
             if (!meetingId) {
               throw new Error('Call creation returned empty call ID');
             }
@@ -542,7 +572,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             return;
           }
         }
-        
+
       } catch (error) {
         initializationAttempted.current = false;
 
@@ -590,7 +620,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const renderFeaturedView = () => {
     const remoteParticipant = remotePeers.find(p => !p.isLocal);
     const remoteStream = remoteParticipant ? remoteStreams?.get(remoteParticipant.peerId) : null;
-    
+
     return (
       <View style={styles.featuredContainer}>
         {remoteStream && remoteParticipant ? (
@@ -640,7 +670,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             </View>
           </View>
         )}
-        
+
         {/* Always show local video floating box in featured view when local stream is available */}
         {localStream && (
           <View
@@ -699,7 +729,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
         <View style={styles.topRightControls}>
           {e2eStatus?.initialized && e2eStatus.activeSessions.length > 0 && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.e2eIndicator, { backgroundColor: 'rgba(0,0,0,0.7)' }]}
               onPress={toggleSecurityCodeModal}
             >
@@ -934,7 +964,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               {e2eStatus.activeSessions.map((sessionPeerId) => {
                 const code = getSecurityCode?.(sessionPeerId);
                 const participant = participants.find(p => p.peerId === sessionPeerId);
-                
+
                 return (
                   <View key={sessionPeerId} style={styles.securityCodeItem}>
                     <Text style={[styles.participantName, { color: colors.text }]}>
