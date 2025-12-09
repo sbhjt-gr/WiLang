@@ -122,7 +122,10 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
     }
 
     const remoteFromRoster = directState.remoteUser
-      ? participantsRef.current.find(p => p.peerId === directState.remoteUser?.peerId)
+      ? participantsRef.current.find(p => 
+          p.peerId === directState.remoteUser?.peerId ||
+          (p.userId && directState.remoteUser?.userId && p.userId === directState.remoteUser.userId)
+        )
       : null;
     const remoteParticipant = remoteFromRoster || directState.remoteUser;
 
@@ -137,9 +140,16 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
       };
     }
 
-    const exists = participantsRef.current.some(p => p.peerId === remoteParticipant.peerId);
+    const exists = participantsRef.current.some(p => 
+      p.peerId === remoteParticipant.peerId ||
+      (p.userId && remoteParticipant.userId && p.userId === remoteParticipant.userId)
+    );
     if (!exists) {
-      const next = [...participantsRef.current.filter(p => p.peerId !== remoteParticipant.peerId), remoteParticipant];
+      const next = participantsRef.current.filter(p => 
+        p.peerId !== remoteParticipant.peerId &&
+        !(p.userId && remoteParticipant.userId && p.userId === remoteParticipant.userId)
+      );
+      next.push(remoteParticipant);
       participantsRef.current = next;
       setParticipants(next);
     }
@@ -297,6 +307,33 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
             username: user.username,
             userId: user.userId
           });
+
+          if (directCallStateRef.current.active && directCallStateRef.current.remoteUser) {
+            const directRemote = directCallStateRef.current.remoteUser;
+            const isSameUser = 
+              user.peerId === directRemote.peerId ||
+              (user.userId && directRemote.userId && user.userId === directRemote.userId);
+            
+            if (isSameUser && user.peerId !== directRemote.peerId) {
+              directCallStateRef.current = {
+                ...directCallStateRef.current,
+                remoteUser: { ...directRemote, peerId: user.peerId },
+                peerConnectionCreated: false,
+              };
+              
+              const oldPeerId = directRemote.peerId;
+              const mergedUser = { ...directRemote, ...user, peerId: user.peerId };
+              const updatedList = participantsRef.current
+                .filter(p => p.peerId !== oldPeerId && p.peerId !== user.peerId)
+                .concat([mergedUser]);
+              participantsRef.current = updatedList;
+              setParticipants(updatedList);
+              
+              ensureDirectCallState({ createPeerConnection: true });
+              return;
+            }
+          }
+
           meetingManager.current?.handleUserJoined(user);
         },
         onUserLeft: (user: User) => {
@@ -611,6 +648,21 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
             filteredCount: filteredParticipants.length,
             filteredPeerIds: filteredParticipants.map(p => p.peerId)
           });
+
+          if (directCallStateRef.current.active && directCallStateRef.current.remoteUser) {
+            const directRemote = directCallStateRef.current.remoteUser;
+            const matchingParticipant = filteredParticipants.find(p =>
+              p.peerId === directRemote.peerId ||
+              (p.userId && directRemote.userId && p.userId === directRemote.userId)
+            );
+            if (matchingParticipant && matchingParticipant.peerId !== directRemote.peerId) {
+              directCallStateRef.current = {
+                ...directCallStateRef.current,
+                remoteUser: { ...directRemote, peerId: matchingParticipant.peerId },
+              };
+            }
+          }
+
           participantsRef.current = filteredParticipants;
           setParticipants(filteredParticipants);
 
@@ -632,6 +684,21 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
             peerIds: participants.map(p => p.peerId)
           });
           const filtered = participants.filter(p => p.peerId !== peerIdRef.current);
+
+          if (directCallStateRef.current.active && directCallStateRef.current.remoteUser) {
+            const directRemote = directCallStateRef.current.remoteUser;
+            const matchingParticipant = filtered.find(p =>
+              p.peerId === directRemote.peerId ||
+              (p.userId && directRemote.userId && p.userId === directRemote.userId)
+            );
+            if (matchingParticipant && matchingParticipant.peerId !== directRemote.peerId) {
+              directCallStateRef.current = {
+                ...directCallStateRef.current,
+                remoteUser: { ...directRemote, peerId: matchingParticipant.peerId },
+              };
+            }
+          }
+
           participantsRef.current = filtered;
           setParticipants(filtered);
           if (directCallStateRef.current.active) {
@@ -656,6 +723,10 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
               directState.remoteUser.userId === participant.userId;
 
             if (!directState.remoteUser || (!peerIdMatch && !userIdMatch)) {
+              return;
+            }
+
+            if (directState.peerConnectionCreated) {
               return;
             }
 

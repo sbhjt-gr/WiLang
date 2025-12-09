@@ -23,22 +23,33 @@ export class WebRTCParticipantManager {
   }
 
   addParticipant(user: User) {
-    const existingIndex = this.participants.findIndex(p => p.peerId === user.peerId);
-    if (existingIndex !== -1) {
-      this.participants[existingIndex] = { ...this.participants[existingIndex], ...user };
-    } else {
-      const duplicateByName = this.participants.find(p => 
-        p.username.trim() === user.username.trim() && p.peerId !== user.peerId
-      );
-      
-      if (duplicateByName) {
-        const oldIndex = this.participants.findIndex(p => p.peerId === duplicateByName.peerId);
-        if (oldIndex !== -1) {
-          this.participants.splice(oldIndex, 1);
-        }
-      }
-      this.participants.push(user);
+    const existingByPeerId = this.participants.findIndex(p => p.peerId === user.peerId);
+    if (existingByPeerId !== -1) {
+      this.participants[existingByPeerId] = { ...this.participants[existingByPeerId], ...user };
+      this.onParticipantsUpdated?.(this.participants);
+      return;
     }
+
+    const existingByUserId = user.userId 
+      ? this.participants.findIndex(p => p.userId && p.userId === user.userId)
+      : -1;
+    if (existingByUserId !== -1) {
+      this.participants[existingByUserId] = { ...this.participants[existingByUserId], ...user, peerId: user.peerId };
+      this.onParticipantsUpdated?.(this.participants);
+      return;
+    }
+
+    const duplicateByName = this.participants.find(p => 
+      p.username?.trim() === user.username?.trim() && p.peerId !== user.peerId
+    );
+    
+    if (duplicateByName) {
+      const oldIndex = this.participants.findIndex(p => p.peerId === duplicateByName.peerId);
+      if (oldIndex !== -1) {
+        this.participants.splice(oldIndex, 1);
+      }
+    }
+    this.participants.push(user);
     this.onParticipantsUpdated?.(this.participants);
   }
 
