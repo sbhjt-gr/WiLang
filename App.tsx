@@ -18,6 +18,7 @@ import { initDatabase } from './src/utils/database';
 import VideoCallScreen from './src/screens/VideoCallScreen';
 import VoiceCallScreen from './src/screens/VoiceCallScreen';
 import CallingScreen from './src/screens/CallingScreen';
+import QRTranslationScreen from './src/screens/QRTranslationScreen';
 import EnvironmentConfig from './src/screens/EnvironmentConfig';
 import ThemeSettingsScreen from './src/screens/ThemeSettingsScreen';
 import TranslationSettingsScreen from './src/screens/TranslationSettingsScreen';
@@ -42,7 +43,7 @@ const customTheme = {
 
 export default function App() {
   registerGlobals();
-  
+
   useEffect(() => {
     const initApp = async () => {
       try {
@@ -50,10 +51,10 @@ export default function App() {
         console.log('firebase_initialized');
         await initDatabase();
         console.log('database_initialized');
-        
+
         await pushService.setupNotificationChannel();
         pushService.setupNotificationHandler();
-        
+
         const lastResponse = await pushService.getLastNotificationResponse();
         if (lastResponse) {
           const data = lastResponse.notification.request.content.data;
@@ -77,13 +78,13 @@ export default function App() {
         console.error('app_init_error', error);
       }
     };
-    
+
     initApp();
-    
+
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
       const actionId = response.actionIdentifier;
-      
+
       if (data?.type === 'incoming_call') {
         if (actionId === 'decline') {
           const { videoCallService } = require('./src/services/VideoCallService');
@@ -93,7 +94,7 @@ export default function App() {
           );
           return;
         }
-        
+
         navigate('CallingScreen', {
           callType: 'incoming',
           callerName: String(data.callerName || 'Unknown'),

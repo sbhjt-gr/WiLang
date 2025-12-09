@@ -9,6 +9,7 @@ import { RootStackParamList } from '../types/navigation';
 import CallsScreen from './tabs/CallsScreen';
 import ContactsScreen from './tabs/ContactsScreen';
 import SettingsScreen from './tabs/SettingsScreen';
+import QRPairScreen from './tabs/QRPairScreen';
 import { useTheme } from '../theme';
 
 type TabNavigatorNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
@@ -19,7 +20,7 @@ interface Props {
   route: TabNavigatorRouteProp;
 }
 
-type TabType = 'calls' | 'contacts' | 'settings';
+type TabType = 'calls' | 'qrpair' | 'contacts' | 'settings';
 
 interface TabItem {
   key: TabType;
@@ -34,6 +35,12 @@ const tabs: TabItem[] = [
     title: 'Calls',
     icon: 'videocam-outline',
     iconFocused: 'videocam',
+  },
+  {
+    key: 'qrpair',
+    title: 'Translate',
+    icon: 'scan-outline',
+    iconFocused: 'scan',
   },
   {
     key: 'contacts',
@@ -102,6 +109,7 @@ export default function TabNavigator({ navigation, route }: Props) {
   const getHeaderTitle = () => {
     switch (activeTab) {
       case 'calls': return 'WiLang';
+      case 'qrpair': return 'Live Translate';
       case 'contacts': return 'Contacts';
       case 'settings': return 'Settings';
       default: return 'WiLang';
@@ -112,6 +120,8 @@ export default function TabNavigator({ navigation, route }: Props) {
     switch (activeTab) {
       case 'calls':
         return <CallsScreen navigation={navigation} />;
+      case 'qrpair':
+        return <QRPairScreen />;
       case 'contacts':
         return <ContactsScreen />;
       case 'settings':
