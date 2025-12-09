@@ -295,20 +295,6 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
     const handleTranscription = (data: { text: string; isFinal?: boolean }) => {
       console.log('palabra_transcription', data.isFinal);
       setPalabraTranscript(data.text);
-      // Always capture transcripts for AI summary (background capture)
-      if (data.text && data.isFinal) {
-        addToTranscript({
-          speaker: 'local',
-          sourceText: data.text,
-          isFinal: true,
-        });
-      }
-    };
-
-    const handleTranslation = (data: { text: string; isFinal?: boolean }) => {
-      console.log('palabra_translation', data.isFinal);
-      setPalabraTranslation(data.text);
-      // Capture remote translations for AI summary
       if (data.text && data.isFinal) {
         addToTranscript({
           speaker: 'remote',
@@ -318,14 +304,19 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
       }
     };
 
-    const handleRemoteTrack = (tracks: Array<{ track: MediaStreamTrack }>) => {
-      if (tracks.length > 0) {
-        const translatedTrack = tracks[0].track;
-        console.log('replacing_with_translated_track');
-        replaceAudioTrackRef.current?.(translatedTrack).then((success) => {
-          console.log('track_replaced', success);
+    const handleTranslation = (data: { text: string; isFinal?: boolean }) => {
+      console.log('palabra_translation', data.isFinal);
+      setPalabraTranslation(data.text);
+      if (data.text && data.isFinal) {
+        addToTranscript({
+          speaker: 'remote',
+          sourceText: data.text,
+          isFinal: true,
         });
       }
+    };
+
+    const handleRemoteTrack = (_tracks: Array<{ track: MediaStreamTrack }>) => {
     };
 
     const handleError = (err: Error) => {
@@ -358,11 +349,30 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
       return;
     }
 
-    console.log('palabra_starting');
-    service.start().catch((err) => {
+    const firstRemotePeer = remotePeers[0];
+    if (!firstRemotePeer) {
+      console.log('no_remote_peer');
+      return;
+    }
+
+    const remoteStreamForPeer = remoteStreams?.get(firstRemotePeer.peerId);
+    if (!remoteStreamForPeer) {
+      console.log('no_remote_stream');
+      return;
+    }
+
+    const audioTracks = remoteStreamForPeer.getAudioTracks();
+    if (!audioTracks || audioTracks.length === 0) {
+      console.log('no_remote_audio');
+      return;
+    }
+
+    const remoteAudioTrack = audioTracks[0] as unknown as MediaStreamTrack;
+    console.log('palabra_starting_with_remote');
+    service.startWithTrack(remoteAudioTrack).catch((err: Error) => {
       console.log('palabra_start_failed', err);
     });
-  }, [palabraEnabled]);
+  }, [palabraEnabled, remotePeers, remoteStreams]);
 
   useEffect(() => {
     return () => {

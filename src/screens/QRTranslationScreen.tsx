@@ -187,7 +187,6 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
                 setTimeout(() => {
                     scrollViewRef.current?.scrollToEnd({ animated: true });
                 }, 100);
-                // Capture for AI summary
                 addToTranscript({
                     speaker: 'local',
                     sourceText: data.text,
@@ -199,21 +198,16 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
 
         const handleTranslation = (data: { text: string; isFinal?: boolean }) => {
             setCurrentTranslation(data.text);
-            // Capture remote translations for AI summary
             if (data.text && data.isFinal) {
                 addToTranscript({
-                    speaker: 'remote',
+                    speaker: 'local',
                     sourceText: data.text,
                     isFinal: true,
                 });
             }
         };
 
-        const handleRemoteTrack = (tracks: Array<{ track: MediaStreamTrack }>) => {
-            if (tracks.length > 0) {
-                const translatedTrack = tracks[0].track;
-                replaceAudioTrackRef.current?.(translatedTrack);
-            }
+        const handleRemoteTrack = (_tracks: Array<{ track: MediaStreamTrack }>) => {
         };
 
         const handleError = (err: Error) => {
@@ -241,7 +235,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
         const service = palabraServiceRef.current;
         if (service.getState() !== 'idle') return;
 
-        service.start();
+        service.startWithLocalMic();
     }, []);
 
     useEffect(() => {

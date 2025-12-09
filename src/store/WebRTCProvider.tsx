@@ -919,7 +919,6 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
               userId: currentUser.uid,
               phoneNumber: phoneNumber || undefined,
               peerId: io.id,
-              fcmToken: undefined
             });
             console.log('user_registered');
 
@@ -932,22 +931,7 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
               console.log('key_bundle_upload_failed', error);
             }
 
-            pushService.init().then(fcmToken => {
-              if (fcmToken && socketManager.current) {
-                const platform = Platform.OS === 'ios' ? 'ios' : 'android';
-                socketManager.current.updateFcmToken(currentUser.uid, fcmToken, platform);
-              }
-            });
-
             callKeepService.init();
-            
-            if (Platform.OS === 'ios') {
-              callKeepService.onVoipTokenReceived((voipToken) => {
-                if (socketManager.current) {
-                  socketManager.current.updateFcmToken(currentUser.uid, voipToken, 'ios');
-                }
-              });
-            }
 
             console.log('socket_auto_connected', { uid: currentUser.uid, phone: phoneNumber, socketId: io.id });
           } else {
@@ -1041,7 +1025,6 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
           userId: currentUser.uid,
           phoneNumber: phoneNumber || undefined,
           peerId: io.id,
-          fcmToken: undefined
         });
 
         try {
@@ -1050,21 +1033,6 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
           console.log('key_bundle_uploaded', { userId: currentUser.uid, peerId: io.id });
         } catch (error) {
           console.log('key_bundle_upload_failed', error);
-        }
-
-        pushService.getToken().then(fcmToken => {
-          if (fcmToken && socketManager.current) {
-            const platform = Platform.OS === 'ios' ? 'ios' : 'android';
-            socketManager.current.updateFcmToken(currentUser.uid, fcmToken, platform);
-          }
-        });
-        
-        if (Platform.OS === 'ios') {
-          callKeepService.onVoipTokenReceived((voipToken) => {
-            if (socketManager.current) {
-              socketManager.current.updateFcmToken(currentUser.uid, voipToken, 'ios');
-            }
-          });
         }
 
         console.log('user_registered', currentUser.uid, phoneNumber);

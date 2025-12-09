@@ -30,7 +30,8 @@ export class VideoCallTranslation extends EventEmitter {
   private state: TranslationState = 'idle';
   private sourceLang: SourceLangCode = 'auto';
   private targetLang: TargetLangCode = 'en-us';
-  private audioStream: MediaStream | null = null;
+  private trackRef: MediaStreamTrack | null = null;
+  private localStream: MediaStream | null = null;
 
   constructor() {
     super();
@@ -71,9 +72,9 @@ export class VideoCallTranslation extends EventEmitter {
     }
   }
 
-  async start(): Promise<boolean> {
+  async startWithTrack(audioTrack: MediaStreamTrack): Promise<boolean> {
     if (this.state === 'active' || this.state === 'connecting') {
-      console.log('[VideoCallTranslation] already_active');
+      console.log('translation_already_active');
       return false;
     }
 
@@ -82,27 +83,15 @@ export class VideoCallTranslation extends EventEmitter {
     const clientSecret = prefs.clientSecret;
 
     if (!clientId || !clientSecret) {
-      console.log('[VideoCallTranslation] not_configured');
+      console.log('translation_not_configured');
       this.emit('error', new Error('Palabra not configured'));
       return false;
     }
 
     this.setState('connecting');
+    this.trackRef = audioTrack;
 
     try {
-      const stream = await mediaDevices.getUserMedia({
-        audio: true,
-        video: false,
-      });
-      this.audioStream = stream as MediaStream;
-
-      const audioTracks = this.audioStream.getAudioTracks();
-      if (audioTracks.length === 0) {
-        throw new Error('No audio track available');
-      }
-
-      const audioTrack = audioTracks[0] as unknown as MediaStreamTrack;
-
       const config: PalabraTranslationServiceConfig = {
         auth: {
           clientId,
@@ -133,7 +122,7 @@ export class VideoCallTranslation extends EventEmitter {
         return false;
       }
     } catch (err) {
-      console.log('[VideoCallTranslation] start_err', err);
+      console.log('translation_start_err', err);
       this.cleanup();
       this.setState('error');
       this.emit('error', err instanceof Error ? err : new Error('Start failed'));
@@ -142,9 +131,38 @@ export class VideoCallTranslation extends EventEmitter {
   }
 
   private cleanup(): void {
-    if (this.audioStream) {
-      this.audioStream.getTracks().forEach((t) => t.stop());
-      this.audioStream = null;
+    this.trackRef = null;
+    if (this.localStream) {
+      this.localStream.getTracks().forEach((t) => t.stop());
+      this.localStream = null;
+    }
+  }
+
+  async startWithLocalMic(): Promise<boolean> {
+    if (this.state === 'active' || this.state === 'connecting') {
+      console.log('translation_already_active');
+      return false;
+    }
+
+    try {
+      const stream = await mediaDevices.getUserMedia({
+        audio: true,
+        video: false,
+      });
+      this.localStream = stream as MediaStream;
+
+      const audioTracks = this.localStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        throw new Error('No audio track');
+      }
+
+      const audioTrack = audioTracks[0] as unknown as MediaStreamTrack;
+      return this.startWithTrack(audioTrack);
+    } catch (err) {
+      console.log('mic_access_err', err);
+      this.setState('error');
+      this.emit('error', err instanceof Error ? err : new Error('Mic access failed'));
+      return false;
     }
   }
 

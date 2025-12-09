@@ -87,8 +87,6 @@ export default {
       "expo-sqlite",
       "expo-secure-store",
       "expo-audio",
-      "@react-native-firebase/app",
-      "@react-native-firebase/messaging",
       [
         "expo-build-properties",
         {
