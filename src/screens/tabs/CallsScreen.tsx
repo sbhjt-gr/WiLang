@@ -18,7 +18,7 @@ interface Props {
 }
 
 export default function CallsScreen({ navigation }: Props) {
-  const [id, setID] = useState<string>('');
+  const [joinCode, setJoinCode] = useState<string>('');
   const textInputRef = useRef<TextInput>(null);
   const { colors } = useTheme();
   const webRTCContext = useContext(WebRTCContext);
@@ -111,10 +111,10 @@ export default function CallsScreen({ navigation }: Props) {
     const diffDays = Math.floor(diffMs / 86400000);
 
     if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? 's' : ''} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
 
     const date = new Date(timestamp);
     return date.toLocaleDateString();
@@ -172,19 +172,21 @@ export default function CallsScreen({ navigation }: Props) {
     );
   };
 
-  const getCallIcon = (type: string): keyof typeof Ionicons.glyphMap => {
+  const getCallColor = (type: string) => {
     switch (type) {
-      case 'outgoing': return 'call-outline';
-      case 'incoming': return 'call-outline';
-      case 'missed': return 'call-outline';
-      default: return 'call-outline';
+      case 'missed': return '#ef4444';
+      case 'incoming': return '#10b981';
+      case 'outgoing': return '#8b5cf6';
+      default: return '#8b5cf6';
     }
   };
 
-  const getCallColor = (type: string) => {
+  const getCallTypeIcon = (type: string): keyof typeof Ionicons.glyphMap => {
     switch (type) {
-      case 'missed': return '#dc2626';
-      default: return '#8b5cf6';
+      case 'missed': return 'arrow-down-outline';
+      case 'incoming': return 'arrow-down-outline';
+      case 'outgoing': return 'arrow-up-outline';
+      default: return 'call-outline';
     }
   };
 
@@ -201,9 +203,9 @@ export default function CallsScreen({ navigation }: Props) {
     setModalConfig(prev => ({ ...prev, visible: false }));
   };
 
-  const meet = (): void => {
-    if (id.trim()) {
-      const rawInput = id.trim();
+  const handleJoinMeeting = (): void => {
+    if (joinCode.trim()) {
+      const rawInput = joinCode.trim();
       const isOnlyNumeric = /^[0-9]+$/.test(rawInput);
       const numericId = parseInt(rawInput);
       if (isOnlyNumeric && !isNaN(numericId)) {
@@ -247,181 +249,157 @@ export default function CallsScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="none"
         automaticallyAdjustKeyboardInsets={true}
-        nestedScrollEnabled={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8b5cf6" />
         }
       >
-        <View style={styles.actionsSection}>
-          <View style={styles.instantActions}>
-            <TouchableOpacity
-              style={[styles.primaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
-              onPress={createMeeting}
-            >
-              <Ionicons name="videocam" size={32} color="#8b5cf6" />
-              <Text style={[styles.primaryActionTitle, { color: colors.text }]}>Start a meeting</Text>
-              <Text style={[styles.primaryActionSubtitle, { color: colors.textSecondary }]}>Begin translating immediately</Text>
-            </TouchableOpacity>
-
-            <View style={styles.secondaryActions}>
-              <TouchableOpacity
-                style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => { }}
-              >
-                <View style={styles.secondaryActionContent}>
-                  <Ionicons name="mic" size={24} color="#8b5cf6" />
-                  <Text style={[styles.secondaryActionTitle, { color: colors.text }]}>Voice Only</Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => { }}
-              >
-                <View style={styles.secondaryActionContent}>
-                  <Ionicons name="people" size={24} color="#8b5cf6" />
-                  <Text style={[styles.secondaryActionTitle, { color: colors.text }]}>Group Call</Text>
-                </View>
-              </TouchableOpacity>
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={styles.startCallBtn}
+            onPress={createMeeting}
+            activeOpacity={0.85}
+          >
+            <View style={styles.startCallIcon}>
+              <Ionicons name="videocam" size={24} color="#ffffff" />
             </View>
-          </View>
-        </View>
-
-        <View style={styles.joinSection}>
-          <View style={[styles.joinCard, { backgroundColor: colors.surface }]}>
-            <View style={styles.joinHeader}>
-              <Ionicons name="enter-outline" size={20} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Join a Meeting</Text>
+            <View style={styles.startCallText}>
+              <Text style={styles.startCallTitle}>New Meeting</Text>
+              <Text style={styles.startCallSubtitle}>Start a video call</Text>
             </View>
+            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
+          </TouchableOpacity>
 
-            <View style={styles.inputContainer}>
+          <View style={styles.joinRow}>
+            <View style={[styles.joinInputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Ionicons name="keypad-outline" size={18} color={colors.textTertiary} />
               <TextInput
                 ref={textInputRef}
-                style={[styles.meetingInput, { backgroundColor: colors.backgroundTertiary, color: colors.text, borderColor: colors.border }]}
-                placeholder="Enter meeting code (e.g. ABC123)"
+                style={[styles.joinInput, { color: colors.text }]}
+                placeholder="Enter code"
                 placeholderTextColor={colors.textTertiary}
-                value={id}
-                onChangeText={setID}
+                value={joinCode}
+                onChangeText={setJoinCode}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 autoComplete="off"
-                keyboardType="default"
-                returnKeyType="done"
-                onSubmitEditing={meet}
+                returnKeyType="join"
+                onSubmitEditing={handleJoinMeeting}
               />
             </View>
-
             <TouchableOpacity
-              style={[styles.joinMeetingButton, { backgroundColor: colors.surface, borderColor: '#8b5cf6', borderWidth: 1 }, !id.trim() && { borderColor: colors.border }]}
-              onPress={meet}
-              disabled={!id.trim()}
+              style={[styles.joinBtn, !joinCode.trim() && styles.joinBtnDisabled]}
+              onPress={handleJoinMeeting}
+              disabled={!joinCode.trim()}
+              activeOpacity={0.8}
             >
-              <Text style={[styles.joinMeetingButtonText, { color: '#8b5cf6' }, !id.trim() && { color: colors.textTertiary }]}>
-                Join Meeting
-              </Text>
+              <Ionicons name="arrow-forward" size={20} color={joinCode.trim() ? '#ffffff' : colors.textTertiary} />
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.statsSection}>
-          <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
-              <Ionicons name="time-outline" size={20} color="#8b5cf6" />
-              <Text style={[styles.statNumber, { color: colors.text }]}>
-                {formatTotalDuration(stats.totalDuration)}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Time</Text>
-            </View>
-
-            <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
-              <Ionicons name="call-outline" size={20} color="#8b5cf6" />
-              <Text style={[styles.statNumber, { color: colors.text }]}>{stats.totalCalls}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Calls</Text>
-            </View>
+        <View style={styles.statsRow}>
+          <View style={[styles.statPill, { backgroundColor: colors.surface }]}>
+            <Ionicons name="time-outline" size={16} color="#8b5cf6" />
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {formatTotalDuration(stats.totalDuration)}
+            </Text>
+          </View>
+          <View style={[styles.statPill, { backgroundColor: colors.surface }]}>
+            <Ionicons name="call-outline" size={16} color="#8b5cf6" />
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {stats.totalCalls} calls
+            </Text>
           </View>
         </View>
 
         <View style={styles.historySection}>
-          <Text style={[styles.historySectionTitle, { color: colors.text }]}>Recent Calls</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent</Text>
 
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#8b5cf6" />
+              <ActivityIndicator size="small" color="#8b5cf6" />
             </View>
           ) : callHistory.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="call-outline" size={48} color={colors.textSecondary} />
+              <View style={[styles.emptyIconContainer, { backgroundColor: colors.surface }]}>
+                <Ionicons name="call-outline" size={32} color={colors.textTertiary} />
+              </View>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                No call history yet
+                No calls yet
+              </Text>
+              <Text style={[styles.emptySubtext, { color: colors.textTertiary }]}>
+                Start a meeting or call a contact
               </Text>
             </View>
           ) : (
-            callHistory.map((call) => (
-              <TouchableOpacity
-                key={call.id}
-                style={[styles.callCard, { backgroundColor: colors.surface }]}
-                onPress={() => showCallOptions(call)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.callInfo}>
-                  <View style={styles.callIcon}>
+            <View style={[styles.historyList, { backgroundColor: colors.surface }]}>
+              {callHistory.map((call, index) => (
+                <TouchableOpacity
+                  key={call.id}
+                  style={[
+                    styles.callItem,
+                    index !== callHistory.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }
+                  ]}
+                  onPress={() => showCallOptions(call)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.callTypeIndicator, { backgroundColor: `${getCallColor(call.type)}15` }]}>
                     <Ionicons
-                      name={getCallIcon(call.type)}
-                      size={20}
+                      name={getCallTypeIcon(call.type)}
+                      size={16}
                       color={getCallColor(call.type)}
-                      style={call.type === 'incoming' ? { transform: [{ rotate: '180deg' }] } : {}}
                     />
                   </View>
-                  <View style={styles.callDetails}>
-                    <View style={styles.nameRow}>
-                      <Text style={[styles.contactName, { color: colors.text }]}>
+                  <View style={styles.callInfo}>
+                    <View style={styles.callNameRow}>
+                      <Text style={[styles.callName, { color: colors.text }]} numberOfLines={1}>
                         {call.contactName}
                       </Text>
                       {call.encrypted && (
-                        <Ionicons name="lock-closed" size={12} color="#10b981" style={styles.encryptedIcon} />
+                        <Ionicons name="lock-closed" size={10} color="#10b981" />
                       )}
                     </View>
-                    <Text style={[styles.callTime, { color: colors.textSecondary }]}>
-                      {formatTimeAgo(call.timestamp)}
+                    <Text style={[styles.callMeta, { color: colors.textSecondary }]}>
+                      {formatTimeAgo(call.timestamp)} · {formatDuration(call.duration)}
                     </Text>
                   </View>
-                </View>
-                <View style={styles.callMeta}>
-                  <Text style={[styles.duration, { color: colors.textSecondary }]}>
-                    {formatDuration(call.duration)}
-                  </Text>
-                  {call.contactId && call.contactPhone ? (
-                    <View style={styles.callButtons}>
+                  <View style={styles.callActions}>
+                    {call.contactId && call.contactPhone ? (
+                      <>
+                        <TouchableOpacity
+                          style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleCall(call, true);
+                          }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="call" size={16} color="#8b5cf6" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleCall(call, false);
+                          }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="videocam" size={16} color="#8b5cf6" />
+                        </TouchableOpacity>
+                      </>
+                    ) : (
                       <TouchableOpacity
-                        style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleCall(call, true);
-                        }}
-                      >
-                        <Ionicons name="call" size={16} color="#8b5cf6" />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleCall(call, false);
-                        }}
+                        style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
+                        onPress={() => handleCall(call, false)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
                         <Ionicons name="videocam" size={16} color="#8b5cf6" />
                       </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      style={[styles.redialButton, { backgroundColor: colors.primaryLight }]}
-                      onPress={() => handleCall(call, false)}
-                    >
-                      <Ionicons name="videocam" size={16} color="#8b5cf6" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -438,7 +416,7 @@ export default function CallsScreen({ navigation }: Props) {
         </Text>
         <View style={styles.modalButtons}>
           <TouchableOpacity
-            style={[styles.modalButton, { backgroundColor: '#8b5cf6' }]}
+            style={styles.modalButton}
             onPress={closeModal}
           >
             <Text style={styles.modalButtonText}>OK</Text>
@@ -457,191 +435,167 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    padding: 20,
+    padding: 16,
+    paddingTop: 20,
   },
-  actionsSection: {
-    marginBottom: 24,
+  quickActions: {
+    marginBottom: 20,
   },
-  instantActions: {
-    gap: 16,
-  },
-  primaryActionCard: {
-    borderRadius: 20,
-    padding: 32,
-    alignItems: 'center',
-  },
-  primaryActionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  primaryActionSubtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  secondaryActions: {
+  startCallBtn: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  secondaryActionCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 20,
     alignItems: 'center',
+    backgroundColor: '#8b5cf6',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  startCallIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startCallText: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  startCallTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  startCallSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+  },
+  joinRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  joinInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 14,
     borderWidth: 1,
+    height: 48,
+    gap: 10,
   },
-  secondaryActionContent: {
+  joinInput: {
+    flex: 1,
+    fontSize: 15,
+    height: '100%',
+  },
+  joinBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#8b5cf6',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  secondaryActionTitle: {
+  joinBtnDisabled: {
+    backgroundColor: 'rgba(139, 92, 246, 0.3)',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 24,
+  },
+  statPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    gap: 8,
+  },
+  statValue: {
     fontSize: 14,
     fontWeight: '600',
-    marginTop: 8,
-  },
-  joinSection: {
-    marginBottom: 24,
-  },
-  joinCard: {
-    borderRadius: 20,
-    padding: 24,
-  },
-  joinHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  meetingInput: {
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
-    borderWidth: 2,
-  },
-  joinMeetingButton: {
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  joinMeetingButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  statsSection: {
-    marginBottom: 24,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    textAlign: 'center',
   },
   historySection: {
     flex: 1,
   },
-  historySectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 16,
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    opacity: 0.7,
   },
   loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    paddingVertical: 40,
     alignItems: 'center',
-    paddingVertical: 60,
   },
   emptyState: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 48,
+  },
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   emptyText: {
     fontSize: 16,
-    marginTop: 12,
+    fontWeight: '600',
   },
-  callCard: {
+  emptySubtext: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  historyList: {
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  callItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    padding: 14,
   },
-  callInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  callIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  callTypeIndicator: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  callDetails: {
+  callInfo: {
     flex: 1,
+    marginLeft: 12,
   },
-  nameRow: {
+  callNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  contactName: {
-    fontSize: 16,
+  callName: {
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 2,
-  },
-  encryptedIcon: {
-    marginTop: -2,
-  },
-  callTime: {
-    fontSize: 12,
   },
   callMeta: {
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  duration: {
     fontSize: 12,
+    marginTop: 2,
   },
-  callButtons: {
+  callActions: {
     flexDirection: 'row',
     gap: 8,
   },
-  redialButton: {
-    padding: 8,
+  callActionBtn: {
+    width: 34,
+    height: 34,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalMessage: {
     fontSize: 16,
@@ -650,13 +604,13 @@ const styles = StyleSheet.create({
   },
   modalButtons: {
     flexDirection: 'row',
-    gap: 12,
     justifyContent: 'flex-end',
   },
   modalButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
+    backgroundColor: '#8b5cf6',
     minWidth: 80,
     alignItems: 'center',
   },
