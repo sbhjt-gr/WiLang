@@ -121,7 +121,7 @@ export default function TabNavigator({ navigation, route }: Props) {
       case 'calls':
         return <CallsScreen navigation={navigation} />;
       case 'qrpair':
-        return <QRPairScreen />;
+        return <QRPairScreen navigation={navigation} />;
       case 'contacts':
         return <ContactsScreen />;
       case 'settings':

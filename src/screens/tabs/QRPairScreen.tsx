@@ -19,7 +19,6 @@ import { qrPairingService, QRSession, QRPeerInfo } from '../../services/qr-pairi
 import { CallTranslationPrefs } from '../../services/call-translation-prefs';
 import QRDisplay from '../../components/qr-display';
 import QRScanner from '../../components/qr-scanner';
-import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
 import type { SourceLangCode, TargetLangCode } from '../../services/palabra/types';
@@ -41,9 +40,12 @@ const LANGUAGES = [
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
-export default function QRPairScreen() {
+interface Props {
+    navigation: NavigationProp;
+}
+
+export default function QRPairScreen({ navigation }: Props) {
     const { colors } = useTheme();
-    const navigation = useNavigation<NavigationProp>();
     const webRTCContext = useContext(WebRTCContext);
 
     const [showQRModal, setShowQRModal] = useState(false);

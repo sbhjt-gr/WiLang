@@ -182,6 +182,10 @@ export default function App() {
                   name="CallTranslationSettings"
                   component={CallTranslationSettings}
                 />
+                <Stack.Screen
+                  name="QRTranslationScreen"
+                  component={QRTranslationScreen}
+                />
               </Stack.Navigator>
             </NavigationContainer>
           </SafeAreaProvider>
