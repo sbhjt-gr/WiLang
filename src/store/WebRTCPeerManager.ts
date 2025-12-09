@@ -15,6 +15,7 @@ export class WebRTCPeerManager {
   private currentMeetingId: string | null = null;
   private e2eEnabled: boolean = true;
   private e2eRequired: boolean = true;
+  private pendingOffers = new Map<string, any>();
 
   private onRemoteStreamAdded?: (peerId: string, stream: MediaStream) => void;
   private onConnectionStateChanged?: (peerId: string, state: string) => void;
@@ -62,6 +63,8 @@ export class WebRTCPeerManager {
       } else if (existingPc.connectionState === 'new') {
         if (isInitiator && existingPc.signalingState === 'stable') {
           this.signalingHandler.createAndSendOffer(existingPc, user);
+        } else if (!isInitiator && this.hasPendingOffer(user.peerId)) {
+          await this.processPendingOffer(user.peerId);
         }
         return existingPc;
       } else {
@@ -73,13 +76,13 @@ export class WebRTCPeerManager {
     if (this.e2eEnabled && user.userId) {
       const sessionEstablished = await this.establishE2ESession(user.peerId, user.userId);
       if (!sessionEstablished && this.e2eRequired) {
-        console.log('peer_connection_blocked_no_encryption', { peerId: user.peerId, userId: user.userId });
+        console.log('e2e_blocked', { peerId: user.peerId, userId: user.userId });
         throw new Error('encryption_required_but_failed');
       } else if (!sessionEstablished) {
-        console.log('peer_connection_continuing_without_encryption', { peerId: user.peerId, userId: user.userId });
+        console.log('e2e_skipped', { peerId: user.peerId, userId: user.userId });
       }
     } else if (this.e2eEnabled && !user.userId && this.e2eRequired) {
-      console.log('peer_connection_blocked_no_userid', { peerId: user.peerId });
+      console.log('e2e_no_userid', { peerId: user.peerId });
       throw new Error('encryption_required_but_no_userid');
     }
 
@@ -91,6 +94,8 @@ export class WebRTCPeerManager {
 
     if (isInitiator) {
       this.signalingHandler.createAndSendOffer(pc, user);
+    } else if (this.hasPendingOffer(user.peerId)) {
+      await this.processPendingOffer(user.peerId);
     }
 
     return pc;
@@ -152,6 +157,9 @@ export class WebRTCPeerManager {
       this.socketManager.sendIceCandidate(event.candidate, user.peerId, meetingId);
     };
 
+    let iceRestartCount = 0;
+    const maxIceRestarts = 3;
+
     // @ts-ignore
     pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
@@ -161,12 +169,16 @@ export class WebRTCPeerManager {
       }
 
       if (state === 'failed') {
-        pc.restartIce();
-        setTimeout(() => {
-          if (pc.connectionState === 'failed') {
-            this.remoteStreams.delete(user.peerId);
-          }
-        }, 5000);
+        if (iceRestartCount < maxIceRestarts) {
+          iceRestartCount++;
+          console.log('ice_restart_attempt', { peerId: user.peerId, attempt: iceRestartCount });
+          pc.restartIce();
+        } else {
+          console.log('ice_restart_exhausted', user.peerId);
+          this.remoteStreams.delete(user.peerId);
+        }
+      } else if (state === 'connected') {
+        iceRestartCount = 0;
       } else if (state === 'closed') {
         this.remoteStreams.delete(user.peerId);
       }
@@ -175,8 +187,12 @@ export class WebRTCPeerManager {
     // @ts-ignore
     pc.oniceconnectionstatechange = () => {
       const state = pc.iceConnectionState;
-      if (state === 'failed') {
+      if (state === 'failed' && iceRestartCount < maxIceRestarts) {
+        iceRestartCount++;
+        console.log('ice_connection_restart', { peerId: user.peerId, attempt: iceRestartCount });
         pc.restartIce();
+      } else if (state === 'connected' || state === 'completed') {
+        iceRestartCount = 0;
       }
     };
 
@@ -242,11 +258,25 @@ export class WebRTCPeerManager {
     const pc = this.peerConnections.get(data.from);
     
     if (!pc) {
-      console.log('offer_queued_no_pc', data.from);
+      console.log('offer_queued', data.from);
+      this.pendingOffers.set(data.from, data);
       return;
     }
     
     return this.signalingHandler.handleOffer(data);
+  }
+
+  async processPendingOffer(peerId: string): Promise<void> {
+    const pendingOffer = this.pendingOffers.get(peerId);
+    if (pendingOffer) {
+      console.log('processing_pending_offer', peerId);
+      this.pendingOffers.delete(peerId);
+      await this.signalingHandler.handleOffer(pendingOffer);
+    }
+  }
+
+  hasPendingOffer(peerId: string): boolean {
+    return this.pendingOffers.has(peerId);
   }
 
   async handleAnswer(data: any): Promise<void> {
@@ -276,6 +306,7 @@ export class WebRTCPeerManager {
       this.peerConnections.delete(peerId);
       this.remoteStreams.delete(peerId);
     }
+    this.pendingOffers.delete(peerId);
 
     if (this.e2eEnabled) {
       sessionManager.closeSession(peerId);
@@ -289,6 +320,7 @@ export class WebRTCPeerManager {
     });
     this.peerConnections.clear();
     this.remoteStreams.clear();
+    this.pendingOffers.clear();
 
     if (this.e2eEnabled) {
       sessionManager.closeAllSessions();

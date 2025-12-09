@@ -10,6 +10,7 @@ export class WebRTCSocketManager {
   private currentMeetingId: string | null = null;
   private peerId = '';
   private username = '';
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private onUserJoined?: (user: User) => void;
   private onUserLeft?: (user: User) => void;
   private onOfferReceived?: (data: any) => void;
@@ -21,6 +22,7 @@ export class WebRTCSocketManager {
   private onCallAccepted?: (data: any) => void;
   private onCallDeclined?: (data: any) => void;
   private onCallCancelled?: (data: any) => void;
+  private onCallTimeout?: (data: { callId: string }) => void;
   private onKeyBundleReceived?: (data: { fromUserId: string; bundle: KeyBundle }) => void;
   private onJoinRequest?: (data: JoinRequest & { meetingId: string }) => void;
   private onJoinApproved?: (data: { meetingId: string; participants: User[]; requestId?: string }) => void;
@@ -39,6 +41,7 @@ export class WebRTCSocketManager {
     onCallAccepted?: (data: any) => void;
     onCallDeclined?: (data: any) => void;
     onCallCancelled?: (data: any) => void;
+    onCallTimeout?: (data: { callId: string }) => void;
     onKeyBundleReceived?: (data: { fromUserId: string; bundle: KeyBundle }) => void;
     onJoinRequest?: (data: JoinRequest & { meetingId: string }) => void;
     onJoinApproved?: (data: { meetingId: string; participants: User[]; requestId?: string }) => void;
@@ -56,6 +59,7 @@ export class WebRTCSocketManager {
     this.onCallAccepted = callbacks.onCallAccepted;
     this.onCallDeclined = callbacks.onCallDeclined;
     this.onCallCancelled = callbacks.onCallCancelled;
+    this.onCallTimeout = callbacks.onCallTimeout;
     this.onKeyBundleReceived = callbacks.onKeyBundleReceived;
     this.onJoinRequest = callbacks.onJoinRequest;
     this.onJoinApproved = callbacks.onJoinApproved;
@@ -154,9 +158,26 @@ export class WebRTCSocketManager {
 
     this.socket = io;
     this.setupSocketListeners(io);
+    this.startHeartbeat();
     console.log('socket_listeners_setup');
 
     return io;
+  }
+
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket?.connected) {
+        this.socket.emit('heartbeat');
+      }
+    }, 15000);
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
   }
 
   private setupSocketListeners(io: SocketInstance) {
@@ -244,6 +265,11 @@ export class WebRTCSocketManager {
     io.on('call-cancelled', (data: any) => {
       console.log('call_cancelled_received', data);
       this.onCallCancelled?.(data);
+    });
+
+    io.on('call-timeout', (data: { callId: string }) => {
+      console.log('call_timeout_received', data);
+      this.onCallTimeout?.(data);
     });
 
     io.on('key-bundle-response', (data: { fromUserId: string; bundle: KeyBundle }) => {
@@ -470,6 +496,7 @@ export class WebRTCSocketManager {
   }
 
   disconnect() {
+    this.stopHeartbeat();
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;

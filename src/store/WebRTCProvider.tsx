@@ -450,6 +450,16 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
 
           goBack();
         },
+        onCallTimeout: (data: { callId: string }) => {
+          console.log('call_timeout_notification', data);
+
+          videoCallService.clearPendingCall();
+          logCallHistory('missed');
+          endDirectCall();
+
+          goBack();
+          Alert.alert('No Answer', 'The recipient did not answer.');
+        },
         onDirectCallEnded: (data: { endedBy: string; endedByName: string; meetingId?: string }) => {
           console.log('direct_call_ended_notification', data);
 
