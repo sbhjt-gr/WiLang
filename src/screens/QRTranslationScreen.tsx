@@ -22,6 +22,7 @@ import { VideoCallTranslation, type TranslationState } from '../services/video-c
 import { CallTranslationPrefs } from '../services/call-translation-prefs';
 import { qrPairingService } from '../services/qr-pairing-service';
 import type { SourceLangCode, TargetLangCode } from '../services/palabra/types';
+import { useCallTranscript } from '../hooks/use-call-transcript';
 
 const { width, height } = Dimensions.get('window');
 
@@ -98,6 +99,19 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
     const scrollViewRef = useRef<ScrollView>(null);
     const entryIdCounter = useRef(0);
 
+    // Background transcript capture for AI summaries
+    const {
+        addTranscript: addToTranscript,
+        endSessionAndSave: saveCallTranscript,
+    } = useCallTranscript({
+        callType: 'qr-translation',
+        sourceLang: palabraSource,
+        targetLang: palabraTarget,
+        meetingId: sessionId,
+        participants: peerName ? [{ peerId, name: peerName, isLocal: false }] : [],
+        enabled: true, // Always capture in background
+    });
+
     const showModal = useCallback((title: string, message: string, icon: string = 'information-circle', buttons: Array<{ text: string; onPress?: () => void }> = [{ text: 'OK' }]) => {
         setModalConfig({ visible: true, title, message, icon, buttons });
     }, []);
@@ -173,11 +187,26 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
                 setTimeout(() => {
                     scrollViewRef.current?.scrollToEnd({ animated: true });
                 }, 100);
+                // Capture for AI summary
+                addToTranscript({
+                    speaker: 'local',
+                    sourceText: data.text,
+                    translatedText: currentTranslation || undefined,
+                    isFinal: true,
+                });
             }
         };
 
         const handleTranslation = (data: { text: string; isFinal?: boolean }) => {
             setCurrentTranslation(data.text);
+            // Capture remote translations for AI summary
+            if (data.text && data.isFinal) {
+                addToTranscript({
+                    speaker: 'remote',
+                    sourceText: data.text,
+                    isFinal: true,
+                });
+            }
         };
 
         const handleRemoteTrack = (tracks: Array<{ track: MediaStreamTrack }>) => {
@@ -276,6 +305,16 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
 
     const handleEndSession = useCallback(async () => {
         try {
+            // Save call transcript for AI summary before closing
+            console.log('[QRTranslation] Saving transcript...');
+            saveCallTranscript().then((noteId) => {
+                if (noteId) {
+                    console.log('[QRTranslation] Call note saved:', noteId);
+                }
+            }).catch((err) => {
+                console.log('[QRTranslation] Failed to save note:', err);
+            });
+
             qrPairingService.endSession(sessionId);
             if (palabraServiceRef.current) {
                 await palabraServiceRef.current.stop();
@@ -288,7 +327,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
         } finally {
             navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
         }
-    }, [closeCall, navigation, sessionId]);
+    }, [closeCall, navigation, sessionId, saveCallTranscript]);
 
     useEffect(() => {
         qrPairingService.setSessionId(sessionId);

@@ -25,6 +25,7 @@ import TranscriptionOverlay from '../components/transcription-overlay';
 import { VideoCallTranslation, type TranslationState } from '../services/video-call-translation';
 import { CallTranslationPrefs } from '../services/call-translation-prefs';
 import type { SourceLangCode, TargetLangCode } from '../services/palabra/types';
+import { useCallTranscript } from '../hooks/use-call-transcript';
 
 const { width, height } = Dimensions.get('window');
 
@@ -99,6 +100,18 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [palabraTranslation, setPalabraTranslation] = useState<string | null>(null);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const palabraServiceRef = useRef<VideoCallTranslation | null>(null);
+
+  // Background transcript capture for AI summaries
+  const {
+    addTranscript: addToTranscript,
+    endSessionAndSave: saveCallTranscript,
+  } = useCallTranscript({
+    callType: 'video',
+    sourceLang: palabraSource,
+    targetLang: palabraTarget,
+    meetingId: currentMeetingId || route.params.id,
+    enabled: true, // Always capture in background
+  });
 
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
@@ -258,11 +271,27 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     const handleTranscription = (data: { text: string; isFinal?: boolean }) => {
       console.log('palabra_transcription', data.isFinal);
       setPalabraTranscript(data.text);
+      // Always capture transcripts for AI summary (background capture)
+      if (data.text && data.isFinal) {
+        addToTranscript({
+          speaker: 'local',
+          sourceText: data.text,
+          isFinal: true,
+        });
+      }
     };
 
     const handleTranslation = (data: { text: string; isFinal?: boolean }) => {
       console.log('palabra_translation', data.isFinal);
       setPalabraTranslation(data.text);
+      // Capture remote translations for AI summary
+      if (data.text && data.isFinal) {
+        addToTranscript({
+          speaker: 'remote',
+          sourceText: data.text,
+          isFinal: true,
+        });
+      }
     };
 
     const handleRemoteTrack = (tracks: Array<{ track: MediaStreamTrack }>) => {
@@ -347,6 +376,16 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
   const handleCloseCall = useCallback(async () => {
     try {
+      // Save call transcript for AI summary before closing
+      console.log('[VideoCall] Saving transcript...');
+      saveCallTranscript().then((noteId) => {
+        if (noteId) {
+          console.log('[VideoCall] Call note saved:', noteId);
+        }
+      }).catch((err) => {
+        console.log('[VideoCall] Failed to save note:', err);
+      });
+
       if (palabraServiceRef.current) {
         await palabraServiceRef.current.stop();
         palabraServiceRef.current = null;
@@ -363,7 +402,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     } finally {
       navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
     }
-  }, [closeCall, navigation]);
+  }, [closeCall, navigation, saveCallTranscript]);
 
   const hadRemotePeersRef = useRef(false);
   const disconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
