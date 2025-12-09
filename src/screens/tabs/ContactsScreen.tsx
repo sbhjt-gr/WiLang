@@ -49,7 +49,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
     try {
       const { status } = await Contacts.getPermissionsAsync();
       setPermissionStatus(status);
-      
+
       if (status === 'granted') {
         loadContacts();
       }
@@ -63,7 +63,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
       setHasRequestedPermission(true);
       const { status } = await Contacts.requestPermissionsAsync();
       setPermissionStatus(status);
-      
+
       if (status === 'granted') {
         await loadContacts();
       } else if (status === 'denied') {
@@ -213,19 +213,19 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
 
   const filteredContacts = useMemo(() => {
     if (!searchQuery.trim()) return contacts;
-    
+
     return contacts.filter(contact => {
       const query = searchQuery.toLowerCase();
       const name = contact.name.toLowerCase();
       const phoneNumber = contact.phoneNumbers?.[0]?.number?.replace(/[^0-9]/g, '') || '';
-      
+
       return name.includes(query) || phoneNumber.includes(query);
     });
   }, [contacts, searchQuery]);
 
   const handleContactPress = (contact: Contact) => {
     const phoneNumber = contact.phoneNumbers?.[0]?.number;
-    
+
     if (!phoneNumber) {
       Alert.alert('No Phone Number', 'This contact does not have a phone number.');
       return;
@@ -459,7 +459,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View
         style={styles.searchContainer}
       >
@@ -526,7 +526,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  
+
   deniedContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -620,8 +620,8 @@ const styles = StyleSheet.create({
 
   searchContainer: {
     paddingHorizontal: 24,
-    paddingTop: 16,
     paddingBottom: 8,
+    paddingTop: 30,
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
   },
-  
+
   listContainer: {
     paddingHorizontal: 24,
     paddingBottom: 24,
