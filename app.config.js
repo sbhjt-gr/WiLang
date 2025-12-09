@@ -29,6 +29,7 @@ export default {
         NSCameraUsageDescription: "WiLang needs access to your camera for video calls.",
         NSMicrophoneUsageDescription: "WiLang needs access to your microphone for voice and video calls.",
         NSSpeechRecognitionUsageDescription: "WiLang needs access to speech recognition for real-time subtitle transcription.",
+        NSPhotoLibraryUsageDescription: "WiLang needs access to your photo library to save or share media from video calls.",
         UIBackgroundModes: ["audio", "voip"],
         CFBundleURLTypes: [
           {
