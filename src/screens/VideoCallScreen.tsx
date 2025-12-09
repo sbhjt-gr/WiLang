@@ -26,6 +26,7 @@ import { VideoCallTranslation, type TranslationState } from '../services/video-c
 import { CallTranslationPrefs } from '../services/call-translation-prefs';
 import type { SourceLangCode, TargetLangCode } from '../services/palabra/types';
 import { useCallTranscript } from '../hooks/use-call-transcript';
+import ParticipantTranslationModal, { ParticipantTranslation } from '../components/participant-translation-modal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -100,6 +101,8 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const [palabraTranslation, setPalabraTranslation] = useState<string | null>(null);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const palabraServiceRef = useRef<VideoCallTranslation | null>(null);
+  const [showTranslationModal, setShowTranslationModal] = useState(false);
+  const [participantSettings, setParticipantSettings] = useState<ParticipantTranslation[]>([]);
 
   // Background transcript capture for AI summaries
   const {
@@ -367,7 +370,32 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   }, [palabraTarget]);
 
   const handlePalabraToggle = useCallback(() => {
-    setPalabraEnabled((prev) => !prev);
+    if (!palabraEnabled && remotePeers.length > 0) {
+      const initialSettings: ParticipantTranslation[] = remotePeers.map(p => ({
+        peerId: p.peerId,
+        name: p.username || p.name || 'Unknown',
+        enabled: false,
+        source: 'auto' as SourceLangCode,
+        target: palabraTarget,
+      }));
+      setParticipantSettings(initialSettings);
+      setShowTranslationModal(true);
+    } else {
+      setPalabraEnabled(prev => !prev);
+    }
+  }, [palabraEnabled, remotePeers, palabraTarget]);
+
+  const handleSaveParticipantTranslation = useCallback((settings: ParticipantTranslation[]) => {
+    setParticipantSettings(settings);
+    const hasEnabled = settings.some(s => s.enabled);
+    if (hasEnabled) {
+      const firstEnabled = settings.find(s => s.enabled);
+      if (firstEnabled) {
+        setPalabraSource(firstEnabled.source);
+        setPalabraTarget(firstEnabled.target);
+      }
+      setPalabraEnabled(true);
+    }
   }, []);
 
   const handleSubtitlesToggle = useCallback(() => {
@@ -376,7 +404,6 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
   const handleCloseCall = useCallback(async () => {
     try {
-      // Save call transcript for AI summary before closing
       console.log('[VideoCall] Saving transcript...');
       saveCallTranscript().then((noteId) => {
         if (noteId) {
@@ -395,6 +422,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       setPalabraState('idle');
       setPalabraTranscript(null);
       setPalabraTranslation(null);
+      setParticipantSettings([]);
 
       closeCall();
     } catch (err) {
@@ -443,6 +471,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       }
       await restoreOriginalAudioRef.current?.();
       setPalabraEnabled(false);
+      setParticipantSettings([]);
 
       closeCall();
     } catch (err) {
@@ -1038,6 +1067,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           </Text>
         </View>
       </GlassModal>
+
+      <ParticipantTranslationModal
+        isVisible={showTranslationModal}
+        onClose={() => setShowTranslationModal(false)}
+        participants={participantSettings}
+        onSave={handleSaveParticipantTranslation}
+        localUser={{ name: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'You' }}
+      />
 
     </View>
   );
