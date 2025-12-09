@@ -774,7 +774,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   };
 
   const totalParticipants = remotePeers.length + 1;
-  const shouldUseFeaturedViewForCall = !isGridMode;
+  const canUseFocusMode = totalParticipants <= 2;
+  const shouldUseFeaturedViewForCall = !isGridMode && canUseFocusMode;
+
+  useEffect(() => {
+    if (!canUseFocusMode && !isGridMode) {
+      setIsGridMode(true);
+    }
+  }, [canUseFocusMode, isGridMode]);
 
   const loadingView = (
     <View style={[styles.loadingContainer, { backgroundColor: '#0a0a0a' }]}>
@@ -798,16 +805,18 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
       <View style={styles.topControls}>
         <View style={styles.topLeftControls}>
-          <TouchableOpacity style={[styles.topControlButton, { backgroundColor: 'rgba(0,0,0,0.7)' }]} onPress={toggleViewMode}>
-            <Ionicons
-              name={isGridMode ? "person" : "grid"}
-              size={20}
-              color="#ffffff"
-            />
-            <Text style={styles.topControlText}>
-              {isGridMode ? "Focus" : "Grid"}
-            </Text>
-          </TouchableOpacity>
+          {canUseFocusMode && (
+            <TouchableOpacity style={[styles.topControlButton, { backgroundColor: 'rgba(0,0,0,0.7)' }]} onPress={toggleViewMode}>
+              <Ionicons
+                name={isGridMode ? "person" : "grid"}
+                size={20}
+                color="#ffffff"
+              />
+              <Text style={styles.topControlText}>
+                {isGridMode ? "Focus" : "Grid"}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.topRightControls}>
