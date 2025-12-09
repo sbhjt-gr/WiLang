@@ -29,11 +29,11 @@ class PushService {
       const tokenData = await Notifications.getDevicePushTokenAsync();
       this.fcmToken = tokenData.data;
       console.log('push_token_obtained', Platform.OS);
-      
+
       this.tokenListeners.forEach(listener => {
         if (this.fcmToken) listener(this.fcmToken);
       });
-      
+
       return this.fcmToken;
     } catch (err) {
       console.log('push_token_error', err);
@@ -48,7 +48,7 @@ class PushService {
 
   onTokenRefresh(callback: (token: string) => void): () => void {
     this.tokenListeners.push(callback);
-    
+
     if (this.fcmToken) {
       callback(this.fcmToken);
     }
@@ -96,10 +96,9 @@ class PushService {
     Notifications.setNotificationHandler({
       handleNotification: async (notification) => {
         const data = notification.request.content.data;
-        
+
         if (data?.type === 'incoming_call') {
           return {
-            shouldShowAlert: true,
             shouldPlaySound: false,
             shouldSetBadge: false,
             shouldShowBanner: true,
@@ -108,7 +107,6 @@ class PushService {
         }
 
         return {
-          shouldShowAlert: true,
           shouldPlaySound: true,
           shouldSetBadge: true,
           shouldShowBanner: true,
