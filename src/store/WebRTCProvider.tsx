@@ -1,23 +1,23 @@
-import React, {useState, useRef, useEffect, useCallback} from 'react';
-import {Platform, Alert} from 'react-native';
-import {mediaDevices, MediaStream, MediaStreamTrack} from '@livekit/react-native-webrtc';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Platform, Alert } from 'react-native';
+import { mediaDevices, MediaStream, MediaStreamTrack } from '@livekit/react-native-webrtc';
 import { setAudioModeAsync } from 'expo-audio';
 import * as Notifications from 'expo-notifications';
 import InCallManager from 'react-native-incall-manager';
-import {doc, getDoc} from 'firebase/firestore';
-import {WebRTCContext} from './WebRTCContext';
-import {User, WebRTCContextType, E2EStatus, JoinRequest, DirectCallConfig} from './WebRTCTypes';
-import {WebRTCSocketManager} from './WebRTCSocketManager';
-import {WebRTCPeerManager} from './WebRTCPeerManager';
-import {WebRTCMeetingManager} from './WebRTCMeetingManager';
+import { doc, getDoc } from 'firebase/firestore';
+import { WebRTCContext } from './WebRTCContext';
+import { User, WebRTCContextType, E2EStatus, JoinRequest, DirectCallConfig } from './WebRTCTypes';
+import { WebRTCSocketManager } from './WebRTCSocketManager';
+import { WebRTCPeerManager } from './WebRTCPeerManager';
+import { WebRTCMeetingManager } from './WebRTCMeetingManager';
 import { keyManager, sessionManager } from '../crypto';
 import { callHistoryService } from '../services/CallHistoryService';
 import { pushService } from '../services/push-service';
 import { callKeepService } from '../services/callkeep-service';
-import {navigationRef, navigate, goBack} from '../utils/navigationRef';
-import {getCurrentUser} from '../services/FirebaseService';
-import {firestore, auth} from '../config/firebase';
-import {VideoCallService} from '../services/VideoCallService';
+import { navigationRef, navigate, goBack } from '../utils/navigationRef';
+import { getCurrentUser } from '../services/FirebaseService';
+import { firestore, auth } from '../config/firebase';
+import { VideoCallService } from '../services/VideoCallService';
 
 const videoCallService = VideoCallService.getInstance();
 
@@ -25,7 +25,7 @@ interface Props {
   children: React.ReactNode;
 }
 
-const WebRTCProvider: React.FC<Props> = ({children}) => {
+const WebRTCProvider: React.FC<Props> = ({ children }) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -84,11 +84,11 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
 
   const normalizePhoneNumber = useCallback((phone: string | undefined | null): string | null => {
     if (!phone) return null;
-    
+
     if (phone.startsWith('+')) {
       return phone;
     }
-    
+
     const cleaned = phone.replace(/\D/g, '');
     if (cleaned.length === 10) {
       return `+91${cleaned}`;
@@ -290,20 +290,20 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       meetingManager.current = new WebRTCMeetingManager();
       socketManager.current.setCallbacks({
         onUserJoined: (user: User) => {
-          console.log('socket_user_joined', { 
-            peerId: user.peerId, 
+          console.log('socket_user_joined', {
+            peerId: user.peerId,
             username: user.username,
-            userId: user.userId 
+            userId: user.userId
           });
           meetingManager.current?.handleUserJoined(user);
         },
         onUserLeft: (user: User) => {
           console.log('user_left_meeting', user);
-          
+
           if (user.peerId !== peerIdRef.current) {
             logCallHistory('completed', user);
           }
-          
+
           meetingManager.current?.handleUserLeft(user);
           peerManager.current?.closePeerConnection(user.peerId);
           setRemoteStreams(prev => {
@@ -311,7 +311,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
             newMap.delete(user.peerId);
             return newMap;
           });
-          
+
           if (user.id === remoteUser?.id) {
             setRemoteUser(null);
             setRemoteStream(null);
@@ -339,16 +339,16 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         onIncomingCall: (callData: any) => {
           console.log('incoming_call_received', callData);
           endDirectCall();
-          
+
           if (!callStartTimeRef.current) {
             callStartTimeRef.current = Date.now();
             callTypeRef.current = 'incoming';
             callHistoryLoggedRef.current = false;
           }
           callContactPhoneRef.current = normalizePhoneNumber(callData.callerPhone);
-          
+
           const isVoiceOnly = callData.callType === 'voice';
-          
+
           Notifications.scheduleNotificationAsync({
             content: {
               title: isVoiceOnly ? 'Incoming Voice Call' : 'Incoming Call',
@@ -359,7 +359,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
             },
             trigger: null,
           });
-          
+
           if (navigationRef.isReady()) {
             console.log('navigating_to_calling_screen');
             navigate('CallingScreen', {
@@ -395,7 +395,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         },
         onCallAccepted: (data: any) => {
           console.log('call_accepted_notification', data);
-          
+
           videoCallService.clearPendingCall();
 
           if (data.accepterSocketId) {
@@ -410,7 +410,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
 
           const isVoiceOnly = data.callType === 'voice';
           const screenName = isVoiceOnly ? 'VoiceCallScreen' : 'VideoCallScreen';
-          
+
           navigate(screenName, {
             id: data.meetingId || data.callId || 'call_' + Date.now(),
             type: 'outgoing',
@@ -424,25 +424,25 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         },
         onCallDeclined: (data: any) => {
           console.log('call_declined_notification', data);
-          
+
           videoCallService.clearPendingCall();
           logCallHistory('declined');
           endDirectCall();
-          
+
           goBack();
           Alert.alert('Call Declined', 'The recipient declined your call.');
         },
         onCallCancelled: (data: any) => {
           console.log('call_cancelled_notification', data);
-          
+
           InCallManager.stopRingtone();
           InCallManager.stop();
-          
+
           Notifications.dismissAllNotificationsAsync();
-          
+
           logCallHistory('missed');
           endDirectCall();
-          
+
           goBack();
         },
         onJoinRequest: (request) => {
@@ -495,8 +495,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       });
       peerManager.current.setCallbacks({
         onRemoteStreamAdded: (peerId: string, stream: MediaStream) => {
-          console.log('provider_remote_stream', { 
-            peerId, 
+          console.log('provider_remote_stream', {
+            peerId,
             streamId: stream.id,
             trackCount: stream.getTracks().length,
             videoTracks: stream.getVideoTracks().length
@@ -504,16 +504,16 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           setRemoteStreams(prev => {
             const newMap = new Map(prev);
             newMap.set(peerId, stream);
-            console.log('remote_streams_updated', { 
-              size: newMap.size, 
-              keys: Array.from(newMap.keys()) 
+            console.log('remote_streams_updated', {
+              size: newMap.size,
+              keys: Array.from(newMap.keys())
             });
             return newMap;
           });
           setRemoteStream(stream);
           const user = participantsRef.current.find(p => p.peerId === peerId);
-          console.log('participant_lookup', { 
-            peerId, 
+          console.log('participant_lookup', {
+            peerId,
             found: !!user,
             participantCount: participantsRef.current.length,
             participantPeerIds: participantsRef.current.map(p => p.peerId)
@@ -527,7 +527,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         },
         onConnectionStateChanged: (peerId: string, state: string) => {
           console.log('peer_connection_state_changed', { peerId, state });
-          
+
           if (state === 'disconnected' || state === 'failed' || state === 'closed') {
             const disconnectedUser = participantsRef.current.find(p => p.peerId === peerId);
             if (disconnectedUser && disconnectedUser.peerId !== peerIdRef.current) {
@@ -550,7 +550,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           currentMeetingIdRef.current = meetingId;
           socketManager.current?.setMeetingId(meetingId);
           peerManager.current?.setMeetingId(meetingId);
-          
+
           if (!callStartTimeRef.current) {
             callStartTimeRef.current = Date.now();
             callTypeRef.current = 'outgoing';
@@ -558,8 +558,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           }
         },
         onMeetingJoined: (meetingId: string, participants: User[]) => {
-          console.log('on_meeting_joined', { 
-            meetingId, 
+          console.log('on_meeting_joined', {
+            meetingId,
             participantCount: participants.length,
             participantPeerIds: participants.map(p => p.peerId)
           });
@@ -569,8 +569,8 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           peerManager.current?.setMeetingId(meetingId);
           const currentSocketId = socket?.id || socketRef.current?.id;
           const filteredParticipants = participants.filter(p => p.peerId !== currentSocketId);
-          console.log('filtered_participants', { 
-            currentSocketId, 
+          console.log('filtered_participants', {
+            currentSocketId,
             filteredCount: filteredParticipants.length,
             filteredPeerIds: filteredParticipants.map(p => p.peerId)
           });
@@ -580,7 +580,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           if (directCallStateRef.current.active) {
             ensureDirectCallState({ createPeerConnection: true });
           }
-          
+
           if (!callStartTimeRef.current) {
             callStartTimeRef.current = Date.now();
             if (!callTypeRef.current) {
@@ -590,7 +590,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           }
         },
         onParticipantsUpdated: (participants: User[]) => {
-          console.log('on_participants_updated', { 
+          console.log('on_participants_updated', {
             count: participants.length,
             peerIds: participants.map(p => p.peerId)
           });
@@ -614,8 +614,19 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
 
           if (directCallStateRef.current.active) {
             const directState = directCallStateRef.current;
-            if (!directState.remoteUser || directState.remoteUser.peerId !== participant.peerId) {
+            const peerIdMatch = directState.remoteUser?.peerId === participant.peerId;
+            const userIdMatch = directState.remoteUser?.userId && participant.userId &&
+              directState.remoteUser.userId === participant.userId;
+
+            if (!directState.remoteUser || (!peerIdMatch && !userIdMatch)) {
               return;
+            }
+
+            if (userIdMatch && !peerIdMatch) {
+              directCallStateRef.current = {
+                ...directState,
+                remoteUser: { ...directState.remoteUser, peerId: participant.peerId },
+              };
             }
 
             const shouldInitiate = directState.role === 'caller';
@@ -624,7 +635,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
               startKeyExchange();
             }
             directCallStateRef.current = {
-              ...directState,
+              ...directCallStateRef.current,
               peerConnectionCreated: true,
             };
             const connectionPromise = peerManager.current.createPeerConnection(participant, shouldInitiate);
@@ -651,7 +662,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
             ensureDirectCallState();
             return;
           }
-          
+
           const exists = participantsRef.current.some(p => p.peerId === participant.peerId);
           if (!exists) {
             console.log('adding_participant_on_pc_request', { peerId: participant.peerId });
@@ -659,7 +670,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
             participantsRef.current = updated;
             setParticipants(updated);
           }
-          
+
           const shouldTrack = !!participant.userId;
           if (shouldTrack) {
             startKeyExchange();
@@ -712,7 +723,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         return prev;
       });
     }, 300);
-    
+
     return () => clearTimeout(timeoutId);
   }, [participants]);
 
@@ -759,15 +770,15 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     const autoConnectSocket = async () => {
       if (socketManager.current && !socket) {
         console.log('auto_connect_start', { hasSocketManager: !!socketManager.current, hasSocket: !!socket });
-        
+
         try {
           const currentUser = getCurrentUser();
-          
+
           if (currentUser) {
             console.log('attempting_socket_auto_connect', { uid: currentUser.uid, hasPhone: !!currentUser.phoneNumber, hasEmail: !!currentUser.email });
-            
+
             let phoneNumber = currentUser.phoneNumber;
-            
+
             if (!phoneNumber) {
               console.log('fetching_phone_from_firestore', currentUser.uid);
               try {
@@ -782,18 +793,18 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
                 console.log('failed_to_fetch_phone', error);
               }
             }
-            
+
             const userDisplayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'User';
             console.log('initializing_socket', { displayName: userDisplayName });
-            
+
             const io = await socketManager.current.initializeSocket(userDisplayName);
             console.log('socket_initialized', { socketId: io.id, connected: io.connected });
-            
+
             setSocket(io);
             setPeerId(io.id || '');
             peerIdRef.current = io.id || '';
             socketRef.current = io;
-            
+
             console.log('registering_user', { username: userDisplayName, userId: currentUser.uid, peerId: io.id });
             socketManager.current.registerUser({
               username: userDisplayName,
@@ -843,7 +854,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
 
   const initialize = async (currentUsername?: string) => {
     if (socket && socket.connected && localStream) {
-      return {socket, localStream};
+      return { socket, localStream };
     }
 
     const finalUsername = currentUsername || username || 'User';
@@ -856,7 +867,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       shouldRouteThroughEarpiece: false,
       interruptionMode: 'doNotMix',
     });
-    
+
     const constraints = {
       audio: true,
       video: {
@@ -868,7 +879,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     };
 
     let newStream: MediaStream;
-    
+
     try {
       newStream = await mediaDevices.getUserMedia(constraints);
       setLocalStream(newStream as MediaStream);
@@ -882,9 +893,9 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       if (!socketManager.current) {
         throw new Error('Socket manager not initialized');
       }
-      
+
       const io = await socketManager.current.initializeSocket(finalUsername);
-      
+
       setSocket(io);
       setPeerId(io.id || '');
       peerIdRef.current = io.id || '';
@@ -894,10 +905,10 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       (io as any).currentPeerId = io.id;
 
       const currentUser = getCurrentUser();
-      
+
       if (currentUser && socketManager.current) {
         let phoneNumber = currentUser.phoneNumber;
-        
+
         if (!phoneNumber) {
           try {
             const userDoc = await getDoc(doc(firestore, 'users', currentUser.uid));
@@ -908,7 +919,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
             console.log('failed_to_fetch_phone');
           }
         }
-        
+
         socketManager.current.registerUser({
           username: finalUsername,
           userId: currentUser.uid,
@@ -944,7 +955,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       }
 
       setIsInitialized(true);
-      return {socket: io, localStream: newStream};
+      return { socket: io, localStream: newStream };
     } catch (error) {
       throw error;
     }
@@ -979,9 +990,9 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   };
 
   const joinMeeting = (
-    meetingId: string, 
-    socketToUse?: any, 
-    meetingToken?: string, 
+    meetingId: string,
+    socketToUse?: any,
+    meetingToken?: string,
     userId?: string
   ): Promise<boolean> => {
     if (!meetingManager.current) {
@@ -992,17 +1003,17 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     isMeetingOwnerRef.current = false;
     setPendingJoinRequests([]);
     setJoinDeniedReason(null);
-    
+
     if (!callStartTimeRef.current) {
       callStartTimeRef.current = Date.now();
       callTypeRef.current = meetingToken ? 'incoming' : 'incoming';
       callHistoryLoggedRef.current = false;
     }
-    
+
     return meetingManager.current.joinMeeting(
-      meetingId, 
-      activeSocket, 
-      meetingToken, 
+      meetingId,
+      activeSocket,
+      meetingToken,
       userId
     ).then(result => {
       const pending = meetingManager.current?.isAwaitingApproval() || false;
@@ -1026,11 +1037,11 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     endDirectCall();
     meetingManager.current?.leaveMeeting(socket);
     peerManager.current?.closeAllConnections();
-    
+
     if (!skipHistory) {
       logCallHistory('completed', contactOverride);
     }
-    
+
     setCurrentMeetingId(null);
     participantsRef.current = [];
     setParticipants([]);
@@ -1048,17 +1059,17 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
 
   const logCallHistory = async (status: 'completed' | 'missed' | 'declined' | 'failed', contactOverride?: User) => {
     const currentUser = getCurrentUser();
-    
+
     if (callHistoryLoggedRef.current) {
       console.log('log_call_history_skipped_already_logged');
       return;
     }
-    
+
     if (!currentUser) {
       console.log('log_call_history_skipped_no_user');
       return;
     }
-    
+
     if (!callStartTimeRef.current) {
       console.log('log_call_history_skipped_no_start_time');
       return;
@@ -1076,7 +1087,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
       const hasEncryption = contact.peerId
         ? e2eStatus?.activeSessions?.includes(contact.peerId) || false
         : false;
-      
+
       console.log('saving_call_history', {
         userId: currentUser.uid,
         contactName: contact.username || contact.name || 'Unknown',
@@ -1084,7 +1095,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         duration,
         status,
       });
-      
+
       await callHistoryService.addCallToHistory({
         userId: currentUser.uid,
         contactId: contact.userId || contact.id || contact.peerId,
@@ -1097,7 +1108,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
         meetingId: currentMeetingIdRef.current || undefined,
         encrypted: hasEncryption,
       });
-      
+
       console.log('call_history_saved_successfully');
       callHistoryLoggedRef.current = true;
       callContactPhoneRef.current = null;
@@ -1115,14 +1126,14 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     }
 
     setRemoteUser(user);
-    
+
     if (!callStartTimeRef.current) {
       callStartTimeRef.current = Date.now();
       callTypeRef.current = 'outgoing';
       callHistoryLoggedRef.current = false;
     }
     callContactPhoneRef.current = normalizePhoneNumber(user.phoneNumbers?.[0]?.number);
-    
+
     if (!peerManager.current) {
       return;
     }
@@ -1162,9 +1173,9 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
 
   const switchCamera = async () => {
     if (!localStream) return;
-    
+
     const newFacingMode = facingModeRef.current === 'user' ? 'environment' : 'user';
-    
+
     try {
       const constraints = {
         audio: false,
@@ -1175,33 +1186,33 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
           frameRate: { ideal: 30, min: 15, max: 60 },
         },
       };
-      
+
       const newVideoStream = await mediaDevices.getUserMedia(constraints);
       const newVideoTrack = newVideoStream.getVideoTracks()[0];
-      
+
       if (!newVideoTrack) return;
-      
+
       if (peerManager.current) {
         await peerManager.current.replaceVideoTrack(newVideoTrack);
       }
-      
+
       const oldVideoTracks = localStream.getVideoTracks();
       const audioTracks = localStream.getAudioTracks();
-      
+
       oldVideoTracks.forEach(track => track.stop());
-      
+
       const updatedStream = new MediaStream([
         ...audioTracks,
         newVideoTrack,
       ]);
-      
+
       setLocalStream(updatedStream);
       localStreamRef.current = updatedStream;
-      
+
       if (peerManager.current) {
         peerManager.current.setLocalStream(updatedStream);
       }
-      
+
       facingModeRef.current = newFacingMode;
     } catch (err) {
       console.log('switch_camera_error', err);
@@ -1253,15 +1264,15 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
 
   const closeCall = () => {
     peerManager.current?.closeAllConnections();
-    
+
     const contact = remoteUser || participants.find(p => !p.isLocal);
     logCallHistory('completed', contact);
-    
+
     setActiveCall(null);
     setRemoteUser(null);
     setRemoteStream(null);
     setRemoteStreams(new Map());
-    
+
     leaveMeeting(true);
   };
 
@@ -1308,13 +1319,13 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
   };
 
   const refreshParticipantVideo = async (participantPeerId: string): Promise<void> => {
-    
+
     const participant = participantsRef.current.find(p => p.peerId === participantPeerId);
     if (!participant) {
       return;
     }
     meetingManager.current?.updateParticipant(participantPeerId, { isRefreshing: true });
-    
+
     try {
       peerManager.current?.closePeerConnection(participantPeerId);
       setRemoteStreams(prev => {
@@ -1381,7 +1392,7 @@ const WebRTCProvider: React.FC<Props> = ({children}) => {
     const interval = setInterval(() => {
       const activeSessions = sessionManager.getActiveSessions();
       const securityCodes = new Map<string, string>();
-      
+
       activeSessions.forEach(peerId => {
         const code = sessionManager.getSecurityCode(peerId);
         if (code) {
