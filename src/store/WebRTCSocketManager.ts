@@ -1,6 +1,6 @@
 import socketio from 'socket.io-client';
-import {User, JoinRequest} from './WebRTCTypes';
-import {SERVER_URL, SERVER_URLS, WEBRTC_CONFIG} from './WebRTCConfig';
+import { User, JoinRequest } from './WebRTCTypes';
+import { SERVER_URL, SERVER_URLS, WEBRTC_CONFIG } from './WebRTCConfig';
 import { KeyBundle } from '../crypto';
 
 type SocketInstance = ReturnType<typeof socketio>;
@@ -25,6 +25,7 @@ export class WebRTCSocketManager {
   private onJoinRequest?: (data: JoinRequest & { meetingId: string }) => void;
   private onJoinApproved?: (data: { meetingId: string; participants: User[]; requestId?: string }) => void;
   private onJoinDenied?: (data: { meetingId: string; reason?: string; requestId?: string }) => void;
+  private onDirectCallEnded?: (data: { endedBy: string; endedByName: string; meetingId?: string }) => void;
 
   setCallbacks(callbacks: {
     onUserJoined?: (user: User) => void;
@@ -40,8 +41,9 @@ export class WebRTCSocketManager {
     onCallCancelled?: (data: any) => void;
     onKeyBundleReceived?: (data: { fromUserId: string; bundle: KeyBundle }) => void;
     onJoinRequest?: (data: JoinRequest & { meetingId: string }) => void;
-  onJoinApproved?: (data: { meetingId: string; participants: User[]; requestId?: string }) => void;
-  onJoinDenied?: (data: { meetingId: string; reason?: string; requestId?: string }) => void;
+    onJoinApproved?: (data: { meetingId: string; participants: User[]; requestId?: string }) => void;
+    onJoinDenied?: (data: { meetingId: string; reason?: string; requestId?: string }) => void;
+    onDirectCallEnded?: (data: { endedBy: string; endedByName: string; meetingId?: string }) => void;
   }) {
     this.onUserJoined = callbacks.onUserJoined;
     this.onUserLeft = callbacks.onUserLeft;
@@ -58,11 +60,12 @@ export class WebRTCSocketManager {
     this.onJoinRequest = callbacks.onJoinRequest;
     this.onJoinApproved = callbacks.onJoinApproved;
     this.onJoinDenied = callbacks.onJoinDenied;
+    this.onDirectCallEnded = callbacks.onDirectCallEnded;
   }
 
   private async connectWithFallback(urls: string[], username: string): Promise<SocketInstance> {
     console.log('connect_with_fallback_start', { urlCount: urls.length, username });
-    
+
     for (let i = 0; i < urls.length; i += 1) {
       const url = urls[i];
       console.log('trying_server', { attempt: i + 1, total: urls.length, url });
@@ -110,14 +113,14 @@ export class WebRTCSocketManager {
         console.log('connection_successful', { url, socketId: io.id });
         return io;
       } catch (error) {
-        console.log('connection_attempt_failed', { 
-          url, 
-          attempt: i + 1, 
-          total: urls.length, 
+        console.log('connection_attempt_failed', {
+          url,
+          attempt: i + 1,
+          total: urls.length,
           error: error instanceof Error ? error.message : error,
           isLastAttempt: i === urls.length - 1
         });
-        
+
         if (i === urls.length - 1) {
           console.log('all_connection_attempts_exhausted', { urlCount: urls.length });
           throw error;
@@ -148,7 +151,7 @@ export class WebRTCSocketManager {
     console.log('socket_init_urls', { urlCount: allUrls.length, urls: allUrls });
     const io = await this.connectWithFallback(allUrls, username);
     console.log('socket_connected', { socketId: io.id, connected: io.connected });
-    
+
     this.socket = io;
     this.setupSocketListeners(io);
     console.log('socket_listeners_setup');
@@ -157,7 +160,7 @@ export class WebRTCSocketManager {
   }
 
   private setupSocketListeners(io: SocketInstance) {
-    io.on('disconnect', () => {});
+    io.on('disconnect', () => { });
 
     io.on('users-change', (users: User[]) => {
       this.onUsersChange?.(users);
@@ -180,7 +183,7 @@ export class WebRTCSocketManager {
     });
 
     io.on('offer', (data: any) => {
-      const {offer, fromPeerId, fromUsername, meetingId} = data;
+      const { offer, fromPeerId, fromUsername, meetingId } = data;
 
       if (meetingId !== this.currentMeetingId) {
         return;
@@ -198,7 +201,7 @@ export class WebRTCSocketManager {
     });
 
     io.on('answer', (data: any) => {
-      const {answer, fromPeerId} = data;
+      const { answer, fromPeerId } = data;
 
       const transformedData = {
         from: fromPeerId,
@@ -211,7 +214,7 @@ export class WebRTCSocketManager {
     });
 
     io.on('ice-candidate', (data: any) => {
-      const {candidate, fromPeerId} = data;
+      const { candidate, fromPeerId } = data;
 
       const transformedData = {
         from: fromPeerId,
@@ -258,6 +261,11 @@ export class WebRTCSocketManager {
 
     io.on('meeting-join-denied', (data: { meetingId: string; reason?: string }) => {
       this.onJoinDenied?.(data);
+    });
+
+    io.on('direct-call-ended', (data: { endedBy: string; endedByName: string; meetingId?: string }) => {
+      console.log('direct_call_ended_received', data);
+      this.onDirectCallEnded?.(data);
     });
   }
 
@@ -313,9 +321,9 @@ export class WebRTCSocketManager {
       throw new Error('Socket not initialized');
     }
 
-    console.log('register_user_emit', { 
-      userId: userData.userId, 
-      username: userData.username, 
+    console.log('register_user_emit', {
+      userId: userData.userId,
+      username: userData.username,
       hasPhone: !!userData.phoneNumber,
       peerId: userData.peerId,
       socketConnected: this.socket.connected
@@ -384,6 +392,16 @@ export class WebRTCSocketManager {
     this.socket.emit('cancel-call-request', data);
   }
 
+  endDirectCall(data: { meetingId?: string; recipientUserId?: string }) {
+    if (!this.socket) {
+      console.log('end_direct_call_no_socket');
+      return;
+    }
+
+    this.socket.emit('end-direct-call', data);
+    console.log('end_direct_call_emitted', data);
+  }
+
   getMeetingId(): string | null {
     return this.currentMeetingId;
   }
@@ -402,9 +420,9 @@ export class WebRTCSocketManager {
       throw new Error('Socket not initialized');
     }
 
-    console.log('upload_key_bundle_emit', { 
-      userId: bundle.userId, 
-      hasIdentityKey: !!bundle.identityKey, 
+    console.log('upload_key_bundle_emit', {
+      userId: bundle.userId,
+      hasIdentityKey: !!bundle.identityKey,
       hasEphemeralKey: !!bundle.ephemeralKey,
       socketConnected: this.socket.connected
     });

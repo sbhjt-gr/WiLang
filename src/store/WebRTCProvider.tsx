@@ -445,6 +445,28 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
 
           goBack();
         },
+        onDirectCallEnded: (data: { endedBy: string; endedByName: string; meetingId?: string }) => {
+          console.log('direct_call_ended_notification', data);
+
+          InCallManager.stop();
+          Notifications.dismissAllNotificationsAsync();
+
+          logCallHistory('completed');
+
+          peerManager.current?.closeAllConnections();
+          meetingManager.current?.leaveMeeting(socketRef.current);
+          endDirectCall();
+
+          setCurrentMeetingId(null);
+          participantsRef.current = [];
+          setParticipants([]);
+          setRemoteUser(null);
+          setRemoteStream(null);
+          setActiveCall(null);
+          setRemoteStreams(new Map());
+
+          navigate('HomeScreen', {});
+        },
         onJoinRequest: (request) => {
           if (!isMeetingOwnerRef.current) {
             return;
@@ -1034,6 +1056,17 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
   };
 
   const leaveMeeting = (skipHistory = false, contactOverride?: User) => {
+    const wasDirectCall = directCallStateRef.current.active;
+    const remoteUserId = directCallStateRef.current.remoteUser?.userId;
+    const meetingId = currentMeetingIdRef.current;
+
+    if (wasDirectCall && socketManager.current) {
+      socketManager.current.endDirectCall({
+        meetingId: meetingId || undefined,
+        recipientUserId: remoteUserId,
+      });
+    }
+
     endDirectCall();
     meetingManager.current?.leaveMeeting(socket);
     peerManager.current?.closeAllConnections();

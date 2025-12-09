@@ -8,7 +8,5 @@ declare module '@env' {
   export const STUN_SERVERS: string;
 
   // Palabra AI - Real-time speech-to-speech translation
-  export const PALABRA_CLIENT_ID: string;
-  export const PALABRA_CLIENT_SECRET: string;
   export const PALABRA_API_BASE_URL: string;
 }

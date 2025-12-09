@@ -375,11 +375,13 @@ export class PalabraTranslationService extends EventEmitter {
 }
 
 /**
- * Factory function to create PalabraTranslationService with env credentials
+ * Factory function to create PalabraTranslationService with provided credentials
  */
 export function createPalabraService(
+  auth: { clientId: string; clientSecret: string },
   sourceLanguage: SourceLangCode,
   targetLanguage: TargetLangCode,
+  apiBaseUrl: string = DEFAULT_API_BASE_URL,
   callbacks?: {
     onTranscription?: (data: TranscriptionData) => void;
     onTranslation?: (data: TranslationData) => void;
@@ -388,21 +390,16 @@ export function createPalabraService(
     onError?: (error: Error) => void;
   }
 ): PalabraTranslationService {
-  const clientId = process.env.PALABRA_CLIENT_ID;
-  const clientSecret = process.env.PALABRA_CLIENT_SECRET;
-  const apiBaseUrl = process.env.PALABRA_API_BASE_URL || DEFAULT_API_BASE_URL;
-
-  if (!clientId || !clientSecret) {
-    throw new Error(
-      'PALABRA_CLIENT_ID and PALABRA_CLIENT_SECRET environment variables are required'
-    );
+  if (!auth.clientId || !auth.clientSecret) {
+    throw new Error('Palabra clientId and clientSecret are required');
   }
 
   return new PalabraTranslationService({
-    auth: { clientId, clientSecret },
+    auth,
     sourceLanguage,
     targetLanguage,
     apiBaseUrl,
     ...callbacks,
   });
 }
+

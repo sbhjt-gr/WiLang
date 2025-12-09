@@ -13,11 +13,7 @@ import {
   ConnectionState,
 } from './palabra/types';
 import { CallTranslationPrefs } from './call-translation-prefs';
-import {
-  PALABRA_CLIENT_ID,
-  PALABRA_CLIENT_SECRET,
-  PALABRA_API_BASE_URL,
-} from '@env';
+import { PALABRA_API_BASE_URL } from '@env';
 
 export type TranslationState = 'idle' | 'connecting' | 'active' | 'error';
 
@@ -81,7 +77,11 @@ export class VideoCallTranslation extends EventEmitter {
       return false;
     }
 
-    if (!PALABRA_CLIENT_ID || !PALABRA_CLIENT_SECRET) {
+    const prefs = await CallTranslationPrefs.getAll();
+    const clientId = prefs.clientId;
+    const clientSecret = prefs.clientSecret;
+
+    if (!clientId || !clientSecret) {
       console.log('[VideoCallTranslation] not_configured');
       this.emit('error', new Error('Palabra not configured'));
       return false;
@@ -105,8 +105,8 @@ export class VideoCallTranslation extends EventEmitter {
 
       const config: PalabraTranslationServiceConfig = {
         auth: {
-          clientId: PALABRA_CLIENT_ID,
-          clientSecret: PALABRA_CLIENT_SECRET,
+          clientId,
+          clientSecret,
         },
         sourceLanguage: this.sourceLang,
         targetLanguage: this.targetLang,
@@ -177,10 +177,12 @@ export class VideoCallTranslation extends EventEmitter {
     return this.service?.getRemoteTracks() || [];
   }
 
-  isConfigured(): boolean {
-    return Boolean(PALABRA_CLIENT_ID && PALABRA_CLIENT_SECRET);
+  async isConfigured(): Promise<boolean> {
+    const prefs = await CallTranslationPrefs.getAll();
+    return Boolean(prefs.clientId && prefs.clientSecret);
   }
 }
 
 export const videoCallTranslation = new VideoCallTranslation();
 export default videoCallTranslation;
+

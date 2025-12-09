@@ -28,6 +28,8 @@ export default function CallTranslationSettings() {
   const [showSource, setShowSource] = useState(false);
   const [showTarget, setShowTarget] = useState(false);
   const [search, setSearch] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [clientSecret, setClientSecret] = useState('');
 
   const filteredSource = useMemo(() => {
     if (!search.trim()) return SOURCE_LANGS;
@@ -47,6 +49,8 @@ export default function CallTranslationSettings() {
         setEnabled(prefs.enabled);
         setSource(prefs.source);
         setTarget(prefs.target);
+        setClientId(prefs.clientId);
+        setClientSecret(prefs.clientSecret);
       }
     };
     load();
@@ -72,6 +76,16 @@ export default function CallTranslationSettings() {
     setShowTarget(false);
     setSearch('');
     await CallTranslationPrefs.setTarget(code as TargetLangCode);
+  }, []);
+
+  const handleClientIdChange = useCallback(async (val: string) => {
+    setClientId(val);
+    await CallTranslationPrefs.setClientId(val.trim());
+  }, []);
+
+  const handleClientSecretChange = useCallback(async (val: string) => {
+    setClientSecret(val);
+    await CallTranslationPrefs.setClientSecret(val.trim());
   }, []);
 
   const handleCloseSource = useCallback(() => {
@@ -188,12 +202,45 @@ export default function CallTranslationSettings() {
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.infoCard, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
-              <Ionicons name="information-circle" size={20} color="#8b5cf6" />
-              <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                During a video call, tap the translation button to start translating your speech. 
-                Your words will be transcribed and translated in real-time.
-              </Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              API Configuration
+            </Text>
+
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <View style={styles.inputRow}>
+                <View style={styles.inputLabel}>
+                  <Ionicons name="key-outline" size={20} color="#8b5cf6" />
+                  <Text style={[styles.inputLabelText, { color: colors.text }]}>Client ID</Text>
+                </View>
+                <TextInput
+                  style={[styles.credInput, { color: colors.text, borderColor: colors.border }]}
+                  placeholder="Enter Palabra Client ID"
+                  placeholderTextColor={colors.textSecondary}
+                  value={clientId}
+                  onChangeText={handleClientIdChange}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              <View style={styles.inputRow}>
+                <View style={styles.inputLabel}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#8b5cf6" />
+                  <Text style={[styles.inputLabelText, { color: colors.text }]}>Client Secret</Text>
+                </View>
+                <TextInput
+                  style={[styles.credInput, { color: colors.text, borderColor: colors.border }]}
+                  placeholder="Enter Palabra Client Secret"
+                  placeholderTextColor={colors.textSecondary}
+                  value={clientSecret}
+                  onChangeText={handleClientSecretChange}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  secureTextEntry
+                />
+              </View>
             </View>
           </ScrollView>
         </View>
@@ -407,5 +454,26 @@ const styles = StyleSheet.create({
   langTextSelected: {
     color: '#8b5cf6',
     fontWeight: '600',
+  },
+  inputRow: {
+    padding: 16,
+    gap: 10,
+  },
+  inputLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  inputLabelText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  credInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
   },
 });
