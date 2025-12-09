@@ -1,6 +1,7 @@
 import Expo
 import FirebaseCore
 import React
+import RNCCallKeep
 import ReactAppDependencyProvider
 
 @UIApplicationMain
@@ -70,5 +71,50 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
 #else
     return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
+  }
+
+  public func applicationDidBecomeActive(_ application: UIApplication) {
+    setupVoIP()
+  }
+}
+
+import PushKit
+
+extension AppDelegate: PKPushRegistryDelegate {
+  func setupVoIP() {
+    let registry = PKPushRegistry(queue: DispatchQueue.main)
+    registry.delegate = self
+    registry.desiredPushTypes = [.voIP]
+  }
+  
+  func pushRegistry(_ registry: PKPushRegistry, didUpdate pushCredentials: PKPushCredentials, for type: PKPushType) {
+    let token = pushCredentials.token.map { String(format: "%02.2hhx", $0) }.joined()
+    RNCCallKeep.registerVoipPushToken(token: token)
+  }
+  
+  func pushRegistry(_ registry: PKPushRegistry, didReceiveIncomingPushWith payload: PKPushPayload, for type: PKPushType, completion: @escaping () -> Void) {
+    let data = payload.dictionaryPayload
+    
+    guard let callId = data["callId"] as? String,
+          let callerName = data["callerName"] as? String else {
+      completion()
+      return
+    }
+    
+    RNCCallKeep.reportNewIncomingCall(
+      uuidString: callId,
+      handle: callerName,
+      handleType: "generic",
+      hasVideo: true,
+      localizedCallerName: callerName,
+      supportsHolding: false,
+      supportsDTMF: false,
+      supportsGrouping: false,
+      supportsUngrouping: false,
+      fromPushKit: true,
+      payload: data as? [String: Any]
+    )
+    
+    completion()
   }
 }

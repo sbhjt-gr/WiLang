@@ -869,6 +869,14 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
             });
 
             callKeepService.init();
+            
+            if (Platform.OS === 'ios') {
+              callKeepService.onVoipTokenReceived((voipToken) => {
+                if (socketManager.current) {
+                  socketManager.current.updateFcmToken(currentUser.uid, voipToken, 'ios');
+                }
+              });
+            }
 
             console.log('socket_auto_connected', { uid: currentUser.uid, phone: phoneNumber, socketId: io.id });
           } else {
@@ -979,6 +987,14 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
             socketManager.current.updateFcmToken(currentUser.uid, fcmToken, platform);
           }
         });
+        
+        if (Platform.OS === 'ios') {
+          callKeepService.onVoipTokenReceived((voipToken) => {
+            if (socketManager.current) {
+              socketManager.current.updateFcmToken(currentUser.uid, voipToken, 'ios');
+            }
+          });
+        }
 
         console.log('user_registered', currentUser.uid, phoneNumber);
       } else if (socketManager.current) {

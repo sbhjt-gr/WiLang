@@ -1,6 +1,7 @@
-import { Platform, AppState, NativeEventEmitter, NativeModules } from 'react-native';
+import { Platform } from 'react-native';
 import RNCallKeep from 'react-native-callkeep';
 import { navigate } from '../utils/navigationRef';
+import { clearIncomingCall } from '../utils/call-storage';
 
 interface CallData {
   callId: string;
@@ -12,12 +13,16 @@ interface CallData {
   meetingToken?: string;
 }
 
+type VoipTokenCallback = (token: string) => void;
+
 class CallKeepService {
   private initialized = false;
   private activeCallId: string | null = null;
   private pendingCallData: CallData | null = null;
   private answerCallback: ((callData: CallData) => void) | null = null;
   private endCallback: ((callId: string) => void) | null = null;
+  private voipTokenCallback: VoipTokenCallback | null = null;
+  private voipToken: string | null = null;
 
   async init(): Promise<boolean> {
     if (this.initialized) return true;
@@ -35,7 +40,7 @@ class CallKeepService {
         cancelButton: 'Cancel',
         okButton: 'OK',
         additionalPermissions: [],
-        selfManaged: false,
+        selfManaged: true,
         foregroundService: {
           channelId: 'wilang_calls',
           channelName: 'WiLang Calls',
@@ -47,6 +52,9 @@ class CallKeepService {
 
     try {
       await RNCallKeep.setup(options);
+      if (Platform.OS === 'android') {
+        RNCallKeep.setAvailable(true);
+      }
       this.initialized = true;
       this.setupListeners();
       console.log('callkeep_initialized');
@@ -62,10 +70,39 @@ class CallKeepService {
     RNCallKeep.addEventListener('endCall', this.onEndCall.bind(this));
     RNCallKeep.addEventListener('didDisplayIncomingCall', this.onDisplayCall.bind(this));
     RNCallKeep.addEventListener('didPerformSetMutedCallAction', this.onMuteCall.bind(this));
+    
+    if (Platform.OS === 'ios') {
+      RNCallKeep.addEventListener('didLoadWithEvents', this.onDidLoadWithEvents.bind(this));
+    }
   }
 
-  private onAnswerCall({ callUUID }: { callUUID: string }) {
+  private onDidLoadWithEvents(events: any[]) {
+    if (!events || events.length === 0) return;
+    
+    for (const event of events) {
+      if (event.name === 'RNCallKeepDidDisplayIncomingCall') {
+        const { payload } = event.data || {};
+        if (payload) {
+          this.pendingCallData = {
+            callId: payload.callId || event.data.callUUID,
+            callerName: payload.callerName || event.data.localizedCallerName || 'Unknown',
+            callerPhone: payload.callerPhone,
+            callerId: payload.callerId,
+            callerSocketId: payload.callerSocketId,
+            meetingId: payload.meetingId,
+            meetingToken: payload.meetingToken,
+          };
+        }
+      }
+    }
+  }
+
+  private async onAnswerCall({ callUUID }: { callUUID: string }) {
     console.log('callkeep_answered', callUUID);
+    
+    if (Platform.OS === 'android') {
+      RNCallKeep.backToForeground();
+    }
     
     if (this.pendingCallData && this.answerCallback) {
       this.answerCallback(this.pendingCallData);
@@ -83,28 +120,61 @@ class CallKeepService {
       });
     }
 
+    await clearIncomingCall();
     RNCallKeep.endCall(callUUID);
     this.activeCallId = null;
     this.pendingCallData = null;
   }
 
-  private onEndCall({ callUUID }: { callUUID: string }) {
+  private async onEndCall({ callUUID }: { callUUID: string }) {
     console.log('callkeep_ended', callUUID);
     
     if (this.endCallback && this.activeCallId) {
       this.endCallback(this.activeCallId);
     }
 
+    await clearIncomingCall();
     this.activeCallId = null;
     this.pendingCallData = null;
   }
 
-  private onDisplayCall({ callUUID, handle, localizedCallerName }: any) {
+  private onDisplayCall({ callUUID, handle, localizedCallerName, payload }: any) {
     console.log('callkeep_displayed', { callUUID, handle, localizedCallerName });
+    
+    if (payload && Platform.OS === 'ios') {
+      this.pendingCallData = {
+        callId: payload.callId || callUUID,
+        callerName: payload.callerName || localizedCallerName || 'Unknown',
+        callerPhone: payload.callerPhone,
+        callerId: payload.callerId,
+        callerSocketId: payload.callerSocketId,
+        meetingId: payload.meetingId,
+        meetingToken: payload.meetingToken,
+      };
+    }
   }
 
   private onMuteCall({ muted, callUUID }: { muted: boolean; callUUID: string }) {
     console.log('callkeep_mute', { muted, callUUID });
+  }
+
+  onVoipTokenReceived(callback: VoipTokenCallback) {
+    this.voipTokenCallback = callback;
+    if (this.voipToken) {
+      callback(this.voipToken);
+    }
+  }
+
+  setVoipToken(token: string) {
+    this.voipToken = token;
+    console.log('voip_token_set');
+    if (this.voipTokenCallback) {
+      this.voipTokenCallback(token);
+    }
+  }
+
+  getVoipToken(): string | null {
+    return this.voipToken;
   }
 
   displayIncomingCall(callData: CallData) {
@@ -161,6 +231,9 @@ class CallKeepService {
     RNCallKeep.removeEventListener('endCall');
     RNCallKeep.removeEventListener('didDisplayIncomingCall');
     RNCallKeep.removeEventListener('didPerformSetMutedCallAction');
+    if (Platform.OS === 'ios') {
+      RNCallKeep.removeEventListener('didLoadWithEvents');
+    }
     this.initialized = false;
   }
 }
