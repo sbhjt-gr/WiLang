@@ -17,6 +17,7 @@ import { geminiSummaryService } from './gemini-summary';
 class CallNotesStorageService {
   private static instance: CallNotesStorageService;
   private initialized = false;
+  private initPromise: Promise<void> | null = null;
 
   private constructor() {}
 
@@ -28,6 +29,9 @@ class CallNotesStorageService {
   }
 
   private async getDb(): Promise<SQLite.SQLiteDatabase | null> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
     let db = getDatabase();
     if (!db) {
       await initDatabase();
@@ -38,8 +42,19 @@ class CallNotesStorageService {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
+    if (this.initPromise) return this.initPromise;
 
-    const db = await this.getDb();
+    this.initPromise = this.doInitialize();
+    return this.initPromise;
+  }
+
+  private async doInitialize(): Promise<void> {
+    let db = getDatabase();
+    if (!db) {
+      await initDatabase();
+      db = getDatabase();
+    }
+
     if (!db) {
       console.error('[CallNotesStorage] Database not available');
       return;
@@ -92,6 +107,7 @@ class CallNotesStorageService {
       console.log('[CallNotesStorage] Tables initialized');
     } catch (error) {
       console.error('[CallNotesStorage] Init failed:', error);
+      this.initPromise = null;
     }
   }
 

@@ -59,6 +59,7 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
   const isMeetingOwnerRef = useRef(false);
   const callStartTimeRef = useRef<number | null>(null);
   const callTypeRef = useRef<'outgoing' | 'incoming' | null>(null);
+  const callModeRef = useRef<'voice' | 'video'>('video');
   const callContactPhoneRef = useRef<string | null>(null);
   const callHistoryLoggedRef = useRef(false);
   const facingModeRef = useRef<'user' | 'environment'>('user');
@@ -204,6 +205,7 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
     setIsDirectCallActive(true);
     setRemoteUser(remoteUserData);
     callContactPhoneRef.current = normalizePhoneNumber(config.phoneNumber);
+    callModeRef.current = config.callMode || 'video';
     ensureDirectCallState();
   }, [ensureDirectCallState, normalizePhoneNumber]);
 
@@ -348,6 +350,7 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
           callContactPhoneRef.current = normalizePhoneNumber(callData.callerPhone);
 
           const isVoiceOnly = callData.callType === 'voice';
+          callModeRef.current = isVoiceOnly ? 'voice' : 'video';
 
           Notifications.scheduleNotificationAsync({
             content: {
@@ -398,6 +401,8 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
 
           videoCallService.clearPendingCall();
 
+          const isVoiceOnly = data.callType === 'voice';
+
           if (data.accepterSocketId) {
             prepareDirectCall({
               peerId: data.accepterSocketId,
@@ -405,10 +410,10 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
               username: data.accepterName || 'Unknown',
               phoneNumber: data.accepterPhone,
               role: 'caller',
+              callMode: isVoiceOnly ? 'voice' : 'video',
             });
           }
 
-          const isVoiceOnly = data.callType === 'voice';
           const screenName = isVoiceOnly ? 'VoiceCallScreen' : 'VideoCallScreen';
 
           navigate(screenName, {
@@ -1132,6 +1137,7 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
         userId: currentUser.uid,
         contactName: contact.username || contact.name || 'Unknown',
         type: callTypeRef.current,
+        callMode: callModeRef.current,
         duration,
         status,
       });
@@ -1142,6 +1148,7 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
         contactName: contact.username || contact.name || 'Unknown',
         contactPhone: callContactPhoneRef.current || normalizePhoneNumber(contact.phoneNumbers?.[0]?.number) || undefined,
         type: callTypeRef.current || 'outgoing',
+        callMode: callModeRef.current,
         duration: status === 'completed' ? duration : 0,
         timestamp: callStartTimeRef.current,
         status,
@@ -1157,6 +1164,7 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
     } finally {
       callStartTimeRef.current = null;
       callTypeRef.current = null;
+      callModeRef.current = 'video';
     }
   };
 

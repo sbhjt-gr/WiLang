@@ -9,6 +9,7 @@ export interface CallHistoryEntry {
   contactName: string;
   contactPhone?: string;
   type: 'outgoing' | 'incoming' | 'missed';
+  callMode?: 'voice' | 'video';
   duration: number;
   timestamp: number;
   status: 'completed' | 'missed' | 'declined' | 'failed';

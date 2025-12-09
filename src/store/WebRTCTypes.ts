@@ -19,6 +19,7 @@ export interface DirectCallConfig {
   role: 'caller' | 'recipient';
   userId?: string;
   phoneNumber?: string | null;
+  callMode?: 'voice' | 'video';
 }
 
 export interface E2EStatus {

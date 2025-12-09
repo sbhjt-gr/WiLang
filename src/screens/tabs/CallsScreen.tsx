@@ -104,21 +104,25 @@ export default function CallsScreen({ navigation }: Props) {
     return `${seconds}s`;
   };
 
-  const formatTimeAgo = (timestamp: number): string => {
-    const now = Date.now();
-    const diffMs = now - timestamp;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays}d ago`;
-
+  const formatDateTime = (timestamp: number): string => {
     const date = new Date(timestamp);
-    return date.toLocaleDateString();
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+
+    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (isToday) {
+      return `Today, ${time}`;
+    }
+    if (isYesterday) {
+      return `Yesterday, ${time}`;
+    }
+
+    const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return `${dateStr}, ${time}`;
   };
 
   const handleCall = async (call: CallHistoryEntry, isVoiceOnly: boolean = false) => {
@@ -331,11 +335,16 @@ export default function CallsScreen({ navigation }: Props) {
                       {call.contactName}
                     </Text>
                     <View style={styles.callMetaRow}>
+                      <Ionicons
+                        name={call.callMode === 'voice' ? 'call' : 'videocam'}
+                        size={11}
+                        color={getCallColor(call.type)}
+                      />
                       <Text style={[styles.callTypeLabel, { color: getCallColor(call.type) }]}>
                         {call.type === 'outgoing' ? 'Outgoing' : call.type === 'incoming' ? 'Incoming' : 'Missed'}
                       </Text>
                       <Text style={[styles.callMeta, { color: colors.textSecondary }]}>
-                        · {formatTimeAgo(call.timestamp)} · {formatDuration(call.duration)}
+                        · {formatDateTime(call.timestamp)} · {formatDuration(call.duration)}
                       </Text>
                     </View>
                   </View>
@@ -543,6 +552,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 2,
+    gap: 4,
   },
   callTypeLabel: {
     fontSize: 12,

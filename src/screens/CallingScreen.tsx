@@ -99,6 +99,7 @@ export default function CallingScreen() {
         username: params.callerName,
         phoneNumber: params.callerPhone,
         role: 'recipient',
+        callMode: params.isVoiceOnly ? 'voice' : 'video',
       });
       videoCallService.acceptIncomingCall(
         params.callId,
