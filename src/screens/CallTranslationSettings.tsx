@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   StatusBar,
   TextInput,
   FlatList,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -31,6 +32,10 @@ export default function CallTranslationSettings() {
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
+  const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savedAnim = useRef(new Animated.Value(0)).current;
+  const initialPrefs = useRef({ enabled: false, source: 'auto', target: 'en-us', clientId: '', clientSecret: '', geminiKey: '' });
 
   const filteredSource = useMemo(() => {
     if (!search.trim()) return SOURCE_LANGS;
@@ -53,6 +58,7 @@ export default function CallTranslationSettings() {
         setClientId(prefs.clientId);
         setClientSecret(prefs.clientSecret);
         setGeminiKey(prefs.geminiKey);
+        initialPrefs.current = { ...prefs };
       }
     };
     load();
@@ -61,39 +67,64 @@ export default function CallTranslationSettings() {
     };
   }, []);
 
-  const handleToggle = useCallback(async (val: boolean) => {
+  useEffect(() => {
+    const changed = 
+      enabled !== initialPrefs.current.enabled ||
+      source !== initialPrefs.current.source ||
+      target !== initialPrefs.current.target ||
+      clientId !== initialPrefs.current.clientId ||
+      clientSecret !== initialPrefs.current.clientSecret ||
+      geminiKey !== initialPrefs.current.geminiKey;
+    setHasChanges(changed);
+  }, [enabled, source, target, clientId, clientSecret, geminiKey]);
+
+  const handleToggle = useCallback((val: boolean) => {
     setEnabled(val);
-    await CallTranslationPrefs.setEnabled(val);
   }, []);
 
-  const handleSourceSelect = useCallback(async (code: string) => {
+  const handleSourceSelect = useCallback((code: string) => {
     setSource(code as SourceLangCode);
     setShowSource(false);
     setSearch('');
-    await CallTranslationPrefs.setSource(code as SourceLangCode);
   }, []);
 
-  const handleTargetSelect = useCallback(async (code: string) => {
+  const handleTargetSelect = useCallback((code: string) => {
     setTarget(code as TargetLangCode);
     setShowTarget(false);
     setSearch('');
-    await CallTranslationPrefs.setTarget(code as TargetLangCode);
   }, []);
 
-  const handleClientIdChange = useCallback(async (val: string) => {
+  const handleClientIdChange = useCallback((val: string) => {
     setClientId(val);
-    await CallTranslationPrefs.setClientId(val.trim());
   }, []);
 
-  const handleClientSecretChange = useCallback(async (val: string) => {
+  const handleClientSecretChange = useCallback((val: string) => {
     setClientSecret(val);
-    await CallTranslationPrefs.setClientSecret(val.trim());
   }, []);
 
-  const handleGeminiKeyChange = useCallback(async (val: string) => {
+  const handleGeminiKeyChange = useCallback((val: string) => {
     setGeminiKey(val);
-    await CallTranslationPrefs.setGeminiKey(val.trim());
   }, []);
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    await Promise.all([
+      CallTranslationPrefs.setEnabled(enabled),
+      CallTranslationPrefs.setSource(source),
+      CallTranslationPrefs.setTarget(target),
+      CallTranslationPrefs.setClientId(clientId.trim()),
+      CallTranslationPrefs.setClientSecret(clientSecret.trim()),
+      CallTranslationPrefs.setGeminiKey(geminiKey.trim()),
+    ]);
+    initialPrefs.current = { enabled, source, target, clientId, clientSecret, geminiKey };
+    setHasChanges(false);
+    setSaving(false);
+    Animated.sequence([
+      Animated.timing(savedAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(1500),
+      Animated.timing(savedAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, [enabled, source, target, clientId, clientSecret, geminiKey, savedAnim]);
 
   const handleCloseSource = useCallback(() => {
     setShowSource(false);
@@ -257,7 +288,6 @@ export default function CallTranslationSettings() {
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <View style={styles.inputRow}>
                 <View style={styles.inputLabel}>
-                  <Ionicons name="sparkles-outline" size={20} color="#8b5cf6" />
                   <Text style={[styles.inputLabelText, { color: colors.text }]}>API Key</Text>
                 </View>
                 <TextInput
@@ -272,6 +302,27 @@ export default function CallTranslationSettings() {
                 />
               </View>
             </View>
+
+            <TouchableOpacity
+              style={[styles.saveButton, !hasChanges && styles.saveButtonDisabled]}
+              onPress={handleSave}
+              disabled={!hasChanges || saving}
+              activeOpacity={0.8}
+            >
+              {saving ? (
+                <Text style={styles.saveButtonText}>Saving...</Text>
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                  <Text style={styles.saveButtonText}>Save Preferences</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <Animated.View style={[styles.savedBadge, { opacity: savedAnim }]}>
+              <Ionicons name="checkmark" size={16} color="#10b981" />
+              <Text style={styles.savedText}>Saved</Text>
+            </Animated.View>
           </ScrollView>
         </View>
       </SafeAreaView>
@@ -505,5 +556,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#8b5cf6',
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+    marginTop: 8,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#8b5cf680',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  savedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+  },
+  savedText: {
+    color: '#10b981',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
