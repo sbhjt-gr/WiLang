@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, Platform, ScrollView, Alert, TouchableOpacity, StatusBar, TextInput, Keyboard, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, StyleSheet, Image, Platform, ScrollView, Alert, TouchableOpacity, StatusBar, TextInput, Keyboard, TouchableWithoutFeedback, ActivityIndicator, Text } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -236,8 +235,9 @@ export default function RegisterScreen({ navigation }: Props) {
         >
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
+              <View style={styles.logoGlow} />
               <Image 
-                source={require('../../../assets/adaptive-icon.png')} 
+                source={require('../../../assets/icon.png')} 
                 style={styles.logo}
                 resizeMode="contain"
               />
@@ -371,25 +371,33 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   logoContainer: {
-    width: 100,
-    height: 100,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 50,
+    width: 140,
+    height: 140,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 70,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 8,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  logoGlow: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   logo: {
-    width: 60,
-    height: 60,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
   },
   welcomeTitle: {
     fontSize: 32,

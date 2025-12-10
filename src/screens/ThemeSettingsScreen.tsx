@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Switch, StatusBar } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Switch, StatusBar, Text } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -50,7 +49,7 @@ const themeOptions: ThemeItem[] = [
 ];
 
 export default function ThemeSettingsScreen({ navigation, route }: Props) {
-  const { colors, theme, setTheme, usePitchBlack, setUsePitchBlack } = useTheme();
+  const { colors, theme, setTheme } = useTheme();
   const [isPitchBlackEnabled, setIsPitchBlackEnabled] = useState(false);
 
   useEffect(() => {
@@ -62,7 +61,7 @@ export default function ThemeSettingsScreen({ navigation, route }: Props) {
       const saved = await AsyncStorage.getItem(PITCH_BLACK_KEY);
       setIsPitchBlackEnabled(saved === 'true');
     } catch (error) {
-      console.error('pitch_black_load_error', error);
+      console.log('pitch_black_load_error');
     }
   };
 
@@ -74,34 +73,32 @@ export default function ThemeSettingsScreen({ navigation, route }: Props) {
     try {
       await AsyncStorage.setItem(PITCH_BLACK_KEY, value.toString());
       setIsPitchBlackEnabled(value);
-      if (setUsePitchBlack) {
-        setUsePitchBlack(value);
-      }
     } catch (error) {
-      console.error('pitch_black_save_error', error);
+      console.log('pitch_black_save_error');
     }
   };
 
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#8b5cf6" />
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-        <View style={[styles.header, { backgroundColor: '#8b5cf6' }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#ffffff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Theme</Text>
-        <View style={styles.headerRight} />
-      </View>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={[styles.header, { backgroundColor: '#8b5cf6' }]}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#ffffff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Theme</Text>
+            <View style={styles.headerRight} />
+          </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
           <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
@@ -179,12 +176,17 @@ export default function ThemeSettingsScreen({ navigation, route }: Props) {
           </View>
         </View>
       </ScrollView>
+        </View>
       </SafeAreaView>
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#8b5cf6',
+  },
   container: {
     flex: 1,
   },

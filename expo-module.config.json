@@ -1,0 +1,10 @@
+{
+  "platforms": ["ios", "android"],
+  "ios": {
+    "modules": ["RemoteAudioRecorder"]
+  },
+  "android": {
+    "modules": ["com.gorai.wilanger.remoteaudio.RemoteAudioRecorder"]
+  }
+}
+

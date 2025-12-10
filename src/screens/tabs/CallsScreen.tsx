@@ -1,11 +1,15 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, ScrollView, StyleSheet, Platform, TouchableOpacity, StatusBar, TextInput } from 'react-native';
-import { Text, Image } from '@rneui/themed';
+import React, { useState, useRef, useCallback, useContext } from 'react';
+import { View, ScrollView, StyleSheet, TouchableOpacity, TextInput, Text, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import GlassModal from '../../components/GlassModal';
+import { callHistoryService, CallHistoryEntry } from '../../services/CallHistoryService';
+import { auth } from '../../config/firebase';
+import { useFocusEffect } from '@react-navigation/native';
+import { videoCallService } from '../../services/VideoCallService';
+import { WebRTCContext } from '../../store/WebRTCContext';
 
 type CallsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -14,9 +18,10 @@ interface Props {
 }
 
 export default function CallsScreen({ navigation }: Props) {
-  const [id, setID] = useState<string>('');
+  const [joinCode, setJoinCode] = useState<string>('');
   const textInputRef = useRef<TextInput>(null);
   const { colors } = useTheme();
+  const webRTCContext = useContext(WebRTCContext);
   const [modalConfig, setModalConfig] = useState<{
     visible: boolean;
     title: string;
@@ -28,6 +33,145 @@ export default function CallsScreen({ navigation }: Props) {
     message: '',
     icon: 'information-circle',
   });
+
+  const [callHistory, setCallHistory] = useState<CallHistoryEntry[]>([]);
+  const [stats, setStats] = useState({
+    totalCalls: 0,
+    totalDuration: 0,
+    missedCalls: 0,
+    completedCalls: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadCallHistory = async (forceRefresh: boolean = false) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const [history, callStats] = await Promise.all([
+        callHistoryService.getCallHistory(currentUser.uid, 50, forceRefresh),
+        callHistoryService.getCallStats(currentUser.uid),
+      ]);
+
+      setCallHistory(history);
+      setStats(callStats);
+    } catch (error) {
+      console.log('load_call_history_failed', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCallHistory(false);
+    }, [])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadCallHistory(true);
+  };
+
+  const formatDuration = (seconds: number): string => {
+    if (seconds === 0) return '00:00';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatTotalDuration = (seconds: number | null | undefined): string => {
+    if (seconds == null || seconds === 0) return '0s';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m`;
+    }
+    return `${seconds}s`;
+  };
+
+  const formatDateTime = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+
+    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (isToday) {
+      return `Today, ${time}`;
+    }
+    if (isYesterday) {
+      return `Yesterday, ${time}`;
+    }
+
+    const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return `${dateStr}, ${time}`;
+  };
+
+  const handleCall = async (call: CallHistoryEntry, isVoiceOnly: boolean = false) => {
+    if (!call.contactId || !call.contactPhone) {
+      return;
+    }
+
+    try {
+      if (!webRTCContext) {
+        Alert.alert('Unable to Call', 'Something went wrong. Please restart the app and try again.');
+        return;
+      }
+      videoCallService.setNavigationRef({ current: navigation });
+
+      if (isVoiceOnly) {
+        await videoCallService.startVoiceCallWithPhone(
+          call.contactId,
+          call.contactPhone,
+          call.contactName
+        );
+      } else {
+        await videoCallService.startVideoCallWithPhone(
+          call.contactId,
+          call.contactPhone,
+          call.contactName
+        );
+      }
+    } catch {
+      Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
+    }
+  };
+
+  const getCallColor = (type: string) => {
+    switch (type) {
+      case 'missed': return '#ef4444';
+      case 'incoming': return '#10b981';
+      case 'outgoing': return '#8b5cf6';
+      default: return '#8b5cf6';
+    }
+  };
+
+  const getCallTypeIcon = (type: string): keyof typeof Ionicons.glyphMap => {
+    switch (type) {
+      case 'missed': return 'arrow-down-outline';
+      case 'incoming': return 'arrow-down-outline';
+      case 'outgoing': return 'arrow-up-outline';
+      default: return 'call-outline';
+    }
+  };
 
   const showModal = (title: string, message: string, icon: string = 'information-circle') => {
     setModalConfig({
@@ -42,25 +186,23 @@ export default function CallsScreen({ navigation }: Props) {
     setModalConfig(prev => ({ ...prev, visible: false }));
   };
 
-  const meet = (): void => {
-    if (id.trim()) {
-      const rawInput = id.trim();
+  const handleJoinMeeting = (): void => {
+    if (joinCode.trim()) {
+      const rawInput = joinCode.trim();
       const isOnlyNumeric = /^[0-9]+$/.test(rawInput);
       const numericId = parseInt(rawInput);
       if (isOnlyNumeric && !isNaN(numericId)) {
-        navigation.navigate('VideoCallScreen', {
-          id: numericId.toString(),
-          type: 'join',
-          joinCode: numericId.toString()
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'VideoCallScreen', params: { id: numericId.toString(), type: 'join', joinCode: numericId.toString() } }],
         });
       } else {
         const cleanCode = rawInput.toUpperCase();
 
         if (/^[A-Z0-9]{4,8}$/.test(cleanCode)) {
-          navigation.navigate('VideoCallScreen', {
-            id: Date.now().toString(),
-            type: 'join',
-            joinCode: cleanCode
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'VideoCallScreen', params: { id: Date.now().toString(), type: 'join', joinCode: cleanCode } }],
           });
         } else {
           showModal("Invalid Code", "Join codes should be 4-8 characters using letters and numbers only.", "alert-circle");
@@ -70,12 +212,12 @@ export default function CallsScreen({ navigation }: Props) {
       showModal("Missing Meeting ID", "Please enter a valid meeting ID or join code to join the call.", "information-circle");
     }
   };
-  
+
   const createMeeting = (): void => {
     const meetingId = `INSTANT_${Date.now()}`;
-    navigation.navigate('VideoCallScreen', {
-      id: meetingId,
-      type: 'instant'
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'VideoCallScreen', params: { id: meetingId, type: 'instant' } }],
     });
   };
 
@@ -88,90 +230,146 @@ export default function CallsScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="none"
         automaticallyAdjustKeyboardInsets={true}
-        nestedScrollEnabled={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8b5cf6" />
+        }
       >
-        <View style={styles.actionsSection}>
-          <View style={styles.instantActions}>
-            <TouchableOpacity
-              style={[styles.primaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
-              onPress={createMeeting}
-            >
-              <Ionicons name="videocam" size={32} color="#8b5cf6" />
-              <Text style={[styles.primaryActionTitle, { color: colors.text }]}>Start a meeting</Text>
-              <Text style={[styles.primaryActionSubtitle, { color: colors.textSecondary }]}>Begin translating immediately</Text>
-            </TouchableOpacity>
-
-            <View style={styles.secondaryActions}>
-              <TouchableOpacity
-                style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => {}}
-              >
-                <View style={styles.secondaryActionContent}>
-                  <Ionicons name="mic" size={24} color="#8b5cf6" />
-                  <Text style={[styles.secondaryActionTitle, { color: colors.text }]}>Voice Only</Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => {}}
-              >
-                <View style={styles.secondaryActionContent}>
-                  <Ionicons name="people" size={24} color="#8b5cf6" />
-                  <Text style={[styles.secondaryActionTitle, { color: colors.text }]}>Group Call</Text>
-                </View>
-              </TouchableOpacity>
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={styles.startCallBtn}
+            onPress={createMeeting}
+            activeOpacity={0.85}
+          >
+            <View style={styles.startCallIcon}>
+              <Ionicons name="videocam" size={24} color="#ffffff" />
             </View>
-          </View>
-        </View>
-
-        <View style={styles.joinSection}>
-          <View style={[styles.joinCard, { backgroundColor: colors.surface }]}>
-            <View style={styles.joinHeader}>
-              <Ionicons name="enter-outline" size={20} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Join a Meeting</Text>
+            <View style={styles.startCallText}>
+              <Text style={styles.startCallTitle}>New Meeting</Text>
+              <Text style={styles.startCallSubtitle}>Start a video call</Text>
             </View>
+            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
+          </TouchableOpacity>
 
-            <View style={styles.inputContainer}>
+          <View style={styles.joinRow}>
+            <View style={[styles.joinInputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Ionicons name="keypad-outline" size={18} color={colors.textTertiary} />
               <TextInput
                 ref={textInputRef}
-                style={[styles.meetingInput, { backgroundColor: colors.backgroundTertiary, color: colors.text, borderColor: colors.border }]}
-                placeholder="Enter meeting code (e.g. ABC123)"
+                style={[styles.joinInput, { color: colors.text }]}
+                placeholder="Enter code"
                 placeholderTextColor={colors.textTertiary}
-                value={id}
-                onChangeText={setID}
+                value={joinCode}
+                onChangeText={setJoinCode}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 autoComplete="off"
-                keyboardType="default"
-                returnKeyType="done"
-                onSubmitEditing={meet}
+                returnKeyType="join"
+                onSubmitEditing={handleJoinMeeting}
               />
             </View>
-
             <TouchableOpacity
-              style={[styles.joinMeetingButton, { backgroundColor: colors.surface, borderColor: '#8b5cf6', borderWidth: 1 }, !id.trim() && { borderColor: colors.border }]}
-              onPress={meet}
-              disabled={!id.trim()}
+              style={[styles.joinBtn, !joinCode.trim() && styles.joinBtnDisabled]}
+              onPress={handleJoinMeeting}
+              disabled={!joinCode.trim()}
+              activeOpacity={0.8}
             >
-              <Text style={[styles.joinMeetingButtonText, { color: '#8b5cf6' }, !id.trim() && { color: colors.textTertiary }]}>
-                Join Meeting
-              </Text>
+              <Ionicons name="arrow-forward" size={20} color={joinCode.trim() ? '#ffffff' : colors.textTertiary} />
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.languageBanner}>
-          <View style={[styles.languageContainer, { backgroundColor: colors.surface }]}>
-            <Ionicons name="globe-outline" size={24} color="#8b5cf6" />
-            <View style={styles.languageContent}>
-              <Text style={[styles.languageTitle, { color: colors.text }]}>30+ Languages Supported</Text>
-              <Text style={[styles.languageSubtitle, { color: colors.textSecondary }]}>Real-time translation powered by AI</Text>
-            </View>
-            <TouchableOpacity style={styles.languageButton}>
-              <Ionicons name="arrow-forward" size={16} color="#8b5cf6" />
-            </TouchableOpacity>
+        <View style={styles.statsRow}>
+          <View style={[styles.statPill, { backgroundColor: colors.surface }]}>
+            <Ionicons name="time-outline" size={16} color="#8b5cf6" />
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {formatTotalDuration(stats.totalDuration)}
+            </Text>
           </View>
+          <View style={[styles.statPill, { backgroundColor: colors.surface }]}>
+            <Ionicons name="call-outline" size={16} color="#8b5cf6" />
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {stats.totalCalls} calls
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.historySection}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent</Text>
+
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#8b5cf6" />
+            </View>
+          ) : callHistory.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIconContainer, { backgroundColor: colors.surface }]}>
+                <Ionicons name="call-outline" size={32} color={colors.textTertiary} />
+              </View>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                No calls yet
+              </Text>
+              <Text style={[styles.emptySubtext, { color: colors.textTertiary }]}>
+                Start a meeting or call a contact
+              </Text>
+            </View>
+          ) : (
+            <View style={[styles.historyList, { backgroundColor: colors.surface }]}>
+              {callHistory.map((call, index) => (
+                <View
+                  key={call.id}
+                  style={[
+                    styles.callItem,
+                    index !== callHistory.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }
+                  ]}
+                >
+                  <View style={[styles.callAvatar, { backgroundColor: getCallColor(call.type) + '20' }]}>
+                    <Ionicons
+                      name={getCallTypeIcon(call.type)}
+                      size={18}
+                      color={getCallColor(call.type)}
+                      style={{ transform: [{ rotate: call.type === 'outgoing' ? '45deg' : call.type === 'missed' ? '135deg' : '-45deg' }] }}
+                    />
+                  </View>
+                  <View style={styles.callInfo}>
+                    <Text style={[styles.callName, { color: colors.text }]} numberOfLines={1}>
+                      {call.contactName}
+                    </Text>
+                    <View style={styles.callMetaRow}>
+                      <Ionicons
+                        name={call.callMode === 'voice' ? 'call' : 'videocam'}
+                        size={11}
+                        color={getCallColor(call.type)}
+                      />
+                      <Text style={[styles.callTypeLabel, { color: getCallColor(call.type) }]}>
+                        {call.type === 'outgoing' ? 'Outgoing' : call.type === 'incoming' ? 'Incoming' : 'Missed'}
+                      </Text>
+                      <Text style={[styles.callMeta, { color: colors.textSecondary }]}>
+                        · {formatDateTime(call.timestamp)} · {formatDuration(call.duration)}
+                      </Text>
+                    </View>
+                  </View>
+                  {call.contactId && call.contactPhone && (
+                    <View style={styles.callActions}>
+                      <TouchableOpacity
+                        style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
+                        onPress={() => handleCall(call, true)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="call" size={16} color="#8b5cf6" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.callActionBtn, { backgroundColor: colors.primaryLight }]}
+                        onPress={() => handleCall(call, false)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="videocam" size={16} color="#8b5cf6" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -187,7 +385,7 @@ export default function CallsScreen({ navigation }: Props) {
         </Text>
         <View style={styles.modalButtons}>
           <TouchableOpacity
-            style={[styles.modalButton, { backgroundColor: '#8b5cf6' }]}
+            style={styles.modalButton}
             onPress={closeModal}
           >
             <Text style={styles.modalButtonText}>OK</Text>
@@ -206,159 +404,171 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    padding: 20,
+    padding: 16,
+    paddingTop: 20,
   },
-  actionsSection: {
+  quickActions: {
+    marginBottom: 20,
+  },
+  startCallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8b5cf6',
+    borderRadius: 20,
+    paddingVertical: 30,
+    paddingHorizontal: 18,
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  startCallIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startCallText: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  startCallTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  startCallSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+  },
+  joinRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  joinInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    height: 48,
+    gap: 10,
+  },
+  joinInput: {
+    flex: 1,
+    fontSize: 15,
+    height: '100%',
+  },
+  joinBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#8b5cf6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  joinBtnDisabled: {
+    backgroundColor: 'rgba(139, 92, 246, 0.3)',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
     marginBottom: 24,
   },
-  instantActions: {
-    gap: 16,
-  },
-  primaryActionCard: {
-    borderRadius: 20,
-    padding: 32,
-    alignItems: 'center',
-  },
-  primaryActionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  primaryActionSubtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  secondaryActions: {
+  statPill: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  secondaryActionCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 20,
     alignItems: 'center',
-    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    gap: 8,
   },
-  secondaryActionContent: {
-    alignItems: 'center',
-  },
-  secondaryActionTitle: {
+  statValue: {
     fontSize: 14,
     fontWeight: '600',
-    marginTop: 8,
   },
-  joinSection: {
-    marginBottom: 24,
-  },
-  joinCard: {
-    borderRadius: 20,
-    padding: 24,
-  },
-  joinHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
+  historySection: {
+    flex: 1,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
-    marginLeft: 8,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    opacity: 0.7,
   },
-  inputContainer: {
-    marginBottom: 20,
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
   },
-  meetingInput: {
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
-    borderWidth: 2,
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
   },
-  joinMeetingButton: {
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 16,
   },
-  joinMeetingButtonDisabled: {
-  },
-  joinMeetingButtonText: {
+  emptyText: {
     fontSize: 16,
     fontWeight: '600',
   },
-  joinMeetingButtonTextDisabled: {
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    marginBottom: 20,
-    borderWidth: 2,
-  },
-  inputWrapperFocused: {
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-    paddingVertical: 12,
-  },
-  joinButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderWidth: 2,
-  },
-  joinButtonDisabled: {
-  },
-  joinButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  joinButtonTextDisabled: {
-  },
-  joinButtonIcon: {
-    marginLeft: 8,
-  },
-  languageBanner: {
-    marginBottom: 24,
-  },
-  languageContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    borderRadius: 16,
-  },
-  languageContent: {
-    flex: 1,
-    marginLeft: 16,
-  },
-  languageTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  languageSubtitle: {
+  emptySubtext: {
     fontSize: 14,
+    marginTop: 4,
   },
-  languageButton: {
-    width: 32,
-    height: 32,
+  historyList: {
     borderRadius: 16,
+    overflow: 'hidden',
+  },
+  callItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+  },
+  callAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  callInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  callName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  callMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    gap: 4,
+  },
+  callTypeLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  callMeta: {
+    fontSize: 12,
+  },
+  callActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  callActionBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -369,13 +579,13 @@ const styles = StyleSheet.create({
   },
   modalButtons: {
     flexDirection: 'row',
-    gap: 12,
     justifyContent: 'flex-end',
   },
   modalButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
+    backgroundColor: '#8b5cf6',
     minWidth: 80,
     alignItems: 'center',
   },

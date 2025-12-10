@@ -1,4 +1,4 @@
-import {MediaStream} from 'react-native-webrtc';
+import {MediaStream} from '@livekit/react-native-webrtc';
 
 export interface User {
   id: string;
@@ -11,6 +11,15 @@ export interface User {
   isLocal?: boolean;
   hasActiveConnection?: boolean;
   isRefreshing?: boolean;
+}
+
+export interface DirectCallConfig {
+  peerId: string;
+  username: string;
+  role: 'caller' | 'recipient';
+  userId?: string;
+  phoneNumber?: string | null;
+  callMode?: 'voice' | 'video';
 }
 
 export interface E2EStatus {
@@ -57,6 +66,8 @@ export interface WebRTCContextType {
   switchCamera: () => void;
   toggleMute: () => void;
   getSecurityCode?: (peerId: string) => string | undefined;
+  replaceAudioTrack?: (track: any) => Promise<boolean>;
+  restoreOriginalAudio?: () => Promise<boolean>;
   pendingJoinRequests?: JoinRequest[];
   approveJoinRequest?: (requestId: string) => void;
   denyJoinRequest?: (requestId: string) => void;
@@ -64,4 +75,8 @@ export interface WebRTCContextType {
   isMeetingOwner?: boolean;
   joinDeniedReason?: string | null;
   acknowledgeJoinDenied?: () => void;
+  prepareDirectCall?: (config: DirectCallConfig) => void;
+  endDirectCall?: () => void;
+  isDirectCallActive?: boolean;
+  setIsQRTranslationSession?: (value: boolean) => void;
 }

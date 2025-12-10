@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, StatusBar, ScrollView, TouchableWithoutFeedback, Image } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, StatusBar, ScrollView, TouchableWithoutFeedback, Image, Text } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types/navigation';

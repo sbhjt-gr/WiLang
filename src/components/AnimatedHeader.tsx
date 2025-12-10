@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { MotiView } from 'moti';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,24 +17,6 @@ const AnimatedHeader: React.FC<AnimatedHeaderProps> = ({
   colors = ['#8b5cf6', '#ec4899'],
   children
 }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(-50)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
   return (
     <LinearGradient
       colors={colors}
@@ -42,19 +25,19 @@ const AnimatedHeader: React.FC<AnimatedHeaderProps> = ({
       end={{ x: 1, y: 1 }}
     >
       <SafeAreaView edges={['top']}>
-        <Animated.View
-          style={[
-            styles.headerContent,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }]
-            }
-          ]}
+        <MotiView
+          from={{ opacity: 0, translateY: -50 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{
+            type: 'timing',
+            duration: 800,
+          }}
+          style={styles.headerContent}
         >
           <Text style={styles.title}>{title}</Text>
           {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
           {children}
-        </Animated.View>
+        </MotiView>
       </SafeAreaView>
     </LinearGradient>
   );

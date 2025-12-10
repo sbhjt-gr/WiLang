@@ -84,7 +84,16 @@ Getting WiLang running is straightforward. Follow these steps:
    FIREBASE_ANDROID_APP_ID=your-android-app-id
    FIREBASE_IOS_API_KEY=your-ios-api-key
    FIREBASE_IOS_APP_ID=your-ios-app-id
+
+   # Speech translation demo
+   REPLICATE_API_TOKEN=your-replicate-token
+   REPLICATE_MODEL_PATH=models/cjwbw/seamless_communication
+   REPLICATE_MODEL_VERSION=668a4fec05a887143e5fe8d45df25ec4c794dd43169b9a11562309b2d45873b0
+   REPLICATE_POLL_INTERVAL_MS=2000
+   REPLICATE_PREDICTION_TIMEOUT_MS=90000
    ```
+
+   The SeamlessM4T demo in **Settings → Speech Translation Demo** uploads short clips to Replicate, so keep recordings brief and never include sensitive data.
 
 ## How to Run This Project
 
@@ -170,6 +179,12 @@ WiLang needs these permissions to work:
 - **Contacts** - Optional, for calling people from your contact list
 - **Network** - For connecting to other users
 
+### Speech Translation Demo (Replicate)
+
+The optional demo in Settings uses Meta's SeamlessM4T model via the Replicate API:
+
+ - The SeamlessM4T demo in **Settings → Speech Translation Demo** uploads short clips to Replicate, so keep recordings brief and never include sensitive data.
+ - `REPLICATE_MODEL_PATH` defaults to `models/cjwbw/seamless_communication`, and `REPLICATE_MODEL_VERSION` should point at the current version slug (for example the provided `668a4fec05a887143e5fe8d45df25ec4c794dd43169b9a11562309b2d45873b0`). Update these if you switch models.
 ## App Structure
 
 WiLang is organized into four main tabs:

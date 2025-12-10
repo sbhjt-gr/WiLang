@@ -1,0 +1,51 @@
+!android/app/google-services.json
+!ios/WiLang/GoogleService-Info.plist
+!.env
+
+# Development directories
+node_modules/
+.expo/
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+web-build/
+build/
+
+# Source control
+.git/
+.github/
+
+# Debug logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.metro-health-check*
+
+# Documentation and other non-essential files
+__tests__/
+tests/
+*.test.js
+*.test.ts
+*.test.tsx
+*.spec.js
+*.spec.ts
+*.spec.tsx
+*.md
+LICENSE
+CHANGELOG.md
+docs/
+
+# Development assets
+*.orig
+*.map
+
+# Example code
+app-example/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# macOS specific files
+.DS_Store 

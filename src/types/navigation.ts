@@ -4,14 +4,22 @@ export type RootStackParamList = {
   RegisterScreen: undefined;
   AccountLoadingScreen: { from?: 'login' | 'register' | 'app_launch'; signedUp?: number } | undefined;
   PhoneNumberScreen: { from: 'login' | 'register' | 'app_launch' };
-  VideoCallScreen: { 
-    id: string; 
-    type?: 'join' | 'create' | 'incoming' | 'outgoing' | 'instant'; 
+  VideoCallScreen: {
+    id: string;
+    type?: 'join' | 'create' | 'incoming' | 'outgoing' | 'instant';
     joinCode?: string;
     meetingToken?: string;
     autoJoinHandled?: boolean;
   };
-  CallingScreen: { 
+  VoiceCallScreen: {
+    id: string;
+    type?: 'join' | 'create' | 'incoming' | 'outgoing' | 'instant';
+    joinCode?: string;
+    meetingToken?: string;
+    autoJoinHandled?: boolean;
+    callerName?: string;
+  };
+  CallingScreen: {
     callType: 'outgoing' | 'incoming';
     callerName: string;
     callerPhone?: string;
@@ -21,15 +29,28 @@ export type RootStackParamList = {
     callId?: string;
     meetingId?: string;
     meetingToken?: string;
+    isVoiceOnly?: boolean;
+  };
+  QRTranslationScreen: {
+    peerId: string;
+    peerName?: string;
+    peerSourceLang: string;
+    peerTargetLang: string;
+    isHost: boolean;
+    sessionId: string;
+    meetingId: string;
   };
   UsersScreen: undefined;
   EnvironmentConfig: undefined;
   ThemeSettingsScreen: undefined;
+  TranslationSettingsScreen: undefined;
+  CallTranslationSettings: undefined;
 };
 
 export type TabParamList = {
   CallsTab: undefined;
   ContactsTab: undefined;
+  QRPairTab: undefined;
   HistoryTab: undefined;
   SettingsTab: undefined;
 }; 

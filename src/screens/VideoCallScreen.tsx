@@ -1,4 +1,4 @@
-import React, {useContext, useLayoutEffect, useRef, useEffect, useState, useCallback, useMemo} from 'react';
+import React, { useContext, useLayoutEffect, useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -9,25 +9,27 @@ import {
   Share,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import {RTCView} from 'react-native-webrtc';
+import { RTCView } from '@livekit/react-native-webrtc';
+import InCallManager from 'react-native-incall-manager';
 import { StatusBar } from 'expo-status-bar';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { auth } from "../config/firebase";
 import { RootStackParamList } from '../types/navigation';
-import {WebRTCContext} from '../store/WebRTCContext';
+import { WebRTCContext } from '../store/WebRTCContext';
 import { Ionicons } from '@expo/vector-icons';
-import { User } from '../store/WebRTCTypes';
 import ParticipantGrid from '../components/ParticipantGrid';
 import GlassModal from '../components/GlassModal';
 import { useTheme } from '../theme';
-import SubtitleOverlay from '../components/SubtitleOverlay';
-import useSubtitleEngine from '../hooks/useSubtitleEngine';
-import { SubtitlePreferences } from '../services/SubtitlePreferences';
-import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
-import type { ExpoSpeechMode } from '../services/SubtitlePreferences';
+import TranslationControls from '../components/translation-controls';
+import TranscriptionOverlay from '../components/transcription-overlay';
+import { nativePalabra, type NativePalabraState } from '../services/native-palabra';
+import { CallTranslationPrefs } from '../services/call-translation-prefs';
+import type { SourceLangCode, TargetLangCode } from '../services/palabra/types';
+import { useCallTranscript } from '../hooks/use-call-transcript';
+import ParticipantTranslationModal, { ParticipantTranslation } from '../components/participant-translation-modal';
 
-const {width, height} = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 type VideoCallScreenNavigationProp = StackNavigationProp<RootStackParamList, 'VideoCallScreen'>;
 type VideoCallScreenRouteProp = RouteProp<RootStackParamList, 'VideoCallScreen'>;
@@ -67,11 +69,15 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     joinDeniedReason,
     acknowledgeJoinDenied,
     isMeetingOwner,
+    replaceAudioTrack,
+    restoreOriginalAudio,
+    isDirectCallActive,
   } = useContext(WebRTCContext);
 
-  const [isGridMode, setIsGridMode] = useState(true);
+  const [isGridMode, setIsGridMode] = useState(!isDirectCallActive);
   const [isInstantCall, setIsInstantCall] = useState(false);
   const [showJoinCodeUI, setShowJoinCodeUI] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [isDirectCall, setIsDirectCall] = useState(false);
   const [showSecurityCodeModal, setShowSecurityCodeModal] = useState(false);
   const [modalConfig, setModalConfig] = useState<{
@@ -79,7 +85,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     title: string;
     message: string;
     icon: string;
-    buttons: Array<{text: string; onPress?: () => void}>;
+    buttons: Array<{ text: string; onPress?: () => void }>;
   }>({
     visible: false,
     title: '',
@@ -87,14 +93,33 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     icon: 'information-circle',
     buttons: [],
   });
+
+  const [palabraEnabled, setPalabraEnabled] = useState(false);
+  const [palabraState, setPalabraState] = useState<NativePalabraState>('idle');
+  const [palabraSource, setPalabraSource] = useState<SourceLangCode>('auto');
+  const [palabraTarget, setPalabraTarget] = useState<TargetLangCode>('en-us');
+  const [palabraTranscript, setPalabraTranscript] = useState<string | null>(null);
+  const [palabraTranslation, setPalabraTranslation] = useState<string | null>(null);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
-  const [subtitleLocale, setSubtitleLocale] = useState('en-US');
-  const [subtitleMode, setSubtitleMode] = useState<ExpoSpeechMode>('cloud');
+  const [showTranslationModal, setShowTranslationModal] = useState(false);
+  const [participantSettings, setParticipantSettings] = useState<ParticipantTranslation[]>([]);
+
+  // Background transcript capture for AI summaries
+  const {
+    addTranscript: addToTranscript,
+    endSessionAndSave: saveCallTranscript,
+  } = useCallTranscript({
+    callType: 'video',
+    sourceLang: palabraSource,
+    targetLang: palabraTarget,
+    meetingId: currentMeetingId || route.params.id,
+    enabled: true, // Always capture in background
+  });
 
   const initializationAttempted = useRef(false);
   const joinAttempted = useRef(false);
 
-  const showModal = useCallback((title: string, message: string, icon: string = 'information-circle', buttons: Array<{text: string; onPress?: () => void}> = [{text: 'OK'}]) => {
+  const showModal = useCallback((title: string, message: string, icon: string = 'information-circle', buttons: Array<{ text: string; onPress?: () => void }> = [{ text: 'OK' }]) => {
     setModalConfig({
       visible: true,
       title,
@@ -117,10 +142,10 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       showModal('Please wait', 'Call code is still being generated.', 'time');
       return;
     }
-    
+
     try {
       const message = `Join my WiLang video call!\n\nJoin Code: ${currentMeetingId}\n\nDownload WiLang and enter this code to join the call with real-time translation.`;
-      
+
       await Share.share({
         message,
         title: 'Join My Video Call',
@@ -141,17 +166,18 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     showModal('Copied!', 'Join code copied to clipboard', 'checkmark-circle');
   }, [currentMeetingId, showModal]);
 
-  const handleCloseCall = useCallback(() => {
-    closeCall();
-    navigation.navigate('HomeScreen', {});
-  }, [closeCall, navigation]);
-
   const toggleSecurityCodeModal = useCallback(() => {
     setShowSecurityCodeModal(prev => !prev);
   }, []);
 
   const pendingJoinRequest = pendingJoinRequests?.[0];
   const pendingJoinRequestId = pendingJoinRequest?.requestId;
+
+  useEffect(() => {
+    if (pendingJoinRequest) {
+      setShowShareModal(false);
+    }
+  }, [pendingJoinRequest]);
 
   const handleApproveJoinRequest = useCallback(() => {
     if (pendingJoinRequestId) {
@@ -165,16 +191,28 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     }
   }, [denyJoinRequest, pendingJoinRequestId]);
 
-  const handleJoinDeniedClose = useCallback(() => {
-    acknowledgeJoinDenied?.();
-    closeCall();
-    navigation.goBack();
-  }, [acknowledgeJoinDenied, closeCall, navigation]);
-
   useLayoutEffect(() => {
     navigation.setOptions({
       headerShown: false,
+      gestureEnabled: false,
     });
+  }, [navigation]);
+
+  useEffect(() => {
+    InCallManager.start({ media: 'video' });
+    InCallManager.setForceSpeakerphoneOn(true);
+    return () => {
+      InCallManager.stop();
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (e.data.action.type === 'GO_BACK' || e.data.action.type === 'POP') {
+        e.preventDefault();
+      }
+    });
+    return unsubscribe;
   }, [navigation]);
 
   useEffect(() => {
@@ -183,145 +221,245 @@ export default function VideoCallScreen({ navigation, route }: Props) {
     }
   }, [route.params.type, route.params.joinCode, route.params.autoJoinHandled]);
 
-  const {
-    subtitle: subtitleData,
-    detectedLanguage: subtitleDetectedLanguage,
-    confidence: subtitleConfidence,
-    isActive: subtitleActive,
-    isInitializing: subtitleLoading,
-    error: subtitleError,
-    start: subtitleStart,
-    stop: subtitleStop,
-    reset: subtitleReset,
-  } = useSubtitleEngine({
-    enabled: subtitlesEnabled,
-    locale: subtitleLocale,
-    mode: subtitleMode,
-    detect: false,
-  });
-
-  const subtitleStatus = useMemo(() => {
-    if (!subtitlesEnabled) {
-      return null;
-    }
-    if (subtitleError) {
-      return subtitleError;
-    }
-    if (subtitleLoading) {
-      return 'Starting';
-    }
-    if (subtitleActive) {
-      return 'Listening';
-    }
-    return null;
-  }, [subtitlesEnabled, subtitleActive, subtitleError, subtitleLoading]);
+  const remotePeers = useMemo(
+    () => (participants || []).filter(p => !p.isLocal && p.peerId !== peerId),
+    [participants, peerId],
+  );
 
   useEffect(() => {
     let active = true;
-    const load = async () => {
+    const loadPalabraPrefs = async () => {
       try {
-        const mode = await SubtitlePreferences.getExpoMode();
-        const langCode = await SubtitlePreferences.getExpoLanguage();
-        const locale = SubtitlePreferences.getLocale(langCode);
+        const [enabled, source, target] = await Promise.all([
+          CallTranslationPrefs.isEnabled(),
+          CallTranslationPrefs.getSource(),
+          CallTranslationPrefs.getTarget(),
+        ]);
         if (active) {
-          setSubtitleMode(mode);
-          setSubtitleLocale(locale);
+          setPalabraEnabled(enabled);
+          setPalabraSource(source);
+          setPalabraTarget(target);
         }
       } catch (error) {
+        console.warn('[Palabra] Failed to load prefs:', error);
       }
     };
-    load();
+    loadPalabraPrefs();
     return () => {
       active = false;
     };
   }, []);
 
+  const replaceAudioTrackRef = useRef(replaceAudioTrack);
+  const restoreOriginalAudioRef = useRef(restoreOriginalAudio);
+
   useEffect(() => {
-    if (!subtitlesEnabled) {
+    replaceAudioTrackRef.current = replaceAudioTrack;
+    restoreOriginalAudioRef.current = restoreOriginalAudio;
+  });
+
+  useEffect(() => {
+    if (!palabraEnabled) {
+      nativePalabra.stop();
+      setPalabraState('idle');
+      setPalabraTranscript(null);
+      setPalabraTranslation(null);
       return;
     }
-    let active = true;
-    const ensure = async () => {
-      try {
-        const mic = await ExpoSpeechRecognitionModule.getMicrophonePermissionsAsync();
-        if (!mic.granted) {
-          const res = await ExpoSpeechRecognitionModule.requestMicrophonePermissionsAsync();
-          if (!res.granted && active) {
-            showModal('Permission needed', 'Allow microphone for subtitles.', 'mic-off');
-            setSubtitlesEnabled(false);
-          }
-        }
-      } catch (error) {
-        if (active) {
-          showModal('Permission needed', 'Allow microphone for subtitles.', 'mic-off');
-          setSubtitlesEnabled(false);
-        }
-      }
-    };
-    ensure();
-    return () => {
-      active = false;
-    };
-  }, [showModal, subtitlesEnabled]);
 
-  const remotePeers = useMemo(
-    () => participants.filter(p => !p.isLocal && p.peerId !== peerId),
-    [participants, peerId],
-  );
+    if (nativePalabra.getState() !== 'idle') {
+      return;
+    }
 
-  useEffect(() => {
-    const run = async () => {
-      if (subtitlesEnabled) {
-        if (!subtitleActive) {
-          try {
-            await subtitleStart();
-          } catch (error) {
+    const firstRemotePeer = remotePeers[0];
+    if (!firstRemotePeer) {
+      console.log('no_remote_peer');
+      return;
+    }
+
+    const remoteStreamForPeer = remoteStreams?.get(firstRemotePeer.peerId);
+    if (!remoteStreamForPeer) {
+      console.log('no_remote_stream');
+      return;
+    }
+
+    const audioTracks = remoteStreamForPeer.getAudioTracks();
+    if (!audioTracks || audioTracks.length === 0) {
+      console.log('no_remote_audio');
+      return;
+    }
+
+    const remoteAudioTrack = audioTracks[0] as unknown as MediaStreamTrack;
+    console.log('palabra_starting_with_remote');
+
+    nativePalabra.startWithTrack(
+      remoteAudioTrack,
+      { sourceLang: palabraSource, targetLang: palabraTarget },
+      {
+        onStateChange: (state) => {
+          console.log('palabra_state', state);
+          setPalabraState(state);
+        },
+        onTranscription: (data) => {
+          console.log('palabra_transcription', data.isFinal);
+          setPalabraTranscript(data.text);
+          if (data.text && data.isFinal) {
+            addToTranscript({
+              speaker: 'remote',
+              sourceText: data.text,
+              isFinal: true,
+            });
           }
-        }
-        return;
+        },
+        onError: (err) => {
+          console.log('palabra_err', err);
+          showModal('Translation Error', err || 'An error occurred', 'alert-circle');
+        },
       }
-      if (subtitleActive) {
-        try {
-          await subtitleStop();
-        } catch (error) {
-        }
-      }
-      if (subtitleData || subtitleDetectedLanguage || subtitleConfidence) {
-        try {
-          await subtitleReset();
-        } catch (error) {
-        }
-      }
-    };
-    run();
-  }, [
-    subtitleActive,
-    subtitleConfidence,
-    subtitleData,
-    subtitleDetectedLanguage,
-    subtitleReset,
-    subtitleStart,
-    subtitleStop,
-    subtitlesEnabled,
-  ]);
+    );
+  }, [palabraEnabled, remotePeers, remoteStreams, palabraSource, palabraTarget, addToTranscript, showModal]);
 
   useEffect(() => {
     return () => {
-      subtitleStop();
+      nativePalabra.stop();
+      restoreOriginalAudioRef.current?.();
     };
-  }, [subtitleStop]);
+  }, []);
+
+  useEffect(() => {
+    CallTranslationPrefs.setEnabled(palabraEnabled);
+  }, [palabraEnabled]);
+
+  useEffect(() => {
+    CallTranslationPrefs.setSource(palabraSource);
+  }, [palabraSource]);
+
+  useEffect(() => {
+    CallTranslationPrefs.setTarget(palabraTarget);
+  }, [palabraTarget]);
+
+  const handlePalabraToggle = useCallback(() => {
+    if (!palabraEnabled && remotePeers.length > 0) {
+      setShowTranslationModal(true);
+    } else {
+      setPalabraEnabled(prev => !prev);
+    }
+  }, [palabraEnabled, remotePeers.length]);
+
+  const modalParticipants = useMemo((): ParticipantTranslation[] => {
+    return remotePeers.map(p => {
+      const existing = participantSettings.find(s => s.peerId === p.peerId);
+      return existing || {
+        peerId: p.peerId,
+        name: p.username || p.name || 'Unknown',
+        enabled: false,
+        source: 'auto' as SourceLangCode,
+        target: palabraTarget,
+      };
+    });
+  }, [remotePeers, participantSettings, palabraTarget]);
+
+  const handleSaveParticipantTranslation = useCallback((settings: ParticipantTranslation[]) => {
+    setParticipantSettings(settings);
+    const hasEnabled = settings.some(s => s.enabled);
+    if (hasEnabled) {
+      const firstEnabled = settings.find(s => s.enabled);
+      if (firstEnabled) {
+        setPalabraSource(firstEnabled.source);
+        setPalabraTarget(firstEnabled.target);
+      }
+      setPalabraEnabled(true);
+    }
+  }, []);
+
+  const handleSubtitlesToggle = useCallback(() => {
+    setSubtitlesEnabled((prev) => !prev);
+  }, []);
+
+  const handleCloseCall = useCallback(async () => {
+    try {
+      console.log('[VideoCall] Saving transcript...');
+      saveCallTranscript().then((noteId) => {
+        if (noteId) {
+          console.log('[VideoCall] Call note saved:', noteId);
+        }
+      }).catch((err) => {
+        console.log('[VideoCall] Failed to save note:', err);
+      });
+
+      await nativePalabra.stop();
+      await restoreOriginalAudioRef.current?.();
+      setPalabraEnabled(false);
+      setPalabraState('idle');
+      setPalabraTranscript(null);
+      setPalabraTranslation(null);
+      setParticipantSettings([]);
+
+      closeCall();
+    } catch (err) {
+      console.log('call_cleanup_err', err);
+    } finally {
+      navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
+    }
+  }, [closeCall, navigation, saveCallTranscript]);
+
+  const hadRemotePeersRef = useRef(false);
+  const disconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const remotePeersLengthRef = useRef(0);
+
+  useEffect(() => {
+    remotePeersLengthRef.current = remotePeers.length;
+    if (remotePeers.length > 0) {
+      hadRemotePeersRef.current = true;
+      if (disconnectTimeoutRef.current) {
+        clearTimeout(disconnectTimeoutRef.current);
+        disconnectTimeoutRef.current = null;
+      }
+    }
+  }, [remotePeers.length]);
+
+  useEffect(() => {
+    if (hadRemotePeersRef.current && remotePeers.length === 0) {
+      disconnectTimeoutRef.current = setTimeout(() => {
+        if (remotePeersLengthRef.current === 0) {
+          handleCloseCall();
+        }
+      }, 3000);
+    }
+    return () => {
+      if (disconnectTimeoutRef.current) {
+        clearTimeout(disconnectTimeoutRef.current);
+      }
+    };
+  }, [remotePeers.length, handleCloseCall]);
+
+  const handleJoinDeniedClose = useCallback(async () => {
+    acknowledgeJoinDenied?.();
+    try {
+      await nativePalabra.stop();
+      await restoreOriginalAudioRef.current?.();
+      setPalabraEnabled(false);
+      setParticipantSettings([]);
+
+      closeCall();
+    } catch (err) {
+      console.log('denied_cleanup_err', err);
+    } finally {
+      navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
+    }
+  }, [acknowledgeJoinDenied, closeCall, navigation]);
 
   useEffect(() => {
     if (initializationAttempted.current) {
       return;
     }
-    
+
     initializationAttempted.current = true;
-    
+
     const initializeCall = async () => {
       const currentUser = auth.currentUser;
       const username = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
-      
+
       try {
         let socketConnection = null;
         if (!localStream || (route.params.type === 'join' && !currentMeetingId) || route.params.type === 'incoming' || route.params.type === 'outgoing') {
@@ -339,14 +477,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               return;
             }
           }
-          
+
           // Mark as direct call for incoming/outgoing (hide meeting ID)
           if (route.params.type === 'incoming' || route.params.type === 'outgoing') {
             setIsDirectCall(true);
           }
-          
+
           joinAttempted.current = true;
-          
+
           const meetingId = route.params.joinCode || route.params.id;
           const meetingToken = route.params.meetingToken;
 
@@ -357,7 +495,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
           if (!meetingId) {
             showModal('Error', 'No call ID provided to join.', 'alert-circle', [
-              { text: 'OK', onPress: () => { closeModal(); navigation.goBack(); } }
+              { text: 'OK', onPress: () => { closeModal(); navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] }); } }
             ]);
             return;
           }
@@ -414,40 +552,42 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             console.log('join_error', joinError);
 
             showModal('Error', userFriendlyMessage, 'alert-circle', [
-              { text: 'OK', onPress: () => { closeModal(); joinAttempted.current = false; navigation.goBack(); } }
+              { text: 'OK', onPress: () => { closeModal(); joinAttempted.current = false; navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] }); } }
             ]);
             return;
           }
 
           if (!joined) {
             showModal('Error', 'Could not join call. Please check the call ID and try again.', 'alert-circle', [
-              { text: 'OK', onPress: () => { closeModal(); joinAttempted.current = false; navigation.goBack(); } }
+              { text: 'OK', onPress: () => { closeModal(); joinAttempted.current = false; navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] }); } }
             ]);
             return;
           }
-          
+
         } else if (route.params.type === 'instant') {
           setIsInstantCall(true);
           setShowJoinCodeUI(true);
-          
+
           const currentUser = auth.currentUser;
           const username = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
-          
+
           setUsername(username);
-          
+
           const initResult = await initialize(username);
           const socket = initResult.socket || initResult;
-          
+
           if (!socket || !socket.connected) {
             throw new Error('Socket not connected - cannot create call');
           }
-          
+
           const newMeetingId = await createMeetingWithSocket(socket);
-          
+
           if (!newMeetingId) {
             throw new Error('Call creation returned empty call ID');
           }
-          
+
+          setShowShareModal(true);
+
         } else if (!route.params.type || route.params.type === 'create') {
           try {
             let socketToUse = socketConnection;
@@ -455,35 +595,30 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               const initResult = await initialize(username);
               socketToUse = initResult.socket || initResult;
             }
-            
+
             if (!socketToUse || !socketToUse.connected) {
               throw new Error('Socket not connected - cannot create call');
             }
             await new Promise(resolve => setTimeout(resolve, 100));
-            
+
             const meetingId = await createMeeting();
-            
+
             if (!meetingId) {
               throw new Error('Call creation returned empty call ID');
             }
             setShowJoinCodeUI(true);
-
-            showModal(
-              'Call Created',
-              `Your call ID is: ${meetingId}\n\nShare this ID with participants to join the call.`,
-              'checkmark-circle'
-            );
+            setShowShareModal(true);
           } catch (meetingError) {
             showModal(
               'Call Creation Failed',
               `Failed to create call: ${meetingError instanceof Error ? meetingError.message : 'Unknown error'}`,
               'alert-circle',
-              [{ text: 'OK', onPress: () => { closeModal(); navigation.goBack(); } }]
+              [{ text: 'OK', onPress: () => { closeModal(); navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] }); } }]
             );
             return;
           }
         }
-        
+
       } catch (error) {
         initializationAttempted.current = false;
 
@@ -500,7 +635,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           `Failed to initialize video call: ${initializationErrorMessage}\n\nPlease check your camera and microphone permissions and try again.`,
           'alert-circle',
           [
-            { text: 'Cancel', onPress: () => { closeModal(); navigation.goBack(); } },
+            { text: 'Cancel', onPress: () => { closeModal(); navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] }); } },
             { text: 'Retry', onPress: () => { closeModal(); initializationAttempted.current = false; } }
           ]
         );
@@ -531,7 +666,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   const renderFeaturedView = () => {
     const remoteParticipant = remotePeers.find(p => !p.isLocal);
     const remoteStream = remoteParticipant ? remoteStreams?.get(remoteParticipant.peerId) : null;
-    
+
     return (
       <View style={styles.featuredContainer}>
         {remoteStream && remoteParticipant ? (
@@ -581,7 +716,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
             </View>
           </View>
         )}
-        
+
         {/* Always show local video floating box in featured view when local stream is available */}
         {localStream && (
           <View
@@ -602,7 +737,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
   };
 
   const totalParticipants = remotePeers.length + 1;
-  const shouldUseFeaturedViewForCall = !isGridMode;
+  const canUseFocusMode = totalParticipants <= 2;
+  const shouldUseFeaturedViewForCall = !isGridMode && canUseFocusMode;
+
+  useEffect(() => {
+    if (!canUseFocusMode && !isGridMode) {
+      setIsGridMode(true);
+    }
+  }, [canUseFocusMode, isGridMode]);
 
   const loadingView = (
     <View style={[styles.loadingContainer, { backgroundColor: '#0a0a0a' }]}>
@@ -626,56 +768,35 @@ export default function VideoCallScreen({ navigation, route }: Props) {
 
       <View style={styles.topControls}>
         <View style={styles.topLeftControls}>
-          <TouchableOpacity style={[styles.topControlButton, { backgroundColor: 'rgba(0,0,0,0.7)' }]} onPress={toggleViewMode}>
-            <Ionicons
-              name={isGridMode ? "person" : "grid"}
-              size={20}
-              color="#ffffff"
-            />
-            <Text style={styles.topControlText}>
-              {isGridMode ? "Focus" : "Grid"}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.topControlButton,
-              { backgroundColor: 'rgba(0,0,0,0.7)' },
-              subtitlesEnabled && { borderWidth: 1, borderColor: '#10b981' },
-            ]}
-            onPress={() => setSubtitlesEnabled(prev => !prev)}
-          >
-            <Ionicons
-              name={subtitlesEnabled ? 'text' : 'text-outline'}
-              size={20}
-              color={subtitlesEnabled ? '#10b981' : '#ffffff'}
-            />
-            <Text style={[styles.topControlText, subtitlesEnabled && { color: '#10b981' }]}>
-              {subtitlesEnabled ? 'CC On' : 'CC Off'}
-            </Text>
-          </TouchableOpacity>
+          {canUseFocusMode && (
+            <TouchableOpacity style={[styles.topControlButton, { backgroundColor: 'rgba(0,0,0,0.7)' }]} onPress={toggleViewMode}>
+              <Ionicons
+                name={isGridMode ? "person" : "grid"}
+                size={20}
+                color="#ffffff"
+              />
+              <Text style={styles.topControlText}>
+                {isGridMode ? "Focus" : "Grid"}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.topRightControls}>
-          {e2eStatus?.initialized && (
-            <TouchableOpacity 
+          {e2eStatus?.initialized && e2eStatus.activeSessions.length > 0 && (
+            <TouchableOpacity
               style={[styles.e2eIndicator, { backgroundColor: 'rgba(0,0,0,0.7)' }]}
-              onPress={e2eStatus.activeSessions.length > 0 ? toggleSecurityCodeModal : undefined}
-              disabled={e2eStatus.activeSessions.length === 0}
+              onPress={toggleSecurityCodeModal}
             >
               {e2eStatus.keyExchangeInProgress ? (
                 <>
                   <ActivityIndicator size="small" color="#fbbf24" />
                   <Text style={styles.e2eText}>Securing...</Text>
                 </>
-              ) : e2eStatus.activeSessions.length > 0 ? (
+              ) : (
                 <>
                   <Ionicons name="lock-closed" size={16} color="#10b981" />
                   <Text style={[styles.e2eText, { color: '#10b981' }]}>End-to-End Encrypted</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="lock-open" size={16} color="#6b7280" />
-                  <Text style={[styles.e2eText, { color: '#9ca3af' }]}>Not Encrypted</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -692,36 +813,31 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      {subtitlesEnabled && (
-        <View style={styles.subtitleContainer}>
-          <SubtitleOverlay
-            text={subtitleData?.text ?? ''}
-            language={subtitleDetectedLanguage}
-            confidence={subtitleData?.confidence ?? subtitleConfidence}
-            visible={subtitlesEnabled}
-            status={subtitleStatus}
-          />
-        </View>
-      )}
+      <TranscriptionOverlay
+        sourceText={palabraTranscript}
+        translatedText={palabraTranslation}
+        visible={subtitlesEnabled && palabraEnabled && palabraState !== 'idle' && palabraState !== 'error'}
+        isConnecting={palabraState === 'connecting'}
+      />
 
       <View style={styles.bottomControls}>
         <View style={styles.controlsBackground}>
           <View style={styles.controlButtonsRow}>
-            <TouchableOpacity
-              style={[styles.controlButton, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
-              onPress={switchCamera}
-            >
-              <Ionicons name="camera-reverse" size={24} color="#8b5cf6" />
-            </TouchableOpacity>
+            <TranslationControls
+              state={palabraState}
+              enabled={palabraEnabled}
+              onToggle={handlePalabraToggle}
+              style={[styles.controlButton, { backgroundColor: palabraEnabled ? 'rgba(139, 92, 246, 0.6)' : 'rgba(0,0,0,0.6)' }]}
+            />
 
             <TouchableOpacity
-              style={[styles.controlButton, { backgroundColor: isMuted ? '#dc2626' : 'rgba(255,255,255,0.15)' }]}
-              onPress={toggleMute}
+              style={[styles.controlButton, { backgroundColor: 'rgba(0,0,0,0.6)' }]}
+              onPress={handleSubtitlesToggle}
             >
               <Ionicons
-                name={isMuted ? 'mic-off' : 'mic'}
-                size={24}
-                color={isMuted ? '#ffffff' : '#8b5cf6'}
+                name="text"
+                size={20}
+                color="#ffffff"
               />
             </TouchableOpacity>
 
@@ -729,7 +845,25 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               style={[styles.controlButton, styles.endCallButton, { backgroundColor: '#dc2626' }]}
               onPress={handleCloseCall}
             >
-              <Ionicons name="call" size={28} color="#ffffff" />
+              <Ionicons name="call" size={26} color="#ffffff" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.controlButton, { backgroundColor: 'rgba(0,0,0,0.6)' }]}
+              onPress={switchCamera}
+            >
+              <Ionicons name="camera-reverse" size={20} color="#ffffff" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.controlButton, { backgroundColor: 'rgba(0,0,0,0.6)' }]}
+              onPress={toggleMute}
+            >
+              <Ionicons
+                name={isMuted ? 'mic-off' : 'mic'}
+                size={20}
+                color="#ffffff"
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -740,6 +874,12 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           <View style={styles.approvalBox}>
             <ActivityIndicator size="small" color="#8b5cf6" />
             <Text style={styles.approvalText}>Waiting for host approval...</Text>
+            <TouchableOpacity
+              style={styles.cancelApprovalButton}
+              onPress={handleCloseCall}
+            >
+              <Text style={styles.cancelApprovalText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -749,7 +889,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         onClose={handleDenyJoinRequest}
         title="Approve Participant"
         icon="person-add"
-        height={280}
+        height={230}
       >
         {pendingJoinRequest && (
           <View style={styles.approvalModalContent}>
@@ -780,7 +920,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         onClose={closeModal}
         title={modalConfig.title}
         icon={modalConfig.icon}
-        height={300}
+        height={280}
       >
         <Text style={[styles.modalMessage, { color: colors.text }]}>
           {modalConfig.message}
@@ -806,7 +946,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
         onClose={handleJoinDeniedClose}
         title="Access Denied"
         icon="shield-outline"
-        height={260}
+        height={220}
       >
         <Text style={[styles.modalMessage, { color: colors.text }]}
         >
@@ -823,11 +963,48 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       </GlassModal>
 
       <GlassModal
+        isVisible={showShareModal && !!currentMeetingId && !isDirectCall}
+        onClose={() => setShowShareModal(false)}
+        title="Share Call"
+        subtitle="Invite others to join"
+        icon="people"
+        height={360}
+      >
+        <View style={styles.shareModalContent}>
+          <Text style={[styles.shareModalLabel, { color: colors.textSecondary }]}>
+            Call ID
+          </Text>
+          <TouchableOpacity
+            style={[styles.shareModalCodeBox, { backgroundColor: colors.background, borderColor: colors.border }]}
+            onPress={copyJoinCode}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.shareModalCode, { color: colors.text }]}>{currentMeetingId}</Text>
+            <Ionicons name="copy-outline" size={22} color="#8b5cf6" />
+          </TouchableOpacity>
+          <Text style={[styles.shareModalHint, { color: colors.textSecondary }]}>
+            Share this code with participants to join your call
+          </Text>
+          <TouchableOpacity
+            style={styles.shareModalButton}
+            onPress={() => {
+              shareJoinCode();
+              setShowShareModal(false);
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="share-outline" size={20} color="#fff" />
+            <Text style={styles.shareModalButtonText}>Share Code</Text>
+          </TouchableOpacity>
+        </View>
+      </GlassModal>
+
+      <GlassModal
         isVisible={showSecurityCodeModal}
         onClose={toggleSecurityCodeModal}
         title="End-to-End Encryption"
         icon="shield-checkmark"
-        height={480}
+        height={430}
       >
         <View style={styles.securityCodeContent}>
           <View style={styles.securityBadge}>
@@ -849,7 +1026,7 @@ export default function VideoCallScreen({ navigation, route }: Props) {
               {e2eStatus.activeSessions.map((sessionPeerId) => {
                 const code = getSecurityCode?.(sessionPeerId);
                 const participant = participants.find(p => p.peerId === sessionPeerId);
-                
+
                 return (
                   <View key={sessionPeerId} style={styles.securityCodeItem}>
                     <Text style={[styles.participantName, { color: colors.text }]}>
@@ -873,6 +1050,15 @@ export default function VideoCallScreen({ navigation, route }: Props) {
           </Text>
         </View>
       </GlassModal>
+
+      <ParticipantTranslationModal
+        isVisible={showTranslationModal}
+        onClose={() => setShowTranslationModal(false)}
+        participants={modalParticipants}
+        onSave={handleSaveParticipantTranslation}
+        localUser={{ name: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'You' }}
+      />
+
     </View>
   );
 }
@@ -1064,28 +1250,27 @@ const styles = StyleSheet.create({
     right: 0,
   },
   controlsBackground: {
-    paddingTop: 40,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 32,
+    paddingHorizontal: 12,
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   controlButtonsRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-evenly',
     alignItems: 'center',
-    gap: 30,
   },
   controlButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
   },
   endCallButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   modalMessage: {
     fontSize: 16,
@@ -1108,15 +1293,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  subtitleContainer: {
-    position: 'absolute',
-    bottom: 220,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    zIndex: 8,
   },
   securityCodeContent: {
     gap: 14,
@@ -1199,10 +1375,63 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#ffffff',
   },
+  cancelApprovalButton: {
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8
+  },
+  cancelApprovalText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
   approvalModalContent: {
     gap: 16,
   },
   approvalDetails: {
     fontSize: 14,
+  },
+  shareModalContent: {
+    alignItems: 'center',
+    gap: 16,
+    width: '100%',
+  },
+  shareModalLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+  },
+  shareModalCodeBox: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    width: '100%',
+    alignItems: 'center',
+  },
+  shareModalCode: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 4,
+  },
+  shareModalHint: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+  },
+  shareModalButton: {
+    backgroundColor: '#8b5cf6',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  shareModalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });

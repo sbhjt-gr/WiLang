@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, ActivityIndicator, Image, Animated } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, StyleSheet, ActivityIndicator, Image, Text } from 'react-native';
+import { MotiView } from 'moti';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types/navigation';
@@ -25,40 +25,8 @@ export default function AccountLoadingScreen({ navigation, route }: Props) {
   const fromScreen = route.params?.from || 'app_launch';
   const signedUp = route.params?.signedUp || 0;
   const timeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
     let active = true;
     const init = async () => {
       try {
@@ -126,48 +94,52 @@ export default function AccountLoadingScreen({ navigation, route }: Props) {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
-      
+
       <View style={[styles.floatingCircle, styles.circle1]} />
       <View style={[styles.floatingCircle, styles.circle2]} />
       <View style={[styles.floatingCircle, styles.circle3]} />
-      
+
       <SafeAreaView style={styles.safeArea}>
-        <Animated.View 
-          style={[
-            styles.content,
-            {
-              opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
+        <MotiView
+          from={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{
+            type: 'spring',
+            damping: 20,
+            stiffness: 100,
+          }}
+          style={styles.content}
         >
-          <Animated.View 
-            style={[
-              styles.logoContainer,
-              {
-                transform: [{ scale: pulseAnim }],
-              },
-            ]}
+          <MotiView
+            from={{ scale: 1 }}
+            animate={{ scale: 1.1 }}
+            transition={{
+              type: 'timing',
+              duration: 1000,
+              loop: true,
+              repeatReverse: true,
+            }}
+            style={styles.logoContainer}
           >
             <View style={styles.logoGlow} />
-            <Image 
-              source={require('../../../assets/adaptive-icon.png')} 
+            <Image
+              source={require('../../../assets/icon.png')}
               style={styles.logo}
               resizeMode="contain"
             />
-          </Animated.View>
-          
+          </MotiView>
+
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color="#ffffff" />
           </View>
-          
+
           <Text style={styles.statusText}>
-            Preparing your account
+            Loading your account
           </Text>
           <Text style={styles.statusSubtext}>
             This will only take a moment
           </Text>
-        </Animated.View>
+        </MotiView>
       </SafeAreaView>
     </View>
   );
@@ -241,8 +213,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
   logo: {
-    width: 90,
-    height: 90,
+    width: 120,
+    height: 120,
+    borderRadius: 75,
   },
   loaderContainer: {
     marginBottom: 32,

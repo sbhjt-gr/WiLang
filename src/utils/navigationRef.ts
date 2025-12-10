@@ -9,8 +9,16 @@ export function navigate(name: string, params?: any) {
 }
 
 export function goBack() {
-  if (navigationRef.isReady()) {
+  if (navigationRef.isReady() && navigationRef.canGoBack()) {
     navigationRef.goBack();
+  } else if (navigationRef.isReady()) {
+    (navigationRef as any).reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
+  }
+}
+
+export function resetToHome() {
+  if (navigationRef.isReady()) {
+    (navigationRef as any).reset({ index: 0, routes: [{ name: 'HomeScreen' }] });
   }
 }
 

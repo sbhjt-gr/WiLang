@@ -56,11 +56,6 @@ GoogleService-Info.plist
 logs
 *.log
 
-# React Native CLI (legacy - keeping for reference)
-android/
-ios/
-index.js
-
 # IDE
 .vscode/
 .idea/

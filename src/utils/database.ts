@@ -1,8 +1,17 @@
 import * as SQLite from 'expo-sqlite';
 
 let db: SQLite.SQLiteDatabase | null = null;
+let initPromise: Promise<void> | null = null;
 
 export const initDatabase = async (): Promise<void> => {
+  if (db) return;
+  if (initPromise) return initPromise;
+
+  initPromise = doInitDatabase();
+  return initPromise;
+};
+
+const doInitDatabase = async (): Promise<void> => {
   try {
     db = await SQLite.openDatabaseAsync('wilang.db');
     
@@ -32,6 +41,8 @@ export const initDatabase = async (): Promise<void> => {
     `);
   } catch (error) {
     console.error('db_init_error', error);
+    db = null;
+    initPromise = null;
   }
 };
 

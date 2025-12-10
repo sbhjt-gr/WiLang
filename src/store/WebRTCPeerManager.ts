@@ -1,4 +1,4 @@
-import {MediaStream, RTCPeerConnection} from 'react-native-webrtc';
+import {MediaStream, RTCPeerConnection, MediaStreamTrack} from '@livekit/react-native-webrtc';
 import {User} from './WebRTCTypes';
 import {ICE_SERVERS} from './WebRTCConfig';
 import {WebRTCSocketManager} from './WebRTCSocketManager';
@@ -15,6 +15,7 @@ export class WebRTCPeerManager {
   private currentMeetingId: string | null = null;
   private e2eEnabled: boolean = true;
   private e2eRequired: boolean = true;
+  private pendingOffers = new Map<string, any>();
 
   private onRemoteStreamAdded?: (peerId: string, stream: MediaStream) => void;
   private onConnectionStateChanged?: (peerId: string, state: string) => void;
@@ -57,8 +58,14 @@ export class WebRTCPeerManager {
     const existingPc = this.peerConnections.get(user.peerId);
     if (existingPc) {
       if (existingPc.connectionState === 'connected' ||
-          existingPc.connectionState === 'connecting' ||
-          existingPc.connectionState === 'new') {
+          existingPc.connectionState === 'connecting') {
+        return existingPc;
+      } else if (existingPc.connectionState === 'new') {
+        if (isInitiator && existingPc.signalingState === 'stable') {
+          this.signalingHandler.createAndSendOffer(existingPc, user);
+        } else if (!isInitiator && this.hasPendingOffer(user.peerId)) {
+          await this.processPendingOffer(user.peerId);
+        }
         return existingPc;
       } else {
         existingPc.close();
@@ -69,13 +76,13 @@ export class WebRTCPeerManager {
     if (this.e2eEnabled && user.userId) {
       const sessionEstablished = await this.establishE2ESession(user.peerId, user.userId);
       if (!sessionEstablished && this.e2eRequired) {
-        console.log('peer_connection_blocked_no_encryption', { peerId: user.peerId, userId: user.userId });
+        console.log('e2e_blocked', { peerId: user.peerId, userId: user.userId });
         throw new Error('encryption_required_but_failed');
       } else if (!sessionEstablished) {
-        console.log('peer_connection_continuing_without_encryption', { peerId: user.peerId, userId: user.userId });
+        console.log('e2e_skipped', { peerId: user.peerId, userId: user.userId });
       }
     } else if (this.e2eEnabled && !user.userId && this.e2eRequired) {
-      console.log('peer_connection_blocked_no_userid', { peerId: user.peerId });
+      console.log('e2e_no_userid', { peerId: user.peerId });
       throw new Error('encryption_required_but_no_userid');
     }
 
@@ -87,6 +94,8 @@ export class WebRTCPeerManager {
 
     if (isInitiator) {
       this.signalingHandler.createAndSendOffer(pc, user);
+    } else if (this.hasPendingOffer(user.peerId)) {
+      await this.processPendingOffer(user.peerId);
     }
 
     return pc;
@@ -131,11 +140,13 @@ export class WebRTCPeerManager {
   }
 
   private setupPeerConnectionEvents(pc: RTCPeerConnection, user: User) {
-    pc.addEventListener('track', (event: any) => {
+    // @ts-ignore - LiveKit WebRTC uses on() method
+    pc.ontrack = (event: any) => {
       this.handleRemoteTrack(event, user);
-    });
+    };
 
-    pc.addEventListener('icecandidate', (event: any) => {
+    // @ts-ignore
+    pc.onicecandidate = (event: any) => {
       if (!event.candidate) {
         return;
       }
@@ -144,9 +155,13 @@ export class WebRTCPeerManager {
         return;
       }
       this.socketManager.sendIceCandidate(event.candidate, user.peerId, meetingId);
-    });
+    };
 
-    pc.addEventListener('connectionstatechange', () => {
+    let iceRestartCount = 0;
+    const maxIceRestarts = 3;
+
+    // @ts-ignore
+    pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
       
       if (this.onConnectionStateChanged) {
@@ -154,38 +169,56 @@ export class WebRTCPeerManager {
       }
 
       if (state === 'failed') {
-        pc.restartIce();
-        setTimeout(() => {
-          if (pc.connectionState === 'failed') {
-            this.remoteStreams.delete(user.peerId);
-          }
-        }, 5000);
+        if (iceRestartCount < maxIceRestarts) {
+          iceRestartCount++;
+          console.log('ice_restart_attempt', { peerId: user.peerId, attempt: iceRestartCount });
+          pc.restartIce();
+        } else {
+          console.log('ice_restart_exhausted', user.peerId);
+          this.remoteStreams.delete(user.peerId);
+        }
+      } else if (state === 'connected') {
+        iceRestartCount = 0;
       } else if (state === 'closed') {
         this.remoteStreams.delete(user.peerId);
       }
-    });
+    };
 
-    pc.addEventListener('iceconnectionstatechange', () => {
+    // @ts-ignore
+    pc.oniceconnectionstatechange = () => {
       const state = pc.iceConnectionState;
-      if (state === 'failed') {
+      if (state === 'failed' && iceRestartCount < maxIceRestarts) {
+        iceRestartCount++;
+        console.log('ice_connection_restart', { peerId: user.peerId, attempt: iceRestartCount });
         pc.restartIce();
+      } else if (state === 'connected' || state === 'completed') {
+        iceRestartCount = 0;
       }
-    });
+    };
 
-    pc.addEventListener('icegatheringstatechange', () => {});
-    pc.addEventListener('signalingstatechange', () => {});
+    // @ts-ignore
+    pc.onicegatheringstatechange = () => {};
+    // @ts-ignore
+    pc.onsignalingstatechange = () => {};
 
-    pc.addEventListener('negotiationneeded', () => {
+    // @ts-ignore
+    pc.onnegotiationneeded = () => {
       if (pc.connectionState !== 'connected') {
         return;
       }
       if (this.peerId > user.peerId && pc.signalingState === 'stable') {
         this.signalingHandler.createAndSendOffer(pc, user);
       }
-    });
+    };
   }
 
   private handleRemoteTrack(event: any, user: User) {
+    console.log('remote_track_received', { 
+      peerId: user.peerId, 
+      trackKind: event.track?.kind,
+      hasStreams: event.streams?.length > 0 
+    });
+    
     let remoteStream = event.streams && event.streams.length > 0 ? event.streams[0] : null;
     if (!remoteStream) {
       const existing = this.remoteStreams.get(user.peerId) || new MediaStream();
@@ -209,13 +242,41 @@ export class WebRTCPeerManager {
 
     this.remoteStreams.set(user.peerId, remoteStream);
     
+    console.log('remote_stream_stored', { 
+      peerId: user.peerId, 
+      trackCount: remoteStream.getTracks().length,
+      videoTracks: remoteStream.getVideoTracks().length,
+      audioTracks: remoteStream.getAudioTracks().length
+    });
+    
     if (this.onRemoteStreamAdded) {
       this.onRemoteStreamAdded(user.peerId, remoteStream);
     }
   }
 
   async handleOffer(data: any): Promise<void> {
+    const pc = this.peerConnections.get(data.from);
+    
+    if (!pc) {
+      console.log('offer_queued', data.from);
+      this.pendingOffers.set(data.from, data);
+      return;
+    }
+    
     return this.signalingHandler.handleOffer(data);
+  }
+
+  async processPendingOffer(peerId: string): Promise<void> {
+    const pendingOffer = this.pendingOffers.get(peerId);
+    if (pendingOffer) {
+      console.log('processing_pending_offer', peerId);
+      this.pendingOffers.delete(peerId);
+      await this.signalingHandler.handleOffer(pendingOffer);
+    }
+  }
+
+  hasPendingOffer(peerId: string): boolean {
+    return this.pendingOffers.has(peerId);
   }
 
   async handleAnswer(data: any): Promise<void> {
@@ -245,6 +306,7 @@ export class WebRTCPeerManager {
       this.peerConnections.delete(peerId);
       this.remoteStreams.delete(peerId);
     }
+    this.pendingOffers.delete(peerId);
 
     if (this.e2eEnabled) {
       sessionManager.closeSession(peerId);
@@ -258,6 +320,7 @@ export class WebRTCPeerManager {
     });
     this.peerConnections.clear();
     this.remoteStreams.clear();
+    this.pendingOffers.clear();
 
     if (this.e2eEnabled) {
       sessionManager.closeAllSessions();
@@ -299,5 +362,64 @@ export class WebRTCPeerManager {
 
   getSecurityCode(peerId: string): string | undefined {
     return sessionManager.getSecurityCode(peerId);
+  }
+
+  private originalAudioTrack: MediaStreamTrack | null = null;
+
+  async replaceAudioTrack(newTrack: MediaStreamTrack | null): Promise<boolean> {
+    try {
+      let replaced = false;
+      for (const [peerId, pc] of this.peerConnections) {
+        const senders = pc.getSenders();
+        const audioSender = senders.find((s: any) => s.track?.kind === 'audio');
+        if (audioSender) {
+          if (!this.originalAudioTrack && audioSender.track) {
+            this.originalAudioTrack = audioSender.track;
+          }
+          await audioSender.replaceTrack(newTrack as any);
+          replaced = true;
+          console.log('audio_track_replaced', peerId);
+        }
+      }
+      return replaced;
+    } catch (error) {
+      console.log('replace_track_failed', error);
+      return false;
+    }
+  }
+
+  async restoreOriginalAudio(): Promise<boolean> {
+    if (!this.originalAudioTrack) {
+      return false;
+    }
+    const restored = await this.replaceAudioTrack(this.originalAudioTrack);
+    if (restored) {
+      console.log('original_audio_restored');
+      this.originalAudioTrack = null;
+    }
+    return restored;
+  }
+
+  hasOriginalAudioTrack(): boolean {
+    return this.originalAudioTrack !== null;
+  }
+
+  async replaceVideoTrack(newTrack: MediaStreamTrack): Promise<boolean> {
+    try {
+      let replaced = false;
+      for (const [peerId, pc] of this.peerConnections) {
+        const senders = pc.getSenders();
+        const videoSender = senders.find((s: any) => s.track?.kind === 'video');
+        if (videoSender) {
+          await videoSender.replaceTrack(newTrack as any);
+          replaced = true;
+          console.log('video_track_replaced', peerId);
+        }
+      }
+      return replaced;
+    } catch (error) {
+      console.log('replace_video_failed', error);
+      return false;
+    }
   }
 }

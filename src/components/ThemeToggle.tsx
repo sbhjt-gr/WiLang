@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, ThemeMode } from '../theme';
 
@@ -13,22 +12,22 @@ interface ThemeOption {
 
 const themeOptions: ThemeOption[] = [
   {
+    mode: 'system',
+    label: 'System',
+    icon: 'phone-portrait-outline',
+    description: 'Follow device settings',
+  },
+  {
     mode: 'light',
     label: 'Light',
     icon: 'sunny-outline',
-    description: 'Default light theme',
+    description: 'Light theme',
   },
   {
     mode: 'dark',
     label: 'Dark',
     icon: 'moon-outline',
-    description: 'Dark mode for low light',
-  },
-  {
-    mode: 'pitchBlack',
-    label: 'Pitch Black',
-    icon: 'moon',
-    description: 'True black for OLED screens',
+    description: 'Dark theme',
   },
 ];
 

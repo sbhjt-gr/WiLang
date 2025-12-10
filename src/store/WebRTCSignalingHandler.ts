@@ -1,4 +1,4 @@
-import {RTCPeerConnection, RTCIceCandidate, RTCSessionDescription} from 'react-native-webrtc';
+import {RTCPeerConnection, RTCIceCandidate, RTCSessionDescription} from '@livekit/react-native-webrtc';
 import {User} from './WebRTCTypes';
 import {WebRTCSocketManager} from './WebRTCSocketManager';
 

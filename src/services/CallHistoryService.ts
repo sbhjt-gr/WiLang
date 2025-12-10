@@ -9,6 +9,7 @@ export interface CallHistoryEntry {
   contactName: string;
   contactPhone?: string;
   type: 'outgoing' | 'incoming' | 'missed';
+  callMode?: 'voice' | 'video';
   duration: number;
   timestamp: number;
   status: 'completed' | 'missed' | 'declined' | 'failed';
@@ -245,9 +246,9 @@ class CallHistoryService {
     try {
       const result = await db.getFirstAsync<{
         totalCalls: number;
-        totalDuration: number;
-        missedCalls: number;
-        completedCalls: number;
+        totalDuration: number | null;
+        missedCalls: number | null;
+        completedCalls: number | null;
       }>(
         `SELECT 
           COUNT(*) as totalCalls,
@@ -259,7 +260,12 @@ class CallHistoryService {
         [userId]
       );
 
-      return result || { totalCalls: 0, totalDuration: 0, missedCalls: 0, completedCalls: 0 };
+      return {
+        totalCalls: result?.totalCalls ?? 0,
+        totalDuration: result?.totalDuration ?? 0,
+        missedCalls: result?.missedCalls ?? 0,
+        completedCalls: result?.completedCalls ?? 0,
+      };
     } catch (error) {
       console.log('get_call_stats_failed', error);
       return { totalCalls: 0, totalDuration: 0, missedCalls: 0, completedCalls: 0 };

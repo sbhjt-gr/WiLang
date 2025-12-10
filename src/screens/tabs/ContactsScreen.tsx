@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo, useContext } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Linking, FlatList, TextInput, ActivityIndicator, Platform, RefreshControl, Image } from 'react-native';
-import { Text } from '@rneui/themed';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Linking, FlatList, TextInput, ActivityIndicator, Platform, RefreshControl, Image, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Contacts from 'expo-contacts';
@@ -50,7 +49,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
     try {
       const { status } = await Contacts.getPermissionsAsync();
       setPermissionStatus(status);
-      
+
       if (status === 'granted') {
         loadContacts();
       }
@@ -64,7 +63,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
       setHasRequestedPermission(true);
       const { status } = await Contacts.requestPermissionsAsync();
       setPermissionStatus(status);
-      
+
       if (status === 'granted') {
         await loadContacts();
       } else if (status === 'denied') {
@@ -214,19 +213,19 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
 
   const filteredContacts = useMemo(() => {
     if (!searchQuery.trim()) return contacts;
-    
+
     return contacts.filter(contact => {
       const query = searchQuery.toLowerCase();
       const name = contact.name.toLowerCase();
       const phoneNumber = contact.phoneNumbers?.[0]?.number?.replace(/[^0-9]/g, '') || '';
-      
+
       return name.includes(query) || phoneNumber.includes(query);
     });
   }, [contacts, searchQuery]);
 
   const handleContactPress = (contact: Contact) => {
     const phoneNumber = contact.phoneNumbers?.[0]?.number;
-    
+
     if (!phoneNumber) {
       Alert.alert('No Phone Number', 'This contact does not have a phone number.');
       return;
@@ -235,39 +234,63 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
     const actions = [
       { text: 'Cancel', style: 'cancel' as const },
       {
-        text: 'Voice Call',
-        onPress: () => handleVoiceCall(phoneNumber)
+        text: 'Phone Call',
+        onPress: () => handlePhoneCall(phoneNumber)
       }
     ];
 
     if (contact.registeredUserId && contact.registeredPhone) {
       actions.push({
+        text: 'Voice Call',
+        onPress: () => handleVoiceCall(contact)
+      });
+      actions.push({
         text: 'Video Call',
         onPress: () => handleVideoCall(contact)
       });
     }
-
-    Alert.alert(
-      contact.name,
-      contact.registeredUserId ? 'WiLang User - Choose an action:' : 'Choose an action:',
-      actions
-    );
   };
 
-  const handleVoiceCall = (phoneNumber: string) => {
+  const handlePhoneCall = (phoneNumber: string) => {
     const cleanNumber = phoneNumber.replace(/[^0-9+]/g, '');
     Linking.openURL(`tel:${cleanNumber}`);
+  };
+
+  const handleVoiceCall = async (contact: Contact) => {
+    try {
+      if (!contact.registeredUserId || !contact.registeredPhone) {
+        Alert.alert('Not Available', 'This contact is not on WiLang yet.');
+        return;
+      }
+
+      if (!webRTCContext) {
+        Alert.alert('Unable to Call', 'Something went wrong. Please restart the app and try again.');
+        return;
+      }
+
+      if (navigationHook) {
+        videoCallService.setNavigationRef({ current: navigationHook });
+      }
+
+      await videoCallService.startVoiceCallWithPhone(
+        contact.registeredUserId,
+        contact.registeredPhone,
+        contact.name
+      );
+    } catch {
+      Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
+    }
   };
 
   const handleVideoCall = async (contact: Contact) => {
     try {
       if (!contact.registeredUserId || !contact.registeredPhone) {
-        Alert.alert('Not Available', 'This contact is not registered on WiLang.');
+        Alert.alert('Not Available', 'This contact is not on WiLang yet.');
         return;
       }
 
       if (!webRTCContext) {
-        Alert.alert('Error', 'WebRTC service not available.');
+        Alert.alert('Unable to Call', 'Something went wrong. Please restart the app and try again.');
         return;
       }
 
@@ -281,7 +304,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
         contact.name
       );
     } catch {
-      Alert.alert('Error', 'Failed to start video call. Please try again.');
+      Alert.alert('Call Failed', 'Unable to start the call right now. Please try again.');
     }
   };
 
@@ -360,15 +383,26 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
         </View>
       </View>
       {contact.registeredUserId && contact.registeredPhone && (
-        <TouchableOpacity
-          style={[styles.callButton, { backgroundColor: colors.primaryLight }]}
-          onPress={(e) => {
-            e.stopPropagation();
-            handleVideoCall(contact);
-          }}
-        >
-          <Ionicons name="videocam-outline" size={20} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.callButtons}>
+          <TouchableOpacity
+            style={[styles.callButton, { backgroundColor: colors.primaryLight }]}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleVoiceCall(contact);
+            }}
+          >
+            <Ionicons name="call-outline" size={18} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.callButton, { backgroundColor: colors.primaryLight }]}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleVideoCall(contact);
+            }}
+          >
+            <Ionicons name="videocam-outline" size={18} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -419,7 +453,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View
         style={styles.searchContainer}
       >
@@ -486,7 +520,7 @@ export default function ContactsScreen({ navigation }: ContactsScreenProps) {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -553,7 +587,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  
+
   deniedContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -580,8 +614,8 @@ const styles = StyleSheet.create({
 
   searchContainer: {
     paddingHorizontal: 24,
-    paddingTop: 16,
     paddingBottom: 8,
+    paddingTop: 30,
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -612,7 +646,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
   },
-  
+
   listContainer: {
     paddingHorizontal: 24,
     paddingBottom: 24,
@@ -658,9 +692,13 @@ const styles = StyleSheet.create({
   phoneNumber: {
     fontSize: 14,
   },
+  callButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   callButton: {
-    padding: 12,
-    borderRadius: 12,
+    padding: 10,
+    borderRadius: 10,
   },
   separator: {
     height: 12,

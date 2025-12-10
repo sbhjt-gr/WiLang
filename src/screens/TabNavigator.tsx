@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { Text } from '@rneui/themed';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, TouchableOpacity, Platform, Text, Image, Modal, Pressable, Animated } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
@@ -9,8 +8,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../types/navigation';
 import CallsScreen from './tabs/CallsScreen';
 import ContactsScreen from './tabs/ContactsScreen';
-import HistoryScreen from './tabs/HistoryScreen';
 import SettingsScreen from './tabs/SettingsScreen';
+import QRPairScreen from './tabs/QRPairScreen';
+import CallNotesScreen from './tabs/CallNotesScreen';
 import { useTheme } from '../theme';
 
 type TabNavigatorNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
@@ -21,7 +21,7 @@ interface Props {
   route: TabNavigatorRouteProp;
 }
 
-type TabType = 'calls' | 'contacts' | 'history' | 'settings';
+type TabType = 'calls' | 'qrpair' | 'notes' | 'contacts' | 'settings';
 
 interface TabItem {
   key: TabType;
@@ -38,16 +38,22 @@ const tabs: TabItem[] = [
     iconFocused: 'videocam',
   },
   {
+    key: 'qrpair',
+    title: 'Translate',
+    icon: 'scan-outline',
+    iconFocused: 'scan',
+  },
+  {
+    key: 'notes',
+    title: 'Notes',
+    icon: 'document-text-outline',
+    iconFocused: 'document-text',
+  },
+  {
     key: 'contacts',
     title: 'Contacts',
     icon: 'people-outline',
     iconFocused: 'people',
-  },
-  {
-    key: 'history',
-    title: 'History',
-    icon: 'time-outline',
-    iconFocused: 'time',
   },
   {
     key: 'settings',
@@ -59,13 +65,60 @@ const tabs: TabItem[] = [
 
 export default function TabNavigator({ navigation, route }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('calls');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
   const { colors } = useTheme();
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const openNotifications = () => {
+    setModalVisible(true);
+    setShowNotifications(true);
+  };
+
+  const closeNotifications = () => {
+    setShowNotifications(false);
+  };
+
+  useEffect(() => {
+    if (showNotifications) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 80,
+          friction: 8,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else if (modalVisible) {
+      Animated.parallel([
+        Animated.timing(scaleAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setModalVisible(false);
+      });
+    }
+  }, [showNotifications, modalVisible, scaleAnim, fadeAnim]);
 
   const getHeaderTitle = () => {
     switch (activeTab) {
       case 'calls': return 'WiLang';
+      case 'qrpair': return 'Live Translate';
+      case 'notes': return 'Call Notes';
       case 'contacts': return 'Contacts';
-      case 'history': return 'Call History';
       case 'settings': return 'Settings';
       default: return 'WiLang';
     }
@@ -75,10 +128,12 @@ export default function TabNavigator({ navigation, route }: Props) {
     switch (activeTab) {
       case 'calls':
         return <CallsScreen navigation={navigation} />;
+      case 'qrpair':
+        return <QRPairScreen navigation={navigation} />;
+      case 'notes':
+        return <CallNotesScreen />;
       case 'contacts':
         return <ContactsScreen />;
-      case 'history':
-        return <HistoryScreen />;
       case 'settings':
         return <SettingsScreen navigation={navigation} />;
       default:
@@ -95,24 +150,73 @@ export default function TabNavigator({ navigation, route }: Props) {
           <View style={styles.headerContent}>
             <View style={styles.headerLeft}>
               <View style={styles.logoContainer}>
-                <Ionicons name="videocam" size={20} color="#ffffff" />
+                <Image
+                  source={require('../../assets/icon.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
               </View>
               <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
             </View>
             <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.headerButton}>
-                <Ionicons name="search-outline" size={20} color="#ffffff" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.headerButton}>
+              {activeTab === 'calls' && (
+                <TouchableOpacity style={styles.headerButton}>
+                  <Ionicons name="search-outline" size={20} color="#ffffff" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={openNotifications}
+              >
                 <Ionicons name="notifications-outline" size={20} color="#ffffff" />
-                <View style={styles.notificationBadge}>
-                  <View style={[styles.notificationDot, { backgroundColor: '#dc2626' }]} />
-                </View>
               </TouchableOpacity>
             </View>
           </View>
         </SafeAreaView>
       </View>
+
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="none"
+        onRequestClose={closeNotifications}
+      >
+        <Animated.View style={[styles.notificationOverlay, { opacity: fadeAnim }]}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={closeNotifications}
+          />
+          <Animated.View
+            style={[
+              styles.notificationPanelContainer,
+              {
+                transform: [
+                  { scale: scaleAnim },
+                ],
+                opacity: scaleAnim,
+              }
+            ]}
+          >
+            <View style={styles.notificationArrowContainer}>
+              <View style={[styles.notificationArrow, { borderBottomColor: colors.surface }]} />
+            </View>
+            <Pressable onPress={() => { }}>
+              <View style={[styles.notificationPanel, { backgroundColor: colors.surface }]}>
+                <View style={styles.notificationHeader}>
+                  <Text style={[styles.notificationTitle, { color: colors.text }]}>Notifications</Text>
+                  <TouchableOpacity onPress={closeNotifications}>
+                    <Ionicons name="close" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.notificationContent}>
+                  <Ionicons name="notifications-off-outline" size={48} color={colors.textTertiary} />
+                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No notifications</Text>
+                </View>
+              </View>
+            </Pressable>
+          </Animated.View>
+        </Animated.View>
+      </Modal>
 
       <View style={[styles.content, { backgroundColor: colors.background }]}>
         {renderTabContent()}
@@ -181,10 +285,15 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   headerTitle: {
     fontSize: 20,
@@ -248,5 +357,58 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   tabLabelActive: {
+  },
+  notificationOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  notificationPanelContainer: {
+    position: 'absolute',
+    top: 50,
+    right: 10,
+    left: 16,
+    transformOrigin: 'top right',
+  },
+  notificationArrowContainer: {
+    alignItems: 'flex-end',
+    paddingRight: 20,
+  },
+  notificationArrow: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  notificationPanel: {
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  notificationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  notificationTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  notificationContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+  },
+  emptyText: {
+    fontSize: 14,
+    marginTop: 12,
   },
 });

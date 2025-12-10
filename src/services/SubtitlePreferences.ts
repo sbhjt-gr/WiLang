@@ -5,6 +5,7 @@ export type SubtitleLang = 'auto' | 'en' | 'es' | 'fr' | 'hi' | 'de' | 'pt' | 'b
 
 const MODE_KEY = '@wilang:subtitle_mode';
 const LANG_KEY = '@wilang:subtitle_lang';
+const ENABLED_KEY = '@wilang:subtitle_enabled';
 
 const LANG_MAP: Record<SubtitleLang, string> = {
 	auto: 'en-US',
@@ -56,5 +57,22 @@ export const SubtitlePreferences = {
 	},
 	getLocale(code: SubtitleLang): string {
 		return LANG_MAP[code] || LANG_MAP.auto;
+	},
+	async isEnabled(): Promise<boolean> {
+		try {
+			const value = await AsyncStorage.getItem(ENABLED_KEY);
+			if (value === '1') {
+				return true;
+			}
+			if (value === '0') {
+				return false;
+			}
+		} catch (error) {}
+		return false;
+	},
+	async setEnabled(value: boolean): Promise<void> {
+		try {
+			await AsyncStorage.setItem(ENABLED_KEY, value ? '1' : '0');
+		} catch (error) {}
 	},
 };

@@ -1,6 +1,6 @@
 import React, { useState, useLayoutEffect, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, StatusBar, TextInput, Alert } from 'react-native';
-import { Text, Image } from '@rneui/themed';
+import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, StatusBar, TextInput, Alert, Text, Image } from 'react-native';
+import { MotiView } from 'moti';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
@@ -70,9 +70,41 @@ export default function HomeScreen({ navigation, route }: Props) {
       />
       
       {/* Floating circles for visual appeal */}
-      <View style={[styles.floatingCircle, styles.circle1]} />
-      <View style={[styles.floatingCircle, styles.circle2]} />
-      <View style={[styles.floatingCircle, styles.circle3]} />
+      <MotiView 
+        from={{ opacity: 0, scale: 0.5, translateY: 0 }}
+        animate={{ opacity: 0.1, scale: 1, translateY: -20 }}
+        transition={{
+          type: 'timing',
+          duration: 2000,
+          loop: true,
+          repeatReverse: true,
+        }}
+        style={[styles.floatingCircle, styles.circle1]} 
+      />
+      <MotiView 
+        from={{ opacity: 0, scale: 0.8, translateY: 0 }}
+        animate={{ opacity: 0.1, scale: 1.2, translateY: 20 }}
+        transition={{
+          type: 'timing',
+          duration: 2500,
+          loop: true,
+          repeatReverse: true,
+          delay: 500,
+        }}
+        style={[styles.floatingCircle, styles.circle2]} 
+      />
+      <MotiView 
+        from={{ opacity: 0, scale: 0.6, translateX: 0 }}
+        animate={{ opacity: 0.1, scale: 1.1, translateX: 20 }}
+        transition={{
+          type: 'timing',
+          duration: 3000,
+          loop: true,
+          repeatReverse: true,
+          delay: 1000,
+        }}
+        style={[styles.floatingCircle, styles.circle3]} 
+      />
 
       <ScrollView 
         style={styles.scrollView}

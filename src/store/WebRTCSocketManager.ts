@@ -1,6 +1,6 @@
 import socketio from 'socket.io-client';
-import {User, JoinRequest} from './WebRTCTypes';
-import {SERVER_URL, SERVER_URLS, WEBRTC_CONFIG} from './WebRTCConfig';
+import { User, JoinRequest } from './WebRTCTypes';
+import { SERVER_URL, SERVER_URLS, WEBRTC_CONFIG } from './WebRTCConfig';
 import { KeyBundle } from '../crypto';
 
 type SocketInstance = ReturnType<typeof socketio>;
@@ -10,6 +10,7 @@ export class WebRTCSocketManager {
   private currentMeetingId: string | null = null;
   private peerId = '';
   private username = '';
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private onUserJoined?: (user: User) => void;
   private onUserLeft?: (user: User) => void;
   private onOfferReceived?: (data: any) => void;
@@ -21,10 +22,12 @@ export class WebRTCSocketManager {
   private onCallAccepted?: (data: any) => void;
   private onCallDeclined?: (data: any) => void;
   private onCallCancelled?: (data: any) => void;
+  private onCallTimeout?: (data: { callId: string }) => void;
   private onKeyBundleReceived?: (data: { fromUserId: string; bundle: KeyBundle }) => void;
   private onJoinRequest?: (data: JoinRequest & { meetingId: string }) => void;
   private onJoinApproved?: (data: { meetingId: string; participants: User[]; requestId?: string }) => void;
   private onJoinDenied?: (data: { meetingId: string; reason?: string; requestId?: string }) => void;
+  private onDirectCallEnded?: (data: { endedBy: string; endedByName: string; meetingId?: string }) => void;
 
   setCallbacks(callbacks: {
     onUserJoined?: (user: User) => void;
@@ -38,10 +41,12 @@ export class WebRTCSocketManager {
     onCallAccepted?: (data: any) => void;
     onCallDeclined?: (data: any) => void;
     onCallCancelled?: (data: any) => void;
+    onCallTimeout?: (data: { callId: string }) => void;
     onKeyBundleReceived?: (data: { fromUserId: string; bundle: KeyBundle }) => void;
     onJoinRequest?: (data: JoinRequest & { meetingId: string }) => void;
-  onJoinApproved?: (data: { meetingId: string; participants: User[]; requestId?: string }) => void;
-  onJoinDenied?: (data: { meetingId: string; reason?: string; requestId?: string }) => void;
+    onJoinApproved?: (data: { meetingId: string; participants: User[]; requestId?: string }) => void;
+    onJoinDenied?: (data: { meetingId: string; reason?: string; requestId?: string }) => void;
+    onDirectCallEnded?: (data: { endedBy: string; endedByName: string; meetingId?: string }) => void;
   }) {
     this.onUserJoined = callbacks.onUserJoined;
     this.onUserLeft = callbacks.onUserLeft;
@@ -54,15 +59,20 @@ export class WebRTCSocketManager {
     this.onCallAccepted = callbacks.onCallAccepted;
     this.onCallDeclined = callbacks.onCallDeclined;
     this.onCallCancelled = callbacks.onCallCancelled;
+    this.onCallTimeout = callbacks.onCallTimeout;
     this.onKeyBundleReceived = callbacks.onKeyBundleReceived;
     this.onJoinRequest = callbacks.onJoinRequest;
     this.onJoinApproved = callbacks.onJoinApproved;
     this.onJoinDenied = callbacks.onJoinDenied;
+    this.onDirectCallEnded = callbacks.onDirectCallEnded;
   }
 
   private async connectWithFallback(urls: string[], username: string): Promise<SocketInstance> {
+    console.log('connect_with_fallback_start', { urlCount: urls.length, username });
+
     for (let i = 0; i < urls.length; i += 1) {
       const url = urls[i];
+      console.log('trying_server', { attempt: i + 1, total: urls.length, url });
 
       try {
         const io = socketio(url, {
@@ -76,41 +86,61 @@ export class WebRTCSocketManager {
           upgrade: true,
         });
 
+        console.log('socket_instance_created', { url, timeout: WEBRTC_CONFIG.timeout });
+
         await new Promise<void>((resolve, reject) => {
           const connectionTimeout = setTimeout(() => {
+            console.log('connection_timeout_triggered', { url, timeout: WEBRTC_CONFIG.timeout + 5000 });
             io.disconnect();
-            reject(new Error(`Connection timeout: ${url}`));
+            reject(new Error(`timeout`));
           }, WEBRTC_CONFIG.timeout + 5000);
 
           io.on('connect', () => {
+            console.log('socket_connected_event', { url, socketId: io.id });
             clearTimeout(connectionTimeout);
             this.peerId = io.id || '';
+            console.log('emitting_register', { username, socketId: io.id });
             io.emit('register', username);
             io.emit('set-peer-id', io.id);
+            console.log('register_emitted');
             resolve();
           });
 
           io.on('connect_error', (error: any) => {
+            console.log('connect_error_event', { url, error: error.message || error });
             clearTimeout(connectionTimeout);
             io.disconnect();
             reject(error);
           });
         });
 
+        console.log('connection_successful', { url, socketId: io.id });
         return io;
       } catch (error) {
+        console.log('connection_attempt_failed', {
+          url,
+          attempt: i + 1,
+          total: urls.length,
+          error: error instanceof Error ? error.message : error,
+          isLastAttempt: i === urls.length - 1
+        });
+
         if (i === urls.length - 1) {
+          console.log('all_connection_attempts_exhausted', { urlCount: urls.length });
           throw error;
         }
 
+        console.log('retrying_next_server', { waitMs: 2000 });
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
 
+    console.log('fallback_failed_completely');
     throw new Error('All server URLs failed');
   }
 
   async initializeSocket(username: string): Promise<SocketInstance> {
+    console.log('socket_init_start', { username });
     this.username = username;
 
     const primaryUrl = SERVER_URL;
@@ -118,18 +148,40 @@ export class WebRTCSocketManager {
     const allUrls = [primaryUrl, ...fallbackUrls].filter(url => url && url !== 'undefined');
 
     if (allUrls.length === 0) {
+      console.log('no_urls_configured_using_default');
       allUrls.push('https://whisperlang-render.onrender.com');
     }
 
+    console.log('socket_init_urls', { urlCount: allUrls.length, urls: allUrls });
     const io = await this.connectWithFallback(allUrls, username);
+    console.log('socket_connected', { socketId: io.id, connected: io.connected });
+
     this.socket = io;
     this.setupSocketListeners(io);
+    this.startHeartbeat();
+    console.log('socket_listeners_setup');
 
     return io;
   }
 
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket?.connected) {
+        this.socket.emit('heartbeat');
+      }
+    }, 15000);
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
   private setupSocketListeners(io: SocketInstance) {
-    io.on('disconnect', () => {});
+    io.on('disconnect', () => { });
 
     io.on('users-change', (users: User[]) => {
       this.onUsersChange?.(users);
@@ -152,7 +204,7 @@ export class WebRTCSocketManager {
     });
 
     io.on('offer', (data: any) => {
-      const {offer, fromPeerId, fromUsername, meetingId} = data;
+      const { offer, fromPeerId, fromUsername, meetingId } = data;
 
       if (meetingId !== this.currentMeetingId) {
         return;
@@ -170,7 +222,7 @@ export class WebRTCSocketManager {
     });
 
     io.on('answer', (data: any) => {
-      const {answer, fromPeerId} = data;
+      const { answer, fromPeerId } = data;
 
       const transformedData = {
         from: fromPeerId,
@@ -183,7 +235,7 @@ export class WebRTCSocketManager {
     });
 
     io.on('ice-candidate', (data: any) => {
-      const {candidate, fromPeerId} = data;
+      const { candidate, fromPeerId } = data;
 
       const transformedData = {
         from: fromPeerId,
@@ -215,6 +267,11 @@ export class WebRTCSocketManager {
       this.onCallCancelled?.(data);
     });
 
+    io.on('call-timeout', (data: { callId: string }) => {
+      console.log('call_timeout_received', data);
+      this.onCallTimeout?.(data);
+    });
+
     io.on('key-bundle-response', (data: { fromUserId: string; bundle: KeyBundle }) => {
       console.log('key_bundle_received', data.fromUserId);
       this.onKeyBundleReceived?.(data);
@@ -230,6 +287,11 @@ export class WebRTCSocketManager {
 
     io.on('meeting-join-denied', (data: { meetingId: string; reason?: string }) => {
       this.onJoinDenied?.(data);
+    });
+
+    io.on('direct-call-ended', (data: { endedBy: string; endedByName: string; meetingId?: string }) => {
+      console.log('direct_call_ended_received', data);
+      this.onDirectCallEnded?.(data);
     });
   }
 
@@ -281,10 +343,28 @@ export class WebRTCSocketManager {
     fcmToken?: string;
   }) {
     if (!this.socket) {
+      console.log('register_user_no_socket', { userId: userData.userId });
       throw new Error('Socket not initialized');
     }
 
+    console.log('register_user_emit', {
+      userId: userData.userId,
+      username: userData.username,
+      hasPhone: !!userData.phoneNumber,
+      peerId: userData.peerId,
+      socketConnected: this.socket.connected
+    });
     this.socket.emit('register-user', userData);
+    console.log('register_user_emitted');
+  }
+
+  updateFcmToken(userId: string, fcmToken: string, platform: 'ios' | 'android') {
+    if (!this.socket) {
+      console.log('fcm_update_no_socket');
+      return;
+    }
+    this.socket.emit('update-fcm-token', { userId, fcmToken, platform });
+    console.log('fcm_token_sent', platform);
   }
 
   initiateCall(callData: {
@@ -338,6 +418,16 @@ export class WebRTCSocketManager {
     this.socket.emit('cancel-call-request', data);
   }
 
+  endDirectCall(data: { meetingId?: string; recipientUserId?: string }) {
+    if (!this.socket) {
+      console.log('end_direct_call_no_socket');
+      return;
+    }
+
+    this.socket.emit('end-direct-call', data);
+    console.log('end_direct_call_emitted', data);
+  }
+
   getMeetingId(): string | null {
     return this.currentMeetingId;
   }
@@ -356,8 +446,14 @@ export class WebRTCSocketManager {
       throw new Error('Socket not initialized');
     }
 
-    console.log('uploading_key_bundle', { userId: bundle.userId, hasIdentityKey: !!bundle.identityKey, hasEphemeralKey: !!bundle.ephemeralKey });
+    console.log('upload_key_bundle_emit', {
+      userId: bundle.userId,
+      hasIdentityKey: !!bundle.identityKey,
+      hasEphemeralKey: !!bundle.ephemeralKey,
+      socketConnected: this.socket.connected
+    });
     this.socket.emit('upload-key-bundle', bundle);
+    console.log('upload_key_bundle_emitted');
   }
 
   requestKeyBundle(userId: string): Promise<KeyBundle | null> {
@@ -400,6 +496,7 @@ export class WebRTCSocketManager {
   }
 
   disconnect() {
+    this.stopHeartbeat();
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;

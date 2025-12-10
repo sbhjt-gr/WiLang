@@ -22,13 +22,17 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.gorai.wilanger",
+      buildNumber: "3",
       googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
-      deploymentTarget: "17.0",
+      deploymentTarget: "18.0",
       infoPlist: {
         NSContactsUsageDescription: "WiLang needs access to your contacts to help you connect with friends and family for video calls.",
         NSCameraUsageDescription: "WiLang needs access to your camera for video calls.",
         NSMicrophoneUsageDescription: "WiLang needs access to your microphone for voice and video calls.",
         NSSpeechRecognitionUsageDescription: "WiLang needs access to speech recognition for real-time subtitle transcription.",
+        NSPhotoLibraryUsageDescription: "WiLang needs access to your photo library to save or share media from video calls.",
+        NSPhotoLibraryAddUsageDescription: "WiLang needs permission to save photos and videos from calls to your photo library.",
+        NSLocalNetworkUsageDescription: "WiLang uses the local network for peer-to-peer video calls.",
         UIBackgroundModes: ["audio", "voip"],
         CFBundleURLTypes: [
           {
@@ -41,10 +45,11 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/icon.png",
+        foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#3754AB"
       },
       package: "com.gorai.wilanger",
+      versionCode: 3,
       googleServicesFile: "./android/app/google-services.json",
       permissions: [
         "android.permission.READ_CONTACTS",
@@ -61,8 +66,8 @@ export default {
       favicon: "./assets/favicon.png"
     },
     extra: {
-      eas: {
-        projectId: "#"
+      "eas": {
+        "projectId": "146b3cbc-1d82-4c4b-9f27-746b6274af08"
       },
       FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
       FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
@@ -80,6 +85,7 @@ export default {
       "expo-router",
       "expo-sqlite",
       "expo-secure-store",
+      "expo-audio",
       [
         "expo-build-properties",
         {
@@ -87,7 +93,7 @@ export default {
             "minSdkVersion": 28
           },
           "ios": {
-            "deploymentTarget": "17.0"
+            "deploymentTarget": "18.0"
           }
         }
       ],
@@ -103,7 +109,8 @@ export default {
           microphonePermission: "WiLang needs microphone access for real-time speech transcription.",
           speechRecognitionPermission: "WiLang needs speech recognition access for real-time subtitle transcription."
         }
-      ]
+      ],
+      "./app.plugin.js"
     ]
   }
 };

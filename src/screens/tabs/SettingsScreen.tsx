@@ -1,12 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Modal } from 'react-native';
-import { Text } from '@rneui/themed';
+import React, { useCallback, useMemo, useState } from 'react';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Text } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../config/firebase';
 import { useTheme } from '../../theme';
-import { SubtitlePreferences, type SubtitleLang } from '../../services/SubtitlePreferences';
+import { TranslationPreferences } from '../../services/TranslationPreferences';
+import { CallTranslationPrefs } from '../../services/call-translation-prefs';
+import { getTranslationOptionLabel } from '../../constants/translation';
+import { getSourceLabel, getTargetLabel } from '../../constants/palabra-langs';
+import { useFocusEffect } from '@react-navigation/native';
+import type { SourceLangCode, TargetLangCode } from '../../services/palabra/types';
+import { UserProfileService } from '../../services/UserProfileService';
 
 type SettingsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 
@@ -16,48 +21,61 @@ interface Props {
 
 export default function SettingsScreen({ navigation }: Props) {
   const { colors } = useTheme();
-  const [lang, setLang] = useState<SubtitleLang>('auto');
-  const [langOpen, setLangOpen] = useState(false);
+  const [translationEnabled, setTranslationEnabled] = useState(false);
+  const [translationTarget, setTranslationTarget] = useState('en');
+  const [callTransSource, setCallTransSource] = useState<SourceLangCode>('auto');
+  const [callTransTarget, setCallTransTarget] = useState<TargetLangCode>('en-us');
+  const [displayName, setDisplayName] = useState(' ');
 
-  const langOpts = useMemo<Array<{ id: SubtitleLang; label: string }>>(
-    () => [
-      { id: 'auto', label: 'Automatic' },
-      { id: 'en', label: 'English (US)' },
-      { id: 'es', label: 'Spanish' },
-      { id: 'fr', label: 'French' },
-      { id: 'hi', label: 'Hindi' },
-      { id: 'de', label: 'German' },
-      { id: 'pt', label: 'Portuguese' },
-      { id: 'bn', label: 'Bengali' },
-      { id: 'sv', label: 'Swedish' },
-      { id: 'ja', label: 'Japanese' },
-      { id: 'ko', label: 'Korean' },
-    ],
-    [],
+  const translationLabel = useMemo(() => {
+    if (!translationEnabled) {
+      return 'Off';
+    }
+    return `To ${getTranslationOptionLabel(translationTarget)}`;
+  }, [translationEnabled, translationTarget]);
+
+  const callTransLabel = useMemo(() => {
+    return `${getSourceLabel(callTransSource)} → ${getTargetLabel(callTransTarget)}`;
+  }, [callTransSource, callTransTarget]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      const load = async () => {
+        try {
+          const [isEnabled, target, callPrefs] = await Promise.all([
+            TranslationPreferences.isEnabled(),
+            TranslationPreferences.getTarget(),
+            CallTranslationPrefs.getAll(),
+          ]);
+          if (active) {
+            setTranslationEnabled(isEnabled);
+            setTranslationTarget(target);
+            setCallTransSource(callPrefs.source);
+            setCallTransTarget(callPrefs.target);
+          }
+        } catch (error) {}
+        
+        if (auth.currentUser?.uid) {
+          console.log('settings_fetch_profile', auth.currentUser.uid);
+          try {
+            const profile = await UserProfileService.getUserProfile(auth.currentUser.uid);
+            console.log('settings_profile_result', profile?.displayName);
+            if (active && profile) {
+              setDisplayName(profile.displayName);
+              console.log('settings_display_updated', profile.displayName);
+            }
+          } catch (error) {
+            console.log('settings_fetch_error', error);
+          }
+        }
+      };
+      load();
+      return () => {
+        active = false;
+      };
+    }, []),
   );
-
-  const langLabel = useMemo(() => {
-    const match = langOpts.find(item => item.id === lang);
-    return match ? match.label : 'Automatic';
-  }, [lang, langOpts]);
-
-  useEffect(() => {
-    let active = true;
-    SubtitlePreferences.getExpoLanguage().then(value => {
-      if (active) {
-        setLang(value);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const onLang = useCallback(async (value: SubtitleLang) => {
-    setLang(value);
-    setLangOpen(false);
-    await SubtitlePreferences.setExpoLanguage(value);
-  }, []);
 
   const LogOut = async (): Promise<void> => {
     Alert.alert(
@@ -83,20 +101,28 @@ export default function SettingsScreen({ navigation }: Props) {
 
   const settingsOptions = useMemo(() => ([
     {
-      id: 'subtitles',
-      title: 'Subtitles',
-      subtitle: langLabel,
-      icon: 'text-outline' as const,
-      color: '#8b5cf6',
-      onPress: () => setLangOpen(true),
-    },
-    {
       id: 'theme',
       title: 'Theme',
       subtitle: 'Appearance and display settings',
       icon: 'color-palette-outline' as const,
       color: '#8b5cf6',
       onPress: () => navigation.navigate('ThemeSettingsScreen'),
+    },
+    {
+      id: 'translation',
+      title: 'Local Translation',
+      subtitle: translationLabel,
+      icon: 'globe-outline' as const,
+      color: '#8b5cf6',
+      onPress: () => navigation.navigate('TranslationSettingsScreen'),
+    },
+    {
+      id: 'call-translation',
+      title: 'Cloud Translation',
+      subtitle: callTransLabel,
+      icon: 'call-outline' as const,
+      color: '#8b5cf6',
+      onPress: () => navigation.navigate('CallTranslationSettings'),
     },
     {
       id: 'notifications',
@@ -130,7 +156,7 @@ export default function SettingsScreen({ navigation }: Props) {
       color: '#8b5cf6',
       onPress: () => {},
     },
-  ]), [langLabel, navigation]);
+  ]), [callTransLabel, navigation, translationLabel]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -142,9 +168,9 @@ export default function SettingsScreen({ navigation }: Props) {
         <View style={styles.profileSection}>
           <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
             <View style={[styles.avatarContainer, { backgroundColor: 'transparent', borderColor: '#8b5cf6', borderWidth: 2 }]}>
-              <Text style={[styles.avatarText, { color: '#8b5cf6' }]}>U</Text>
+              <Text style={[styles.avatarText, { color: '#8b5cf6' }]}>{displayName[0].toUpperCase()}</Text>
             </View>
-            <Text style={[styles.userName, { color: colors.text }]}>User Name</Text>
+            <Text style={[styles.userName, { color: colors.text }]}>{displayName}</Text>
             <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{auth.currentUser?.email || 'user@example.com'}</Text>
           </View>
         </View>
@@ -183,29 +209,6 @@ export default function SettingsScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      <Modal transparent visible={langOpen} animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setLangOpen(false)} />
-          <View style={[styles.modalCard, { backgroundColor: colors.surface }]}
-          >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Subtitle Language</Text>
-            {langOpts.map(item => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.modalItem}
-                onPress={() => onLang(item.id)}
-              >
-                <Text style={[styles.modalItemText, { color: colors.text }]}>{item.label}</Text>
-                {lang === item.id ? <Ionicons name="checkmark" size={18} color="#8b5cf6" /> : null}
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity style={[styles.modalClose, { backgroundColor: '#8b5cf6' }]} onPress={() => setLangOpen(false)}>
-              <Text style={styles.modalCloseText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -306,46 +309,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  modalCard: {
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  modalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-  },
-  modalItemText: {
-    fontSize: 16,
-    flex: 1,
-    marginRight: 12,
-  },
-  modalClose: {
-    borderRadius: 12,
-    alignItems: 'center',
-    paddingVertical: 12,
-    marginTop: 16,
-  },
-  modalCloseText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
