@@ -11,6 +11,7 @@ export const SOURCE_LANGS: LangOption<SourceLangCode>[] = [
   { id: 'ar', label: 'Arabic', code: 'AR' },
   { id: 'be', label: 'Belarusian', code: 'BE' },
   { id: 'bg', label: 'Bulgarian', code: 'BG' },
+  { id: 'bn', label: 'Bengali', code: 'BN' },
   { id: 'ca', label: 'Catalan', code: 'CA' },
   { id: 'cs', label: 'Czech', code: 'CS' },
   { id: 'cy', label: 'Welsh', code: 'CY' },

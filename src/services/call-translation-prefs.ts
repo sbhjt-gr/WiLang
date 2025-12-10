@@ -14,7 +14,7 @@ const DEFAULT_SOURCE: SourceLangCode = 'auto';
 const DEFAULT_TARGET: TargetLangCode = 'en-us';
 
 const VALID_SOURCE_LANGS: SourceLangCode[] = [
-  'auto', 'ar', 'be', 'bg', 'ca', 'cs', 'cy', 'da', 'de', 'el',
+  'auto', 'ar', 'be', 'bg', 'bn', 'ca', 'cs', 'cy', 'da', 'de', 'el',
   'en', 'es', 'et', 'fi', 'fr', 'gl', 'he', 'hi', 'hr', 'hu',
   'id', 'it', 'ja', 'ko', 'lt', 'lv', 'ms', 'nl', 'no', 'pl',
   'pt', 'ro', 'ru', 'sk', 'sl', 'sv', 'sw', 'ta', 'th', 'tr',

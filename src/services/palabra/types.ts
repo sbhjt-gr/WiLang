@@ -27,6 +27,7 @@ export type SourceLangCode =
   | 'ar'
   | 'be'
   | 'bg'
+  | 'bn'
   | 'ca'
   | 'cs'
   | 'cy'
