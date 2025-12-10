@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { RTCView } from '@livekit/react-native-webrtc';
+import InCallManager from 'react-native-incall-manager';
 import { StatusBar } from 'expo-status-bar';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -196,6 +197,14 @@ export default function VideoCallScreen({ navigation, route }: Props) {
       gestureEnabled: false,
     });
   }, [navigation]);
+
+  useEffect(() => {
+    InCallManager.start({ media: 'video' });
+    InCallManager.setForceSpeakerphoneOn(true);
+    return () => {
+      InCallManager.stop();
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
