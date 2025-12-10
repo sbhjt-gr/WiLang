@@ -38,6 +38,7 @@ export type RootStackParamList = {
     peerTargetLang: string;
     isHost: boolean;
     sessionId: string;
+    meetingId: string;
   };
   UsersScreen: undefined;
   EnvironmentConfig: undefined;

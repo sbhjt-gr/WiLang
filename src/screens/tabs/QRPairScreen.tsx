@@ -34,6 +34,7 @@ interface Props {
 export default function QRPairScreen({ navigation }: Props) {
     const { colors } = useTheme();
     const webRTCContext = useContext(WebRTCContext);
+    const { initialize, localStream, socket } = webRTCContext || {};
 
     const [showQRModal, setShowQRModal] = useState(false);
     const [showScanModal, setShowScanModal] = useState(false);
@@ -44,6 +45,7 @@ export default function QRPairScreen({ navigation }: Props) {
     const [loading, setLoading] = useState(false);
     const [langSelectType, setLangSelectType] = useState<'source' | 'target'>('source');
     const [search, setSearch] = useState('');
+    const [isInitializing, setIsInitializing] = useState(false);
 
     const filteredLanguages = useMemo(() => {
         const langs = langSelectType === 'source' ? SOURCE_LANGS : TARGET_LANGS;
@@ -109,12 +111,25 @@ export default function QRPairScreen({ navigation }: Props) {
             peerTargetLang: peer.targetLang,
             isHost: true,
             sessionId: currentSession?.sessionId || '',
+            meetingId: peer.meetingId || currentSession?.meetingId || '',
         });
     }, [navigation]);
+
+    const ensureInitialized = async () => {
+        if (!localStream || !socket?.connected) {
+            setIsInitializing(true);
+            try {
+                await initialize?.('QR User');
+            } finally {
+                setIsInitializing(false);
+            }
+        }
+    };
 
     const handleShowQR = async () => {
         setLoading(true);
         try {
+            await ensureInitialized();
             const newSession = await qrPairingService.createSession(sourceLang, targetLang);
             setSession(newSession);
             setShowQRModal(true);
@@ -136,7 +151,8 @@ export default function QRPairScreen({ navigation }: Props) {
         setShowScanModal(false);
 
         try {
-            const host = await qrPairingService.joinSession(
+            await ensureInitialized();
+            const { host, meetingId } = await qrPairingService.joinSession(
                 parsed.sessionId,
                 parsed.secret,
                 sourceLang,
@@ -150,6 +166,7 @@ export default function QRPairScreen({ navigation }: Props) {
                 peerTargetLang: host.targetLang,
                 isHost: false,
                 sessionId: parsed.sessionId,
+                meetingId,
             });
         } catch (err) {
             Alert.alert('Connection Failed', err instanceof Error ? err.message : 'Failed to connect');

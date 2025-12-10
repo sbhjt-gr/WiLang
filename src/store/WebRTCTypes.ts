@@ -78,4 +78,5 @@ export interface WebRTCContextType {
   prepareDirectCall?: (config: DirectCallConfig) => void;
   endDirectCall?: () => void;
   isDirectCallActive?: boolean;
+  setIsQRTranslationSession?: (value: boolean) => void;
 }

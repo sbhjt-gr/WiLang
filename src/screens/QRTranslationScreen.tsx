@@ -58,21 +58,26 @@ interface TranscriptEntry {
 
 export default function QRTranslationScreen({ navigation, route }: Props) {
     const { colors } = useTheme();
-    const { peerId, peerName, peerSourceLang, peerTargetLang, isHost, sessionId } = route.params;
+    const { peerId: remotePeerId, peerName, peerSourceLang, peerTargetLang, isHost, sessionId, meetingId } = route.params;
 
     const {
         localStream,
         remoteStreams,
+        participants,
+        peerId: localPeerId,
         isMuted,
         toggleMute,
         initialize,
         closeCall,
+        joinMeeting,
         replaceAudioTrack,
         restoreOriginalAudio,
+        setIsQRTranslationSession,
     } = useContext(WebRTCContext);
 
     const [sessionDuration, setSessionDuration] = useState(0);
     const [isConnected, setIsConnected] = useState(false);
+    const [meetingJoined, setMeetingJoined] = useState(false);
     const [palabraState, setPalabraState] = useState<NativePalabraState>('idle');
     const [palabraSource, setPalabraSource] = useState<SourceLangCode>('auto');
     const [palabraTarget, setPalabraTarget] = useState<TargetLangCode>('en-us');
@@ -98,6 +103,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
     const initializationAttempted = useRef(false);
     const scrollViewRef = useRef<ScrollView>(null);
     const entryIdCounter = useRef(0);
+    const isEndingSession = useRef(false);
 
     // Background transcript capture for AI summaries
     const {
@@ -108,8 +114,8 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
         sourceLang: palabraSource,
         targetLang: palabraTarget,
         meetingId: sessionId,
-        participants: peerName ? [{ peerId, name: peerName, isLocal: false }] : [],
-        enabled: true, // Always capture in background
+        participants: peerName ? [{ peerId: remotePeerId, name: peerName, isLocal: false }] : [],
+        enabled: true,
     });
 
     const showModal = useCallback((title: string, message: string, icon: string = 'information-circle', buttons: Array<{ text: string; onPress?: () => void }> = [{ text: 'OK' }]) => {
@@ -119,6 +125,13 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
     const closeModal = useCallback(() => {
         setModalConfig(prev => ({ ...prev, visible: false }));
     }, []);
+
+    useEffect(() => {
+        setIsQRTranslationSession?.(true);
+        return () => {
+            setIsQRTranslationSession?.(false);
+        };
+    }, [setIsQRTranslationSession]);
 
     useLayoutEffect(() => {
         navigation.setOptions({
@@ -150,20 +163,55 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
 
     const replaceAudioTrackRef = useRef(replaceAudioTrack);
     const restoreOriginalAudioRef = useRef(restoreOriginalAudio);
+    const joinAttempted = useRef(false);
 
     useEffect(() => {
         replaceAudioTrackRef.current = replaceAudioTrack;
         restoreOriginalAudioRef.current = restoreOriginalAudio;
     });
 
+    const remotePeers = React.useMemo(
+        () => (participants || []).filter(p => !p.isLocal && p.peerId !== localPeerId),
+        [participants, localPeerId],
+    );
+
+    useEffect(() => {
+        if (joinAttempted.current || meetingJoined) return;
+        if (!localStream || !meetingId) return;
+        
+        joinAttempted.current = true;
+        console.log('qr_joining_meeting', meetingId);
+        
+        joinMeeting(meetingId).then((success) => {
+            console.log('qr_meeting_joined', success);
+            setMeetingJoined(true);
+        }).catch((err) => {
+            console.log('qr_join_failed', err);
+            showModal(
+                'Connection Failed',
+                'Failed to join translation session. Please try again.',
+                'alert-circle',
+                [{ text: 'OK', onPress: () => { closeModal(); navigation.reset({ index: 0, routes: [{ name: 'HomeScreen' }] }); } }]
+            );
+        });
+    }, [localStream, meetingId, meetingJoined, joinMeeting, showModal, closeModal, navigation]);
+
     useEffect(() => {
         if (nativePalabra.getState() !== 'idle') {
             return;
         }
 
-        const remoteStreamForPeer = remoteStreams?.get(peerId);
+        if (!meetingJoined) {
+            console.log('qr_waiting_for_meeting');
+            return;
+        }
+
+        const firstRemotePeer = remotePeers[0];
+        const targetPeerId = firstRemotePeer?.peerId || remotePeerId;
+        
+        const remoteStreamForPeer = remoteStreams?.get(targetPeerId);
         if (!remoteStreamForPeer) {
-            console.log('qr_no_remote_stream');
+            console.log('qr_no_remote_stream', { targetPeerId, keys: Array.from(remoteStreams?.keys() || []) });
             return;
         }
 
@@ -216,7 +264,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
                 },
             }
         );
-    }, [peerId, remoteStreams, palabraSource, palabraTarget, isConnected, addToTranscript, showModal]);
+    }, [remotePeerId, remotePeers, remoteStreams, palabraSource, palabraTarget, isConnected, meetingJoined, addToTranscript, showModal]);
 
     useEffect(() => {
         return () => {
@@ -275,6 +323,12 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
     }, []);
 
     const handleEndSession = useCallback(async () => {
+        if (isEndingSession.current) {
+            console.log('qr_session_already_ending');
+            return;
+        }
+        isEndingSession.current = true;
+
         try {
             console.log('qr_saving_transcript');
             saveCallTranscript().then((noteId) => {
@@ -286,9 +340,24 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
             });
 
             qrPairingService.endSession(sessionId);
-            await nativePalabra.stop();
-            await restoreOriginalAudioRef.current?.();
-            closeCall();
+            
+            try {
+                await nativePalabra.stop();
+            } catch (e) {
+                console.log('palabra_stop_err', e);
+            }
+            
+            try {
+                await restoreOriginalAudioRef.current?.();
+            } catch (e) {
+                console.log('restore_audio_err', e);
+            }
+            
+            try {
+                closeCall();
+            } catch (e) {
+                console.log('close_call_err', e);
+            }
         } catch (err) {
             console.log('cleanup_err', err);
         } finally {
@@ -300,7 +369,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
         qrPairingService.setSessionId(sessionId);
 
         const handleSessionEnded = (data: { endedBy: string; reason?: string }) => {
-            if (data.endedBy !== peerId) {
+            if (data.endedBy !== remotePeerId) {
                 handleEndSession();
             }
         };
@@ -310,7 +379,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
         return () => {
             qrPairingService.off('sessionEnded', handleSessionEnded);
         };
-    }, [sessionId, peerId, handleEndSession]);
+    }, [sessionId, remotePeerId, handleEndSession]);
 
     const displayName = peerName || 'Partner';
 

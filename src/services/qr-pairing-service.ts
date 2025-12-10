@@ -8,6 +8,7 @@ export interface QRSession {
     hostTargetLang?: string;
     peerSourceLang?: string;
     peerTargetLang?: string;
+    meetingId?: string;
     status: 'waiting' | 'paired' | 'expired' | 'cancelled';
 }
 
@@ -17,6 +18,7 @@ export interface QRPeerInfo {
     userId?: string;
     sourceLang: string;
     targetLang: string;
+    meetingId?: string;
 }
 
 export interface QRPairingEvents {
@@ -49,13 +51,14 @@ class QRPairingService extends EventEmitter {
             this.startExpiryTimer(data.expiresAt);
         });
 
-        this.socket.on('qr-peer-joined', (peer: QRPeerInfo) => {
+        this.socket.on('qr-peer-joined', (data: QRPeerInfo & { meetingId?: string }) => {
             if (this.currentSession) {
                 this.currentSession.status = 'paired';
-                this.currentSession.peerSourceLang = peer.sourceLang;
-                this.currentSession.peerTargetLang = peer.targetLang;
+                this.currentSession.peerSourceLang = data.sourceLang;
+                this.currentSession.peerTargetLang = data.targetLang;
+                this.currentSession.meetingId = data.meetingId;
             }
-            this.emit('peerJoined', peer);
+            this.emit('peerJoined', data);
         });
 
         this.socket.on('qr-session-error', (error: { message: string }) => {
@@ -126,7 +129,7 @@ class QRPairingService extends EventEmitter {
         });
     }
 
-    joinSession(sessionId: string, secret: string, sourceLang: string, targetLang: string): Promise<QRPeerInfo> {
+    joinSession(sessionId: string, secret: string, sourceLang: string, targetLang: string): Promise<{ host: QRPeerInfo; meetingId: string }> {
         return new Promise((resolve, reject) => {
             if (!this.socket || !this.socket.connected) {
                 reject(new Error('Socket not connected'));
@@ -141,7 +144,7 @@ class QRPairingService extends EventEmitter {
 
             this.socket.once('qr-join-success', (data: { host: QRPeerInfo; meetingId: string }) => {
                 clearTimeout(timeout);
-                resolve(data.host);
+                resolve(data);
             });
 
             this.socket.once('qr-session-error', (error: { message: string }) => {

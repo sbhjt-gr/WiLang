@@ -61,6 +61,7 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
   const callModeRef = useRef<'voice' | 'video'>('video');
   const callContactPhoneRef = useRef<string | null>(null);
   const callHistoryLoggedRef = useRef(false);
+  const isQRTranslationSessionRef = useRef(false);
   const facingModeRef = useRef<'user' | 'environment'>('user');
   const [isDirectCallActive, setIsDirectCallActive] = useState(false);
   type DirectCallState = {
@@ -226,6 +227,10 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
       peerConnectionCreated: false,
     };
     setIsDirectCallActive(false);
+  }, []);
+
+  const setIsQRTranslationSession = useCallback((value: boolean) => {
+    isQRTranslationSessionRef.current = value;
   }, []);
 
   const autoJoinCallerMeeting = async (meetingId: string, meetingToken?: string) => {
@@ -1167,6 +1172,11 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
       return;
     }
 
+    if (isQRTranslationSessionRef.current) {
+      console.log('log_call_history_skipped_qr_translation');
+      return;
+    }
+
     if (!currentUser) {
       console.log('log_call_history_skipped_no_user');
       return;
@@ -1564,6 +1574,7 @@ const WebRTCProvider: React.FC<Props> = ({ children }) => {
     prepareDirectCall,
     endDirectCall,
     isDirectCallActive,
+    setIsQRTranslationSession,
   };
 
   return (
