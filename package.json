@@ -17,7 +17,7 @@
     "@expo/metro-runtime": "~5.0.5",
     "@expo/vector-icons": "^14.1.0",
     "@livekit/react-native": "^2.9.5",
-    "@livekit/react-native-webrtc": "^137.0.2",
+    "@livekit/react-native-webrtc": "file:../react-native-webrtc/livekit-react-native-webrtc-137.0.5-palabra.6.tgz",
     "@noble/ciphers": "^2.0.1",
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",

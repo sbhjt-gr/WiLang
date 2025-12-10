@@ -111,16 +111,16 @@ export class PalabraLiveKitTransport extends EventEmitter {
    */
   async connect(audioTrack: MediaStreamTrack): Promise<void> {
     try {
-      console.log('[PalabraTransport] Connecting to LiveKit room:', this.streamUrl);
+      console.log('[PalabraTransport] Connecting:', this.streamUrl);
 
       await this.room.connect(this.streamUrl, this.accessToken, {
         autoSubscribe: true,
       });
 
-      console.log('[PalabraTransport] Connected, publishing audio track');
+      console.log('[PalabraTransport] Connected, publishing audio');
 
-      // Create and publish local audio track
-      this.localAudioTrack = new LocalAudioTrack(audioTrack);
+      const clonedTrack = audioTrack.clone();
+      this.localAudioTrack = new LocalAudioTrack(clonedTrack);
       await this.room.localParticipant.publishTrack(this.localAudioTrack, {
         dtx: false,
         red: false,
@@ -129,7 +129,7 @@ export class PalabraLiveKitTransport extends EventEmitter {
         },
       });
 
-      console.log('[PalabraTransport] Audio track published successfully');
+      console.log('[PalabraTransport] Audio published');
     } catch (error) {
       console.error('[PalabraTransport] Connection failed:', error);
       this.onError?.(error as Error);

@@ -18,7 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
 import GlassModal from '../components/GlassModal';
 import { useTheme } from '../theme';
-import { VideoCallTranslation, type TranslationState } from '../services/video-call-translation';
+import { nativePalabra, type NativePalabraState } from '../services/native-palabra';
 import { CallTranslationPrefs } from '../services/call-translation-prefs';
 import { qrPairingService } from '../services/qr-pairing-service';
 import type { SourceLangCode, TargetLangCode } from '../services/palabra/types';
@@ -62,6 +62,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
 
     const {
         localStream,
+        remoteStreams,
         isMuted,
         toggleMute,
         initialize,
@@ -72,7 +73,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
 
     const [sessionDuration, setSessionDuration] = useState(0);
     const [isConnected, setIsConnected] = useState(false);
-    const [palabraState, setPalabraState] = useState<TranslationState>('idle');
+    const [palabraState, setPalabraState] = useState<NativePalabraState>('idle');
     const [palabraSource, setPalabraSource] = useState<SourceLangCode>('auto');
     const [palabraTarget, setPalabraTarget] = useState<TargetLangCode>('en-us');
     const [currentTranscript, setCurrentTranscript] = useState<string>('');
@@ -93,7 +94,6 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
         buttons: [],
     });
 
-    const palabraServiceRef = useRef<VideoCallTranslation | null>(null);
     const sessionStartTime = useRef<number | null>(null);
     const initializationAttempted = useRef(false);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -157,93 +157,70 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
     });
 
     useEffect(() => {
-        let service = palabraServiceRef.current;
-        if (!service) {
-            service = new VideoCallTranslation();
-            palabraServiceRef.current = service;
+        if (nativePalabra.getState() !== 'idle') {
+            return;
         }
 
-        service.setLanguages(palabraSource, palabraTarget);
+        const remoteStreamForPeer = remoteStreams?.get(peerId);
+        if (!remoteStreamForPeer) {
+            console.log('qr_no_remote_stream');
+            return;
+        }
 
-        const handleStateChange = (state: TranslationState) => {
-            setPalabraState(state);
-            if (state === 'active' && !isConnected) {
-                setIsConnected(true);
-                sessionStartTime.current = Date.now();
+        const audioTracks = remoteStreamForPeer.getAudioTracks();
+        if (!audioTracks || audioTracks.length === 0) {
+            console.log('qr_no_remote_audio');
+            return;
+        }
+
+        const remoteAudioTrack = audioTracks[0] as unknown as MediaStreamTrack;
+        console.log('qr_palabra_starting');
+
+        nativePalabra.startWithTrack(
+            remoteAudioTrack,
+            { sourceLang: palabraSource, targetLang: palabraTarget },
+            {
+                onStateChange: (state) => {
+                    console.log('qr_palabra_state', state);
+                    setPalabraState(state);
+                    if (state === 'connected' && !isConnected) {
+                        setIsConnected(true);
+                        sessionStartTime.current = Date.now();
+                    }
+                },
+                onTranscription: (data) => {
+                    console.log('qr_palabra_transcription', data.isFinal);
+                    setCurrentTranscript(data.text);
+                    if (data.isFinal && data.text.trim()) {
+                        const newEntry: TranscriptEntry = {
+                            id: `entry-${entryIdCounter.current++}`,
+                            original: data.text,
+                            translated: data.text,
+                            timestamp: Date.now(),
+                            isFinal: true,
+                        };
+                        setTranscriptHistory(prev => [...prev.slice(-49), newEntry]);
+                        setTimeout(() => {
+                            scrollViewRef.current?.scrollToEnd({ animated: true });
+                        }, 100);
+                        addToTranscript({
+                            speaker: 'remote',
+                            sourceText: data.text,
+                            isFinal: true,
+                        });
+                    }
+                },
+                onError: (err) => {
+                    console.log('qr_palabra_err', err);
+                    showModal('Translation Error', err || 'An error occurred', 'alert-circle');
+                },
             }
-        };
-
-        const handleTranscription = (data: { text: string; isFinal?: boolean }) => {
-            setCurrentTranscript(data.text);
-            if (data.isFinal && data.text.trim()) {
-                const newEntry: TranscriptEntry = {
-                    id: `entry-${entryIdCounter.current++}`,
-                    original: data.text,
-                    translated: currentTranslation || data.text,
-                    timestamp: Date.now(),
-                    isFinal: true,
-                };
-                setTranscriptHistory(prev => [...prev.slice(-49), newEntry]);
-                setTimeout(() => {
-                    scrollViewRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-                addToTranscript({
-                    speaker: 'local',
-                    sourceText: data.text,
-                    translatedText: currentTranslation || undefined,
-                    isFinal: true,
-                });
-            }
-        };
-
-        const handleTranslation = (data: { text: string; isFinal?: boolean }) => {
-            setCurrentTranslation(data.text);
-            if (data.text && data.isFinal) {
-                addToTranscript({
-                    speaker: 'local',
-                    sourceText: data.text,
-                    isFinal: true,
-                });
-            }
-        };
-
-        const handleRemoteTrack = (_tracks: Array<{ track: MediaStreamTrack }>) => {
-        };
-
-        const handleError = (err: Error) => {
-            showModal('Translation Error', err.message || 'An error occurred', 'alert-circle');
-        };
-
-        service.on('stateChange', handleStateChange);
-        service.on('transcription', handleTranscription);
-        service.on('translation', handleTranslation);
-        service.on('remoteTrack', handleRemoteTrack);
-        service.on('error', handleError);
-
-        return () => {
-            service.off('stateChange', handleStateChange);
-            service.off('transcription', handleTranscription);
-            service.off('translation', handleTranslation);
-            service.off('remoteTrack', handleRemoteTrack);
-            service.off('error', handleError);
-        };
-    }, [palabraSource, palabraTarget, showModal, isConnected, currentTranslation]);
-
-    useEffect(() => {
-        if (!palabraServiceRef.current) return;
-
-        const service = palabraServiceRef.current;
-        if (service.getState() !== 'idle') return;
-
-        service.startWithLocalMic();
-    }, []);
+        );
+    }, [peerId, remoteStreams, palabraSource, palabraTarget, isConnected, addToTranscript, showModal]);
 
     useEffect(() => {
         return () => {
-            if (palabraServiceRef.current) {
-                palabraServiceRef.current.stop();
-                palabraServiceRef.current = null;
-            }
+            nativePalabra.stop();
             restoreOriginalAudioRef.current?.();
         };
     }, []);
@@ -299,21 +276,17 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
 
     const handleEndSession = useCallback(async () => {
         try {
-            // Save call transcript for AI summary before closing
-            console.log('[QRTranslation] Saving transcript...');
+            console.log('qr_saving_transcript');
             saveCallTranscript().then((noteId) => {
                 if (noteId) {
-                    console.log('[QRTranslation] Call note saved:', noteId);
+                    console.log('qr_note_saved', noteId);
                 }
             }).catch((err) => {
-                console.log('[QRTranslation] Failed to save note:', err);
+                console.log('qr_save_failed', err);
             });
 
             qrPairingService.endSession(sessionId);
-            if (palabraServiceRef.current) {
-                await palabraServiceRef.current.stop();
-                palabraServiceRef.current = null;
-            }
+            await nativePalabra.stop();
             await restoreOriginalAudioRef.current?.();
             closeCall();
         } catch (err) {
@@ -343,7 +316,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
 
     const getStatusColor = () => {
         switch (palabraState) {
-            case 'active': return '#10b981';
+            case 'connected': return '#10b981';
             case 'connecting': return '#f59e0b';
             case 'error': return '#ef4444';
             default: return '#6b7280';
@@ -352,7 +325,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
 
     const getStatusText = () => {
         switch (palabraState) {
-            case 'active': return 'Live';
+            case 'connected': return 'Live';
             case 'connecting': return 'Connecting...';
             case 'error': return 'Error';
             default: return 'Starting...';
@@ -386,11 +359,10 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
                 colors={['#0f0f1a', '#1a1a2e', '#0f0f1a']}
                 style={styles.gradient}
             >
-                {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
                         <View style={[styles.statusIndicator, { backgroundColor: getStatusColor() }]}>
-                            {palabraState === 'active' && (
+                            {palabraState === 'connected' && (
                                 <MotiView
                                     from={{ opacity: 0.5 }}
                                     animate={{ opacity: 1 }}
@@ -438,10 +410,8 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
                     </View>
                 </View>
 
-                {/* Live Translation Display */}
                 <View style={styles.translationContainer}>
-                    {/* Current Live Text */}
-                    {(currentTranscript || currentTranslation) && palabraState === 'active' && (
+                    {(currentTranscript || currentTranslation) && palabraState === 'connected' && (
                         <View style={styles.liveSection}>
                             <View style={styles.liveBadge}>
                                 <MotiView
@@ -472,7 +442,7 @@ export default function QRTranslationScreen({ navigation, route }: Props) {
                         contentContainerStyle={styles.historyContent}
                         showsVerticalScrollIndicator={false}
                     >
-                        {transcriptHistory.length === 0 && palabraState === 'active' && !currentTranscript && (
+                        {transcriptHistory.length === 0 && palabraState === 'connected' && !currentTranscript && (
                             <View style={styles.emptyState}>
                                 <MotiView
                                     from={{ scale: 0.95, opacity: 0.5 }}

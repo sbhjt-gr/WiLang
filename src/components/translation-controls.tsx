@@ -8,10 +8,10 @@ import {
   TextStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { TranslationState } from '../services/video-call-translation';
+import type { NativePalabraState } from '../services/native-palabra';
 
 interface Props {
-  state: TranslationState;
+  state: NativePalabraState;
   enabled: boolean;
   onToggle: () => void;
   style?: StyleProp<ViewStyle>;

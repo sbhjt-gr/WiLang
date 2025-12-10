@@ -23,7 +23,7 @@ import GlassModal from '../components/GlassModal';
 import { useTheme } from '../theme';
 import TranslationControls from '../components/translation-controls';
 import TranscriptionOverlay from '../components/transcription-overlay';
-import { VideoCallTranslation, type TranslationState } from '../services/video-call-translation';
+import { nativePalabra, type NativePalabraState } from '../services/native-palabra';
 import { CallTranslationPrefs } from '../services/call-translation-prefs';
 import type { SourceLangCode, TargetLangCode } from '../services/palabra/types';
 import { useCallTranscript } from '../hooks/use-call-transcript';
@@ -92,14 +92,13 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
   });
 
   const [palabraEnabled, setPalabraEnabled] = useState(false);
-  const [palabraState, setPalabraState] = useState<TranslationState>('idle');
+  const [palabraState, setPalabraState] = useState<NativePalabraState>('idle');
   const [palabraSource, setPalabraSource] = useState<SourceLangCode>('auto');
   const [palabraTarget, setPalabraTarget] = useState<TargetLangCode>('en-us');
   const [palabraTranscript, setPalabraTranscript] = useState<string | null>(null);
   const [palabraTranslation, setPalabraTranslation] = useState<string | null>(null);
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(false);
-  const palabraServiceRef = useRef<VideoCallTranslation | null>(null);
   const [showTranslationModal, setShowTranslationModal] = useState(false);
   const [participantSettings, setParticipantSettings] = useState<ParticipantTranslation[]>([]);
 
@@ -267,85 +266,14 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (!palabraEnabled) {
-      if (palabraServiceRef.current) {
-        palabraServiceRef.current.stop();
-        palabraServiceRef.current = null;
-        setPalabraState('idle');
-        setPalabraTranscript(null);
-        setPalabraTranslation(null);
-        restoreOriginalAudioRef.current?.();
-      }
+      nativePalabra.stop();
+      setPalabraState('idle');
+      setPalabraTranscript(null);
+      setPalabraTranslation(null);
       return;
     }
 
-    let service = palabraServiceRef.current;
-
-    if (!service) {
-      service = new VideoCallTranslation();
-      palabraServiceRef.current = service;
-    }
-
-    service.setLanguages(palabraSource, palabraTarget);
-
-    const handleStateChange = (state: TranslationState) => {
-      console.log('palabra_state', state);
-      setPalabraState(state);
-    };
-
-    const handleTranscription = (data: { text: string; isFinal?: boolean }) => {
-      console.log('palabra_transcription', data.isFinal);
-      setPalabraTranscript(data.text);
-      if (data.text && data.isFinal) {
-        addToTranscript({
-          speaker: 'remote',
-          sourceText: data.text,
-          isFinal: true,
-        });
-      }
-    };
-
-    const handleTranslation = (data: { text: string; isFinal?: boolean }) => {
-      console.log('palabra_translation', data.isFinal);
-      setPalabraTranslation(data.text);
-      if (data.text && data.isFinal) {
-        addToTranscript({
-          speaker: 'remote',
-          sourceText: data.text,
-          isFinal: true,
-        });
-      }
-    };
-
-    const handleRemoteTrack = (_tracks: Array<{ track: MediaStreamTrack }>) => {
-    };
-
-    const handleError = (err: Error) => {
-      console.log('palabra_err', err.message);
-      showModal('Translation Error', err.message || 'An error occurred', 'alert-circle');
-    };
-
-    service.on('stateChange', handleStateChange);
-    service.on('transcription', handleTranscription);
-    service.on('translation', handleTranslation);
-    service.on('remoteTrack', handleRemoteTrack);
-    service.on('error', handleError);
-
-    return () => {
-      service.off('stateChange', handleStateChange);
-      service.off('transcription', handleTranscription);
-      service.off('translation', handleTranslation);
-      service.off('remoteTrack', handleRemoteTrack);
-      service.off('error', handleError);
-    };
-  }, [palabraEnabled, palabraSource, palabraTarget, showModal]);
-
-  useEffect(() => {
-    if (!palabraEnabled || !palabraServiceRef.current) {
-      return;
-    }
-
-    const service = palabraServiceRef.current;
-    if (service.getState() !== 'idle') {
+    if (nativePalabra.getState() !== 'idle') {
       return;
     }
 
@@ -369,17 +297,37 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
 
     const remoteAudioTrack = audioTracks[0] as unknown as MediaStreamTrack;
     console.log('palabra_starting_with_remote');
-    service.startWithTrack(remoteAudioTrack).catch((err: Error) => {
-      console.log('palabra_start_failed', err);
-    });
-  }, [palabraEnabled, remotePeers, remoteStreams]);
+
+    nativePalabra.startWithTrack(
+      remoteAudioTrack,
+      { sourceLang: palabraSource, targetLang: palabraTarget },
+      {
+        onStateChange: (state) => {
+          console.log('palabra_state', state);
+          setPalabraState(state);
+        },
+        onTranscription: (data) => {
+          console.log('palabra_transcription', data.isFinal);
+          setPalabraTranscript(data.text);
+          if (data.text && data.isFinal) {
+            addToTranscript({
+              speaker: 'remote',
+              sourceText: data.text,
+              isFinal: true,
+            });
+          }
+        },
+        onError: (err) => {
+          console.log('palabra_err', err);
+          showModal('Translation Error', err || 'An error occurred', 'alert-circle');
+        },
+      }
+    );
+  }, [palabraEnabled, remotePeers, remoteStreams, palabraSource, palabraTarget, addToTranscript, showModal]);
 
   useEffect(() => {
     return () => {
-      if (palabraServiceRef.current) {
-        palabraServiceRef.current.stop();
-        palabraServiceRef.current = null;
-      }
+      nativePalabra.stop();
       restoreOriginalAudioRef.current?.();
     };
   }, []);
@@ -390,10 +338,7 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     CallTranslationPrefs.setSource(palabraSource);
-    if (palabraServiceRef.current && palabraEnabled) {
-      palabraServiceRef.current.setLanguages(palabraSource, palabraTarget);
-    }
-  }, [palabraSource, palabraTarget, palabraEnabled]);
+  }, [palabraSource]);
 
   useEffect(() => {
     CallTranslationPrefs.setTarget(palabraTarget);
@@ -452,10 +397,7 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
         console.log('[VoiceCall] Failed to save note:', err);
       });
 
-      if (palabraServiceRef.current) {
-        await palabraServiceRef.current.stop();
-        palabraServiceRef.current = null;
-      }
+      await nativePalabra.stop();
       await restoreOriginalAudioRef.current?.();
       setPalabraEnabled(false);
       setPalabraState('idle');
@@ -504,10 +446,7 @@ export default function VoiceCallScreen({ navigation, route }: Props) {
   const handleJoinDeniedClose = useCallback(async () => {
     acknowledgeJoinDenied?.();
     try {
-      if (palabraServiceRef.current) {
-        await palabraServiceRef.current.stop();
-        palabraServiceRef.current = null;
-      }
+      await nativePalabra.stop();
       await restoreOriginalAudioRef.current?.();
       setPalabraEnabled(false);
       setParticipantSettings([]);
