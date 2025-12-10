@@ -30,6 +30,7 @@ export default function CallTranslationSettings() {
   const [search, setSearch] = useState('');
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
 
   const filteredSource = useMemo(() => {
     if (!search.trim()) return SOURCE_LANGS;
@@ -51,6 +52,7 @@ export default function CallTranslationSettings() {
         setTarget(prefs.target);
         setClientId(prefs.clientId);
         setClientSecret(prefs.clientSecret);
+        setGeminiKey(prefs.geminiKey);
       }
     };
     load();
@@ -86,6 +88,11 @@ export default function CallTranslationSettings() {
   const handleClientSecretChange = useCallback(async (val: string) => {
     setClientSecret(val);
     await CallTranslationPrefs.setClientSecret(val.trim());
+  }, []);
+
+  const handleGeminiKeyChange = useCallback(async (val: string) => {
+    setGeminiKey(val);
+    await CallTranslationPrefs.setGeminiKey(val.trim());
   }, []);
 
   const handleCloseSource = useCallback(() => {
@@ -203,7 +210,7 @@ export default function CallTranslationSettings() {
             </View>
 
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              API Configuration
+              Palabra API Configuration
             </Text>
 
             <View style={[styles.card, { backgroundColor: colors.surface }]}>
@@ -236,6 +243,29 @@ export default function CallTranslationSettings() {
                   placeholderTextColor={colors.textSecondary}
                   value={clientSecret}
                   onChangeText={handleClientSecretChange}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  secureTextEntry
+                />
+              </View>
+            </View>
+
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Gemini API Configuration
+            </Text>
+
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
+              <View style={styles.inputRow}>
+                <View style={styles.inputLabel}>
+                  <Ionicons name="sparkles-outline" size={20} color="#8b5cf6" />
+                  <Text style={[styles.inputLabelText, { color: colors.text }]}>API Key</Text>
+                </View>
+                <TextInput
+                  style={[styles.credInput, { color: colors.text, borderColor: colors.border }]}
+                  placeholder="Enter Gemini API Key"
+                  placeholderTextColor={colors.textSecondary}
+                  value={geminiKey}
+                  onChangeText={handleGeminiKeyChange}
                   autoCorrect={false}
                   autoCapitalize="none"
                   secureTextEntry

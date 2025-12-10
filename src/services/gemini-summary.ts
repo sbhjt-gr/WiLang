@@ -3,13 +3,13 @@
  * Generates call summaries and key points using Google Gemini API
  */
 
-import Constants from 'expo-constants';
 import {
   CallSession,
   CallSummary,
   DEFAULT_GEMINI_CONFIG,
   GeminiSummaryConfig,
 } from '../types/call-summary';
+import { CallTranslationPrefs } from './call-translation-prefs';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -41,7 +41,6 @@ class GeminiSummaryService {
   private static instance: GeminiSummaryService;
   private config: GeminiSummaryConfig = DEFAULT_GEMINI_CONFIG;
   private apiKey: string | null = null;
-  private apiKeyLoaded = false;
 
   private constructor() {}
 
@@ -52,26 +51,18 @@ class GeminiSummaryService {
     return GeminiSummaryService.instance;
   }
 
-  private loadApiKey(): void {
-    if (this.apiKeyLoaded) return;
-    
-    const extra = Constants.expoConfig?.extra;
-    this.apiKey = extra?.GEMINI_API_KEY || null;
-    this.apiKeyLoaded = true;
-
-    if (!this.apiKey) {
-      console.warn('[GeminiService] API key not configured');
-      this.apiKey = null;
-    }
+  private async loadApiKey(): Promise<void> {
+    const key = await CallTranslationPrefs.getGeminiKey();
+    this.apiKey = key || null;
   }
 
   setConfig(config: Partial<GeminiSummaryConfig>): void {
     this.config = { ...this.config, ...config };
   }
 
-  isConfigured(): boolean {
-    this.loadApiKey();
-    return this.apiKey !== null && this.apiKey !== 'your-gemini-api-key-here';
+  async isConfigured(): Promise<boolean> {
+    await this.loadApiKey();
+    return this.apiKey !== null && this.apiKey.length > 0;
   }
 
   private buildPrompt(transcript: string, callType: string, duration: number): string {
@@ -108,7 +99,7 @@ If the transcript is too short or unclear, still provide your best analysis base
   }
 
   async generateSummary(session: CallSession): Promise<CallSummary> {
-    this.loadApiKey();
+    await this.loadApiKey();
 
     const transcript = this.formatTranscriptForPrompt(session);
     
@@ -301,9 +292,9 @@ If the transcript is too short or unclear, still provide your best analysis base
   }
 
   async generateQuickSummary(text: string): Promise<string> {
-    this.loadApiKey();
+    await this.loadApiKey();
     
-    if (!this.isConfigured()) {
+    if (!(await this.isConfigured())) {
       throw new Error('Gemini API key not configured');
     }
 

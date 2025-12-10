@@ -32,6 +32,7 @@ export default function CallNotesScreen() {
   const [selectedNote, setSelectedNote] = useState<CallNotePreview | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [geminiConfigured, setGeminiConfigured] = useState(false);
   const [noteDetail, setNoteDetail] = useState<{
     summary: string;
     keyPoints: string[];
@@ -64,6 +65,7 @@ export default function CallNotesScreen() {
   useFocusEffect(
     useCallback(() => {
       loadNotes(false);
+      geminiSummaryService.isConfigured().then(setGeminiConfigured);
     }, [filter])
   );
 
@@ -388,11 +390,11 @@ export default function CallNotesScreen() {
       </View>
       <Text style={[styles.emptyTitle, { color: colors.text }]}>No Call Notes Yet</Text>
       <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-        {geminiSummaryService.isConfigured()
+        {geminiConfigured
           ? 'Your AI-generated call summaries and key points will appear here after your calls end.'
           : 'Enable AI summaries by adding your Gemini API key in settings.'}
       </Text>
-      {!geminiSummaryService.isConfigured() && (
+      {!geminiConfigured && (
         <View style={styles.apiKeyBanner}>
           <LinearGradient
             colors={['#f59e0b20', '#f59e0b10']}
