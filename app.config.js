@@ -4,7 +4,7 @@ export default {
   expo: {
     name: "WiLang",
     slug: "wilang",
-    version: "1.3.0",
+    version: "1.3.1",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -22,7 +22,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.gorai.wilanger",
-      buildNumber: "3",
+      buildNumber: "4",
       googleServicesFile: "./ios/WiLang/GoogleService-Info.plist",
       deploymentTarget: "18.0",
       infoPlist: {
@@ -49,7 +49,7 @@ export default {
         backgroundColor: "#3754AB"
       },
       package: "com.gorai.wilanger",
-      versionCode: 3,
+      versionCode: 4,
       googleServicesFile: "./android/app/google-services.json",
       permissions: [
         "android.permission.READ_CONTACTS",

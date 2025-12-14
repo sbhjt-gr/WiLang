@@ -18,10 +18,10 @@ What makes WiLang special is its focus on privacy and accessibility. Your conver
 - **Privacy Protection** with no data stored on external servers during calls
 
 ### AI-Powered Speech Recognition
-- **Real-time Transcription** using Whisper AI for live subtitles during calls
-- **Voice Activity Detection** to optimize transcription performance
+- **Real-time Transcription & Translation** using Palabra AI for live subtitles and translations during calls (optional cloud service via LiveKit)
+- **Voice Activity Detection (VAD)** to optimize transcription performance and reduce bandwidth/battery usage
 - **Multi-language Support** with automatic language detection
-- **Offline Processing** - all speech recognition happens on your device
+- **Configurable processing modes** — cloud-based Palabra translation or lightweight local detection features
 - **Accessibility Features** making calls inclusive for hearing-impaired users
 
 ### Video Calling
@@ -54,7 +54,7 @@ Getting WiLang running is straightforward. Follow these steps:
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd WiLang
+   cd wilang
    ```
 
 2. **Install dependencies**
@@ -85,55 +85,55 @@ Getting WiLang running is straightforward. Follow these steps:
    FIREBASE_IOS_API_KEY=your-ios-api-key
    FIREBASE_IOS_APP_ID=your-ios-app-id
 
-   # Speech translation demo
-   REPLICATE_API_TOKEN=your-replicate-token
-   REPLICATE_MODEL_PATH=models/cjwbw/seamless_communication
-   REPLICATE_MODEL_VERSION=668a4fec05a887143e5fe8d45df25ec4c794dd43169b9a11562309b2d45873b0
-   REPLICATE_POLL_INTERVAL_MS=2000
-   REPLICATE_PREDICTION_TIMEOUT_MS=90000
+   # Palabra (optional) - speech translation
+   # Palabra can be configured in app Settings or via environment variables
+   PALABRA_CLIENT_ID=your-palabra-client-id
+   PALABRA_CLIENT_SECRET=your-palabra-client-secret
+   PALABRA_API_BASE_URL=https://api.palabra.ai
    ```
-
-   The SeamlessM4T demo in **Settings → Speech Translation Demo** uploads short clips to Replicate, so keep recordings brief and never include sensitive data.
 
 ## How to Run This Project
 
 ### Quick Start Guide
 
-Running WiLang locally is easy. You need to start two things: the signaling server and the mobile app.
+Running WiLang locally is straightforward. Start the signaling server (local dev or production) and the mobile app.
 
 1. **Start the Signaling Server**
-   
-   The server handles connection setup between users. In your first terminal:
+
+   The server handles connection setup between users. From the repository root:
+
    ```bash
    # Navigate to server directory
-   cd ../WiLang-server
-   
+   cd wilang-server
+
    # Install server dependencies
    npm install
-   
-   # Start the signaling server
+
+   # Development: runs with nodemon for auto-reload
+   npm run dev
+
+   # Production: start normally
    npm start
-   # Server will run on http://localhost:3000
+   # Server will run on http://localhost:3000 by default
    ```
 
 2. **Start the Mobile App**
-   
-   In a new terminal window, go back to the main app:
+
+   In a new terminal window at the repository root:
+
    ```bash
-   # In a new terminal, navigate back to main app
-   cd ../WiLang
-   
-   # Start the Expo development server
+   # Install and start the Expo development server
+   yarn install
    yarn start
    ```
 
 3. **Choose Where to Run**
-   
+
    Once Expo starts, you'll see options to run the app:
    - Press `a` to run on Android emulator
-   - Press `i` to run on iOS simulator  
+   - Press `i` to run on iOS simulator
    - Press `w` to run in web browser
-   - Scan the QR code with Expo Go app on your physical device
+   - Scan the QR code with Expo Go or use a custom dev client
 
 ### Troubleshooting
 
@@ -170,7 +170,15 @@ WiLang uses Firebase for authentication and user profiles:
 
 ### Signaling Server
 
-The included server handles WebRTC connections between users. It manages user discovery, meeting rooms, and connection setup. You can deploy it to any Node.js hosting service like Heroku, Render, or DigitalOcean.
+The included server (`wilang-server`) handles WebRTC signaling (Socket.IO), PeerJS peer connections (available at `/peerjs`), user registration, push notifications (FCM / APNs), and room management. The server includes heartbeat checks and rate limiting to improve resiliency and security. Deploy it to any Node.js hosting service like Render, Heroku, or DigitalOcean.
+
+Important environment variables (examples):
+
+- `FIREBASE_SERVICE_ACCOUNT` — JSON string of Firebase service account credentials used by `firebase-admin`. When set, the server initializes the admin SDK and logs `firebase_admin_initialized`.
+- `APNS_KEY`, `APNS_KEY_ID`, `APNS_TEAM_ID` — configure Apple Push Notification key if you need APNs support (server writes a temporary `.p8` key file from `APNS_KEY` and initializes an APNs provider).
+- `PORT` — server listening port (defaults to 3000 locally)
+
+For development, use `npm run dev` (nodemon) and watch server logs for `firebase_admin_initialized`, `apns_initialized`, or credential-related messages.
 
 ### Required Permissions
 
@@ -179,12 +187,14 @@ WiLang needs these permissions to work:
 - **Contacts** - Optional, for calling people from your contact list
 - **Network** - For connecting to other users
 
-### Speech Translation Demo (Replicate)
+### Palabra Integration (Speech Translation)
 
-The optional demo in Settings uses Meta's SeamlessM4T model via the Replicate API:
+Real-time translation and transcription are handled by **Palabra AI**. The app uses a LiveKit-based transport to stream audio to Palabra's streaming sessions and receive transcriptions and translations in real-time.
 
- - The SeamlessM4T demo in **Settings → Speech Translation Demo** uploads short clips to Replicate, so keep recordings brief and never include sensitive data.
- - `REPLICATE_MODEL_PATH` defaults to `models/cjwbw/seamless_communication`, and `REPLICATE_MODEL_VERSION` should point at the current version slug (for example the provided `668a4fec05a887143e5fe8d45df25ec4c794dd43169b9a11562309b2d45873b0`). Update these if you switch models.
+- Palabra requires credentials (clientId/clientSecret) or a user token to create streaming sessions. Configure Palabra credentials in the app's Settings → Translation (or via your app's runtime configuration).
+- The Palabra pipeline includes VAD, partial-transcription streaming, and optional speech generation for translated audio.
+
+Note: earlier versions shipped a Replicate/SeamlessM4T demo; that demo is no longer used in the default build and has been replaced with Palabra-based translation.
 ## App Structure
 
 WiLang is organized into four main tabs:
@@ -211,21 +221,26 @@ yarn test              # Run tests
 
 ### Key Technologies
 
-- **React Native 0.76** with **Expo SDK 52** for cross-platform development
+- **React Native 0.76** with **Expo SDK 53** for cross-platform development
 - **TypeScript** for type safety
 - **WebRTC** for peer-to-peer video calls with end-to-end encryption
-- **Whisper.rn** for on-device AI speech recognition
+-- **Palabra AI** for real-time translation & transcription (via LiveKit transport)
 - **Firebase** for authentication and user management
 - **Socket.IO** for real-time signaling
 - **Noble Cryptography** (@noble/ciphers) for AES-GCM encryption
 
+Additional notable libraries and services:
+- **LiveKit** for media streaming and audio routing (@livekit/react-native)
+- **PeerJS** server for peer connections (server exposes `/peerjs`)
+- **APNs / FCM** push support via the server (APNs key support is handled via env vars)
+
 ### Architecture Highlights
 
-**End-to-End Encryption**: Uses X25519 key exchange with AES-GCM-256 encryption for all video and audio frames. Each participant generates identity and ephemeral keys, exchanges them securely, and derives session keys for encryption.
+**End-to-End Encryption**: Uses X25519 key exchange with AES-GCM-256 encryption for media frames. Each participant generates identity and ephemeral keys, exchanges them securely, and derives session keys for encryption. Verification codes are available to validate keys between participants.
 
-**Speech Recognition**: Integrates Whisper AI models that run entirely on-device for privacy. Includes Voice Activity Detection (VAD) to optimize performance and reduce battery usage.
+**Speech Recognition & Translation**: Integrates Palabra AI for real-time translation and transcription via LiveKit transport. Voice Activity Detection (VAD) is used in the pipeline to optimize performance and reduce bandwidth and battery usage.
 
-**WebRTC Integration**: Custom implementation with encryption at the frame level, allowing secure peer-to-peer communication with verification codes for key validation.
+**WebRTC Integration**: Uses LiveKit for media handling and a custom signaling layer (Socket.IO + PeerJS) for peer discovery and connections. The client reads `SIGNALING_SERVER_URL` and `FALLBACK_SERVER_URLS` from `.env` (defaults point to a Render deployment at `https://whisperlang-render.onrender.com`).
 
 ## Deployment
 
@@ -234,12 +249,14 @@ yarn test              # Run tests
 The signaling server can be deployed to any Node.js hosting service:
 
 ```bash
-cd WiLang-server
+cd wilang-server
 npm install
+# For local development with auto-reload
+npm run dev
 npm start
 ```
 
-Update the `SERVER_URL` in your app configuration to point to your deployed server instead of localhost.
+Update the `SIGNALING_SERVER_URL` / `FALLBACK_SERVER_URLS` in your app configuration (or `.env`) to point to your deployed server instead of localhost. The client defaults to `https://whisperlang-render.onrender.com` when not set.
 
 ### Building for Production
 
@@ -273,7 +290,8 @@ This project is licensed under the GNU Affero General Public License v3.0. See t
 
 Built with amazing open source technologies:
 - **Expo** for the development platform
-- **whisper.rn** for on-device speech recognition
+- **Palabra AI** for real-time translation & transcription
+- **LiveKit** for media streaming and audio routing
 - **React Native WebRTC** for video communication
 - **Firebase** for authentication services
 - **Socket.IO** for real-time signaling
